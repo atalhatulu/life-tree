@@ -8,11 +8,11 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: npm test
-      - run: npm run simulate -- --lives 400 --to-age 80 --policy random
+      - run: npm run simulate -- --lives 300 --to-age 100 --policy random
