@@ -12,8 +12,11 @@ export function printHeader(game){
  if(s.higherEducation){
   console.log('Üniversite: '+s.higherEducation.programTitle+' | '+(s.higherEducation.completed?'Mezun':'Sınıf '+s.higherEducation.year)+' | Performans '+Math.round(s.higherEducation.performance)+'/100');
  }
+ if(s.retirement?.retired){
+  console.log('Emeklilik: '+s.retirement.previousTitle+' kariyerinden emekli | ₺'+s.retirement.pensionMonthly.toLocaleString('tr-TR')+'/ay | '+(s.retirement.years??0)+' yıl');
+ }
  if(s.career){
-  console.log('Kariyer: '+(s.career.employed?s.career.title:'İşsiz')+
+  console.log('Kariyer: '+(s.career.employed?s.career.title:(s.retirement?.retired?'Emekli':'İşsiz'))+
    (s.career.employed?' | ₺'+s.career.monthlyIncome.toLocaleString('tr-TR')+'/ay | Seviye '+(s.career.level??1)+' | Memnuniyet '+Math.round(s.career.satisfaction??50)+'/100':''));
  }
 
@@ -24,7 +27,8 @@ export function printHeader(game){
  }else console.log('İlişki: Yok');
 
  if(s.children?.length){
-  console.log('Çocuklar: '+s.children.map(c=>c.name+' ('+c.age+')').join(', '));
+  console.log('Çocuklar: '+s.children.map(c=>c.name+' ('+c.age+')'+(c.adultLife?.jobTitle?' — '+c.adultLife.jobTitle:'')).join(', '));
+  if((s.grandchildren??0)>0)console.log('Torunlar: '+s.grandchildren);
  }else if(s.player.age>=19) console.log('Çocuklar: Yok');
 
  if(s.finance){
@@ -33,6 +37,12 @@ export function printHeader(game){
  }
  if(s.assets){
   console.log('Varlıklar: '+(s.assets.home?s.assets.home.label:'ev yok')+' | '+(s.assets.car?s.assets.car.label:'araba yok'));
+ }
+ if(s.business){
+  console.log('İşletme: '+(s.business.active?'aktif':'kapalı')+' | '+(s.business.years??0)+' yıl | aylık sonuç ₺'+Math.round(s.business.monthlyProfit??0).toLocaleString('tr-TR')+' | çalışan '+(s.business.employees??0));
+ }
+ if(s.inheritanceHistory?.length){
+  console.log('Alınan miras: ₺'+Math.round(s.inheritanceHistory.reduce((sum,x)=>sum+x.amount,0)).toLocaleString('tr-TR'));
  }
  if(s.healthProfile){
   const conditions=s.healthProfile.conditions.length?s.healthProfile.conditions.map(c=>c.label).join(', '):'tanı yok';
