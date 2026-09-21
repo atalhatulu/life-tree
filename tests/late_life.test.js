@@ -204,3 +204,48 @@ test('side entrepreneurship preserves career and increases stress',()=>{
  assert.equal(g.state.career.employed,true);
  assert.ok(g.state.healthProfile.stress>stress);
 });
+
+
+test('full-time entrepreneur can retire by selling business',()=>{
+ const g=new Game('entrepreneur-retirement');
+ g.state.player.age=62;
+ g.state.year=2088;
+ ensurePersonalFinance(g.state);
+ g.state.finance.cash=400000;
+ g.state.business={
+  active:true,
+  mode:'full-time',
+  startedAtAge:50,
+  capital:900000,
+  monthlyProfit:60000,
+  health:70,
+  years:12,
+  employees:5
+ };
+ g.state.career={employed:false,totalYears:15,years:0,title:'Eski kariyer'};
+ g.state.player.job='Girişimci';
+ g.state.player.monthlyIncome=0;
+ const before=g.state.finance.cash;
+ const result=retire(g.state);
+ assert.equal(result.source,'business');
+ assert.equal(g.state.retirement.retired,true);
+ assert.equal(g.state.business.active,false);
+ assert.ok(g.state.business.saleValue>0);
+ assert.ok(g.state.finance.cash>before);
+ assert.equal(g.state.player.job,'Emekli girişimci');
+});
+
+test('death summary includes structured life recap',()=>{
+ const g=new Game('death-recap');
+ autoplay(g,{toAge:45,policy:'balanced'});
+ if(g.state.player.alive){
+  ensurePersonalFinance(g.state);
+  g.state.player.alive=false;
+  g.state.death={age:g.state.player.age,year:g.state.year,cause:'test'};
+ }
+ const summary=finalizeDeath(g.state);
+ assert.ok(summary?.recap);
+ assert.equal(summary.recap.identity.finalAge,g.state.player.age);
+ assert.ok(Array.isArray(summary.recap.decisions));
+ assert.ok(Array.isArray(summary.recap.family.losses));
+});
