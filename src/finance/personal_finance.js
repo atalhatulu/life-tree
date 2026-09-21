@@ -226,7 +226,7 @@ export function processPersonalFinanceYear(state){
   if(unresolved>0)f.debt+=unresolved;
  }
 
- const interestRate=f.debtRestructured?.035:.055;
+ const interestRate=f.debtRestructured ? .035 : .055;
  f.debt+=Math.round(f.debt*interestRate);
  const reserveTarget=cashReserveTarget(f);
  const distressActions=manageFinancialDistress(state,Math.max(0,annualIncome),reserveTarget);
