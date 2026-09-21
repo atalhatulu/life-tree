@@ -53,7 +53,7 @@ export function processHealthYear(state,rng){
   if(rng.chance(chance)){
    h.conditions.push({id:condition.id,label:condition.label,severity:condition.severity,diagnosedAtAge:age});
    state.player.health.current=clamp(state.player.health.current-condition.severity*4);
-   entries.push({age,kind:'health',text:condition.label+' yaşamını etkilemeye başladı.'});
+   entries.push({age,kind:'health',paceBlock:true,text:condition.label+' yaşamını etkilemeye başladı.'});
   }
  }
 
