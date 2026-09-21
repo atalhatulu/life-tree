@@ -57,6 +57,12 @@ if(game.state.lifeTree.nodes.length){
 const recap=game.state.deathSummary?.recap??buildLifeRecap(game.state);
 console.log('\nÖzet:');
 console.log(' Şehir: '+(recap.origin.birthCity??'—')+' -> '+(recap.origin.currentCity??'—'));
+if((recap.origin.migrations?.length??0)>0){
+ console.log(' Göç geçmişi:');
+ for(const move of recap.origin.migrations){
+  console.log('  - '+move.age+' yaş: '+move.fromCityName+' -> '+move.toCityName+' ['+move.reason+'] • ₺'+Math.round(move.cost).toLocaleString('tr-TR'));
+ }
+}
 console.log(' Eğitim: '+(recap.education.university??recap.education.highSchoolPath??'—'));
 console.log(' Kariyer geçmişi: '+(recap.work.history.map(x=>x.title).join(' -> ')||'—'));
 console.log(' İlişki geçmişi: '+(recap.relationships.map(x=>x.name+' ['+x.status+']').join(' -> ')||'—'));
