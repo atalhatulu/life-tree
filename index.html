@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Life Tree</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <div><h1>Life Tree</h1><p id="identity"></p><small id="seed"></small></div>
+      <div class="controls"><input id="seedInput" placeholder="Seed (isteğe bağlı)"/><button id="newLife">Yeni Hayat</button><button id="ageUp">+1 Yıl</button></div>
+    </header>
+    <section class="grid">
+      <article><h2>Aile</h2><div id="family"></div></article>
+      <article><h2>Karakter</h2><div id="traits"></div></article>
+      <article class="wide"><h2>Hayat</h2><div id="event"></div></article>
+      <article class="wide"><h2>Geçmiş</h2><ul id="log"></ul></article>
+    </section>
+  </main>
+  <script type="module" src="./src/ui/app.js"></script>
+</body>
+</html>
