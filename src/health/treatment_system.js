@@ -1,3 +1,4 @@
+import {ensureConditionProgression} from './disease_progression.js';
 import {treatmentResilience} from './physical_capacity.js';
 import {economy} from '../world/world_state.js';
 import {ensurePersonalFinance} from '../finance/personal_finance.js';
@@ -38,10 +39,15 @@ export function treatCondition(state,id,rng){
  condition.treatmentAge=state.player.age;
  condition.treatmentSuccessful=rng.chance(success);
  condition.familyCovered=familyCovered;
+ const progression=ensureConditionProgression(condition);
  if(condition.treatmentSuccessful){
+  progression.score=Math.max(0,progression.score-22);
+  progression.status=progression.score<=22?'remission':'stable';
   condition.severity=Math.max(1,condition.severity-1);
   state.player.health.current=Math.min(100,state.player.health.current+6);
  }else{
+  progression.score=Math.min(100,progression.score+6);
+  progression.status='active';
   state.player.health.current=Math.max(0,state.player.health.current-2);
  }
  return {condition,cost,familyCovered};
