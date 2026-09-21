@@ -32,6 +32,15 @@ export function processCareerDynamics(state,rng){
   state.player.job=null;
   state.player.jobId=null;
   state.player.monthlyIncome=0;
+  if(state.business?.active&&state.business.mode==='side'){
+   state.business.mode='full-time';
+   state.player.job='Girişimci';
+   state.player.jobId='entrepreneur';
+   state.nextPath='business';
+   state.pendingJobOffers=null;
+   entries.push({age:state.player.age,kind:'career',text:'Yan işletmeni artık tam zamanlı yürütmeye başladın.'});
+   return entries;
+  }
   state.nextPath='work';
   state.unemployedSinceAge=state.player.age;
   state.pendingJobOffers=null;
