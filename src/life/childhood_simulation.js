@@ -20,12 +20,20 @@ export function processChildhoodYear(state, rng) {
   }
 
   if (state.education?.enrolled) {
-    const disciplineEffect = (player.personality.discipline - 50) * 0.025;
-    const supportEffect = (state.household.educationSupport - 50) * 0.018;
-    const healthEffect = (player.health.current - 60) * 0.01;
-    const yearlyNoise = rng.int(-3, 3);
-    state.education.performance = clamp(state.education.performance + disciplineEffect + supportEffect + healthEffect + yearlyNoise);
-    state.education.motivation = clamp(state.education.motivation + rng.int(-4, 4) + (familyBond > 70 ? 1 : 0));
+    const e=state.education;
+    const target=clamp(
+      (e.aptitude ?? 50)*.26+
+      player.personality.discipline*.16+
+      state.household.educationSupport*.16+
+      e.quality*.12+
+      e.motivation*.12+
+      player.health.current*.08+
+      (e.studyEffort ?? 0)*.10
+    );
+    const convergence=(target-e.performance)*.34;
+    e.performance=clamp(e.performance+convergence+rng.int(-3,3));
+    e.motivation=clamp(e.motivation+rng.int(-4,4)+(familyBond>70?1:0));
+    e.studyEffort=0;
   }
 
   return entries;
