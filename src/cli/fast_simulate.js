@@ -61,7 +61,7 @@ const report={
  career:{employedAtEnd:0,retired:0,transitions:0,unrelatedTransitions:0,sameJobReentries:0,finalJobs:{},issues:[]},
  relationships:{marriedAtEnd:0,activeAtEnd:0,everWidowed:0,children:0,childless:0,grandchildren:0},
  migration:{moves:0,returnHomeLives:0,reasons:{}},
- health:{sumFinalHealth:0,sumConditions:0,conditions:{},deathsByCause:{},lowHealthDeaths:0},
+ health:{sumFinalHealth:0,sumConditions:0,conditions:{},deathsByCause:{},lowHealthDeaths:0,highHealthDeaths:0,deathHealthSum:0},
  genetics:{affectedPeople:0,carrierPeople:0,affectedConditions:{},carrierConditions:{},polygenic:{hypertension:0,metabolic:0,cardiac:0}},
  pacing:{adultMajorDecisions:0,adjacentMajorDecisionLives:0},
  finance:{cash:0,debt:0,homeOwners:0,carOwners:0},
@@ -96,7 +96,9 @@ for(let i=0;i<lives;i++){
  if(!state.player.alive){
   report.deaths++;
   inc(report.health.deathsByCause,state.death?.cause??'unknown');
+  report.health.deathHealthSum+=state.player.health.current;
   if(state.player.health.current<25)report.health.lowHealthDeaths++;
+  if(state.player.health.current>=70)report.health.highHealthDeaths++;
  }
 
  if(state.higherEducation?.completed){
@@ -150,7 +152,7 @@ for(let i=0;i<lives;i++){
   report.genetics.polygenic[trait]+=genetics.polygenic?.[trait]??50;
  }
 
- const adultNodes=(state.lifeTree?.nodes??[]).filter(n=>n.age>=21);
+ const adultNodes=(state.lifeTree?.nodes??[]).filter(n=>n.age>=21&&n.pacingCategory);
  report.pacing.adultMajorDecisions+=adultNodes.length;
  let adjacent=false;
  for(let n=1;n<adultNodes.length;n++){
@@ -207,7 +209,9 @@ const summary={
   averageConditions:avg(report.health.sumConditions,valid),
   conditions:report.health.conditions,
   deathCauses:report.health.deathsByCause,
-  lowHealthAmongDeathsPct:pct(report.health.lowHealthDeaths,Math.max(1,report.deaths))
+  averageHealthAtDeath:avg(report.health.deathHealthSum,Math.max(1,report.deaths),1),
+  lowHealthAmongDeathsPct:pct(report.health.lowHealthDeaths,Math.max(1,report.deaths)),
+  highHealthAmongDeathsPct:pct(report.health.highHealthDeaths,Math.max(1,report.deaths))
  },
  genetics:{
   affectedPct:pct(report.genetics.affectedPeople,valid),
