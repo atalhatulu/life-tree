@@ -11,8 +11,8 @@ export function validateState(state){
  ];
  for(const [name,value] of checks) if(!bounded(value)) errors.push(name+' out of range: '+value);
  if(p.age<0||!Number.isInteger(p.age)) errors.push('invalid player age: '+p.age);
- if(state.parents.mother.age-p.age<18) errors.push('mother/player age gap below 18');
- if(state.parents.father.age-p.age<18) errors.push('father/player age gap below 18');
+ if(state.parents.mother.alive&&state.parents.mother.age-p.age<18) errors.push('mother/player age gap below 18');
+ if(state.parents.father.alive&&state.parents.father.age-p.age<18) errors.push('father/player age gap below 18');
  if(state.actions&&(state.actions.remaining<0||state.actions.remaining>state.actions.max)) errors.push('invalid action economy');
 
  if(state.education){
