@@ -12,6 +12,7 @@ export function createSavePayload(game){
    seed:game.rng.seed,
    state:game.rng.state
   },
+  activeEventId:game.activeEventId??null,
   state:clone(game.state)
  };
 }
