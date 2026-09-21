@@ -9,14 +9,40 @@ function mortalityChance(person){
  return Math.min(.28,ageBase+healthRisk);
 }
 
+function estateValue(person,rng){
+ const income=Math.max(0,person.monthlyIncome??0);
+ return Math.round(income*rng.int(5,14));
+}
+
+function parentInheritanceShare(state,person,amount){
+ const survivingSpouse=
+  person.id==='mother'?state.parents.father:
+  person.id==='father'?state.parents.mother:null;
+ const spouseShare=survivingSpouse?.alive?Math.round(amount*.40):0;
+ const childPool=amount-spouseShare;
+ const heirs=1+(state.siblings?.length??0);
+ return Math.round(childPool/Math.max(1,heirs));
+}
+
+function grandparentInheritanceShare(state,person,amount){
+ const maternal=person.id.startsWith('maternal');
+ const parent=maternal?state.parents.mother:state.parents.father;
+ if(parent?.alive)return 0;
+ const heirs=1+(state.siblings?.length??0);
+ return Math.round((amount*.45)/Math.max(1,heirs));
+}
+
 function markDeath(state,person,relation,rng){
  person.alive=false;
  person.deathAge=person.age;
  person.deathYear=state.year;
- const inheritanceBase=Math.max(0,(person.monthlyIncome??0)*rng.int(5,18));
+ const gross=estateValue(person,rng);
+ const share=person.id==='mother'||person.id==='father'
+  ? parentInheritanceShare(state,person,gross)
+  : grandparentInheritanceShare(state,person,gross);
  return {
   entry:{age:state.player.age,kind:'family',text:relation+' '+person.name+' '+person.surname+' '+person.age+' yaşında hayatını kaybetti.'},
-  inheritance:Math.round(inheritanceBase)
+  inheritance:share
  };
 }
 
