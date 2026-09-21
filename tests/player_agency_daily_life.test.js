@@ -7,6 +7,7 @@ import {performPhysicalActivity} from '../src/health/physical_activity_system.js
 import {processHealthYear} from '../src/health/health_system.js';
 import {ensurePersonalFinance} from '../src/finance/personal_finance.js';
 import {performProceduralYearActions} from '../src/simulation/procedural_player.js';
+import {performHobby} from '../src/life/hobby_system.js';
 import {RNG} from '../src/core/rng.js';
 
 function adult(seed='agency'){
@@ -89,4 +90,28 @@ test('procedural player spends real action slots through public action APIs',()=
  assert.ok(results.length>0);
  assert.ok(g.state.actions.remaining<before);
  assert.ok(g.state.history.length>0,'procedural player must use public Game actions so history matches real play');
+});
+
+
+test('selected hobby improves its own interest and physical hobbies improve fitness',()=>{
+ const g=adult('hobby-causal');
+ g.state.player.interests.koşu=20;
+ const beforeFitness=g.state.healthProfile.fitness;
+ const rng={int:()=>0};
+ const result=performHobby(g.state,'running',rng);
+ assert.ok(g.state.player.interests.koşu>20);
+ assert.ok(g.state.healthProfile.fitness>beforeFitness);
+ assert.equal(result.hobbyId,'running');
+});
+
+test('procedural social choice respects affordability and preferences through real actions',()=>{
+ const g=adult('procedural-social');
+ g.state.player.personality.sociability=90;
+ g.state.player.relationships.mother=35;
+ g.state.parents.mother.preferencesProfile.food.doner=2;
+ g.state.finance.cash=1200;
+ const results=performProceduralYearActions(g,'social',new RNG('procedural-social-actions'));
+ assert.ok(results.length>0);
+ assert.ok(g.state.history.some(x=>['social-activity','physical-activity','hobby','activity'].includes(x.kind)));
+ assert.ok(g.state.finance.cash>=0);
 });
