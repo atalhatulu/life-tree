@@ -6,12 +6,12 @@ export const lateLifeEvents=[
  {
   id:'health-treatment',
   title:'Tedavi Kararı',
-  minAge:18,maxAge:100,once:false,majorDecision:false,priority:140,
+  minAge:1,maxAge:100,once:false,majorDecision:false,priority:80,
   condition:s=>treatmentOptions(s).length>0&&s.player.age>=(s.nextTreatmentDecisionAge??18),
   choices:s=>[
    ...treatmentOptions(s).map(option=>({
     id:'treat:'+option.id,
-    label:option.label+' için tedavi ol — ₺'+option.cost.toLocaleString('tr-TR'),
+    label:option.familyCovered?option.label+' için tedavi ol — aile karşılıyor':option.label+' için tedavi ol — ₺'+option.cost.toLocaleString('tr-TR'),
     majorDecision:option.severity>=3,
     result:next=>{
      const condition=next.healthProfile.conditions.find(c=>c.id===option.id);
@@ -82,7 +82,11 @@ export const lateLifeEvents=[
     result:'Çalışmaya devam etmeyi seçtin.',
     effect:s=>{
      s.nextRetirementAge=s.player.age+2;
-     s.career.satisfaction=Math.min(100,(s.career.satisfaction??50)+2);
+     if(s.career?.employed){
+      s.career.satisfaction=Math.min(100,(s.career.satisfaction??50)+2);
+     }else if(s.business?.active){
+      s.business.health=Math.min(100,(s.business.health??50)+2);
+     }
     }
    }
   ]
