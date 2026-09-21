@@ -1,3 +1,4 @@
+import {activityEfficiency,capacityBand} from '../health/physical_capacity.js';
 import {growTrait} from '../character/personality_dynamics.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
@@ -44,10 +45,15 @@ export function performActivity(state,id,rng){
   }else result='Yeni bir beceri öğrenmek için kursa katıldın.';
  }
  if(id==='exercise'){
-  state.player.health.current=clamp(state.player.health.current+rng.int(1,3));
-  state.player.appearance.build=clamp(state.player.appearance.build+rng.int(0,2));
-  if(state.healthProfile)state.healthProfile.fitness=clamp(state.healthProfile.fitness+rng.int(2,5));
-  result='Egzersiz yaptın ve fiziksel durumuna yatırım yaptın.';
+  const efficiency=activityEfficiency(state);
+  const healthGain=Math.max(0,Math.round(rng.int(1,3)*efficiency));
+  const fitnessGain=Math.max(1,Math.round(rng.int(2,5)*efficiency));
+  state.player.health.current=clamp(state.player.health.current+healthGain);
+  state.player.appearance.build=clamp(state.player.appearance.build+Math.round(rng.int(0,2)*efficiency));
+  if(state.healthProfile)state.healthProfile.fitness=clamp(state.healthProfile.fitness+fitnessGain);
+  result=capacityBand(state)==='critical'
+   ?'Hafif egzersiz yapabildin; fiziksel durumun yoğun antrenmanı sınırladı.'
+   :'Egzersiz yaptın ve fiziksel durumuna yatırım yaptın.';
  }
  if(id==='socialize'){
   state.social??={friends:[]};
@@ -60,9 +66,14 @@ export function performActivity(state,id,rng){
   else {const [name]=interests[0];state.player.interests[name]=clamp(state.player.interests[name]+rng.int(3,6));result=name+' hobinle ilgilendin.';}
  }
  if(id==='work-hard'){
-  state.career.performance=clamp(state.career.performance+rng.int(3,6));
+  const efficiency=activityEfficiency(state);
+  state.career.performance=clamp(state.career.performance+Math.max(1,Math.round(rng.int(3,6)*efficiency)));
   state.career.satisfaction=clamp((state.career.satisfaction??50)-rng.int(0,2));
-  result='İşine ekstra emek verdin.';
+  if(efficiency<.7){
+   state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
+   state.healthProfile.stress=clamp(state.healthProfile.stress+3);
+   result='Fiziksel durumuna rağmen işe ekstra yüklendin; verimin sınırlı kaldı ve stresin arttı.';
+  }else result='İşine ekstra emek verdin.';
  }
  if(id==='date'){
   state.social.romance.relationship=clamp(state.social.romance.relationship+rng.int(3,6));

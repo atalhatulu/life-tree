@@ -1,3 +1,4 @@
+import {treatmentResilience} from './physical_capacity.js';
 import {economy} from '../world/world_state.js';
 import {ensurePersonalFinance} from '../finance/personal_finance.js';
 const COSTS={1:18000,2:45000,3:110000};
@@ -31,7 +32,8 @@ export function treatCondition(state,id,rng){
   state.finance.debt+=(cost-used);
  }
 
- const success=Math.min(.94,.58+state.player.health.constitution*.003+rng.next()*.12);
+ const resilience=treatmentResilience(state);
+ const success=Math.min(.94,.46+resilience*.004+rng.next()*.12);
  condition.treated=true;
  condition.treatmentAge=state.player.age;
  condition.treatmentSuccessful=rng.chance(success);
