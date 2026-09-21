@@ -77,3 +77,17 @@ test('guardianship closes when minor reaches adulthood',()=>{
  ensureGuardianship(g.state);
  assert.equal(g.state.guardianship.endedAtAge,18);
 });
+
+
+test('dead parents cannot provide student support',async()=>{
+ const g=new Game('no-ghost-support');
+ g.state.player.age=19;
+ g.state.year=2045;
+ g.state.parents.mother.alive=false;
+ g.state.parents.father.alive=false;
+ g.state.higherEducation={enrolled:true,programTitle:'Test',performance:60};
+ g.state.finance=null;
+ const {processPersonalFinanceYear}=await import('../src/finance/personal_finance.js');
+ processPersonalFinanceYear(g.state);
+ assert.equal(g.state.finance.familySupportMonthly,0);
+});
