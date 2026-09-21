@@ -2,7 +2,7 @@
 
 Seeded, modular, state-driven life simulation written in JavaScript.
 
-## Current milestone: v0.10 — Career Coherence + Genetic Inheritance
+## Current milestone: v0.11 — Genetic Inheritance Core
 
 The simulation supports a complete life arc from birth into advanced age and death.
 
@@ -43,6 +43,23 @@ Adult life is now centrally paced rather than allowing every eligible system to 
 - forced consequences can still follow naturally, such as finding a new job after returning home
 
 Türkiye 2026 remains the default balancing world. City is now a persistent life-state rather than cosmetic text.
+
+### Multigenerational genetics
+
+Genetics now follows the actual family tree instead of generating every adult independently.
+
+- grandparents are founder genomes
+- mother inherits from maternal grandparents
+- father inherits from paternal grandparents
+- player and siblings inherit one allele from each parent
+- later children inherit from player + partner
+- autosomal recessive carrier / affected states are distinct
+- autosomal dominant inheritance is supported
+- polygenic cardiovascular/metabolic risk is inherited around the parental midpoint
+- inheritance remains deterministic for the same seed
+
+This gives the simulation a continuous genetic lineage:
+grandparents → parents → player/siblings → descendants.
 
 ## Türkiye 2026 world
 
