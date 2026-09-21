@@ -1,4 +1,5 @@
 import {JOBS} from '../data/catalog.js';
+import {economy} from '../world/world_state.js';
 
 const ENTRY_JOB_IDS=['cleaner','mechanic','cook','shopkeeper','driver','accountant'];
 
@@ -12,8 +13,9 @@ function buildOffer(state,rng,job,careerTags,graduated){
  const related=careerTags.includes(job.id);
  const low=job.income[0],high=job.income[1];
  const degreeSalaryBoost=graduated&&related?1.08:1;
- const salary=Math.round(rng.fork(job.id).int(low,Math.max(low,Math.round(low+(high-low)*.45)))*degreeSalaryBoost);
- const chance=Math.min(95,Math.round(45+fit*.20+state.player.personality.discipline*.15+state.player.personality.sociability*.10+(related?12:0)));
+ const macro=economy(state);
+ const salary=Math.round(rng.fork(job.id).int(low,Math.max(low,Math.round(low+(high-low)*.45)))*degreeSalaryBoost*macro.wageIndex);
+ const chance=Math.min(95,Math.max(8,Math.round(45+fit*.20+state.player.personality.discipline*.15+state.player.personality.sociability*.10+(related?12:0)+(macro.laborMarket-1)*28)));
  return {...job,fit,salary,offerChance:chance,related,score:fit+chance*.4};
 }
 
