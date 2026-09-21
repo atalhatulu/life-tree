@@ -7,6 +7,7 @@ import {lifestyleEffects} from '../lifestyle/lifestyle_system.js';
 import {processPartnershipYear} from '../social/partnership_system.js';
 import {processChildrenYear,ensureChildren} from '../family/parenting_system.js';
 import {processHealthYear,ensureHealthProfile} from '../health/health_system.js';
+import {ensureAdultPreferences} from './adult_preferences.js';
 
 export function processAdultYear(state,rng){
  const entries=[];
@@ -17,6 +18,7 @@ export function processAdultYear(state,rng){
  ensureAssets(state);
  ensureChildren(state);
  ensureHealthProfile(state);
+ ensureAdultPreferences(state,rng.fork('preferences'));
 
  if(state.nextPath==='university'&&!state.higherEducation&&!state.pendingUniversityApplications){
   state.pendingUniversityApplications=generateUniversityApplications(state,rng.fork('university-apps-'+age));
