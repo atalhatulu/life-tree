@@ -13,6 +13,7 @@ export const JOBS=[
 {id:'accountant',title:'Muhasebeci',educationMin:3,income:[40000,85000],weight:0.45,interests:['matematik','düzen']},
 {id:'engineer',title:'Mühendis',educationMin:4,income:[52000,125000],weight:0.32,interests:['teknoloji','matematik']},
 {id:'developer',title:'Yazılımcı',educationMin:4,income:[50000,140000],weight:0.35,interests:['teknoloji','oyun']},
-{id:'doctor',title:'Doktor',educationMin:5,income:[70000,180000],weight:0.20,interests:['sağlık','okuma']}
+{id:'doctor',title:'Doktor',educationMin:5,income:[70000,180000],weight:0.20,interests:['sağlık','okuma']},
+{id:'designer',title:'Tasarımcı',educationMin:4,income:[45000,110000],weight:0.30,interests:['resim','fotoğraf','yaratıcılık']}
 ];
 export const PARENTING_STYLES=['destekleyici','disiplinli','korumacı','serbest','başarı_odaklı'];
