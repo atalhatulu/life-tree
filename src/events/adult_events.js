@@ -4,6 +4,7 @@ import {switchJob} from '../career/career_system.js';
 import {setLifestyle} from '../lifestyle/lifestyle_system.js';
 import {affordableCarOptions,buyCar,affordableHomeOptions,buyHome} from '../assets/asset_system.js';
 import {marryPartner,moveInTogether,ensurePartnershipState} from '../social/partnership_system.js';
+import {createRomanticInterest} from '../social/romance_system.js';
 import {addChild} from '../family/parenting_system.js';
 
 export const adultEvents=[
@@ -43,6 +44,21 @@ export const adultEvents=[
    {id:'retry-university',label:'Üniversiteyi tekrar dene',result:'Bir sonraki başvuru dönemi için üniversiteye hazırlanmayı seçtin.',effect:(s,rng)=>{s.nextPath='university';s.pendingUniversityApplications=generateUniversityApplications(s,rng.fork('retry-university'));}},
    {id:'seek-work',label:'İş aramaya başla',result:'Çalışma hayatına yönelmeye karar verdin.',effect:(s,rng)=>{s.nextPath='work';s.pendingJobOffers=generateJobOffers(s,rng.fork('gap-job-search'));}},
    {id:'continue-gap',label:'Bir yıl daha bekle',result:'Bir yıl daha kendine zaman ayırmaya karar verdin.',effect:s=>{s.nextPath='gap';}}
+  ]
+ },
+ {
+  id:'adult-dating',title:'Yeni Biriyle Tanışma',minAge:19,maxAge:55,once:false,majorDecision:false,priority:18,
+  condition:s=>!s.social?.romance&&s.player.age>=(s.nextDatingAge??19),
+  choices:[
+   {
+    id:'meet',label:'Tanışmaya açık ol',result:s=>s.social.romance?s.social.romance.name+' ile görüşmeye başladın.':'Bu kez bir ilişkiye dönüşmedi.',
+    effect:(s,rng)=>{
+      const chance=Math.min(.82,.22+s.player.personality.sociability/180+s.player.appearance.attractiveness/260);
+      if(rng.chance(chance))s.social.romance=createRomanticInterest(s,rng.fork('adult-date'),'romance-'+s.year);
+      s.nextDatingAge=s.player.age+(s.social.romance?2:1);
+    }
+   },
+   {id:'focus-self',label:'Kendime odaklan',result:'Bu dönem ilişki aramamayı seçtin.',effect:s=>{s.nextDatingAge=s.player.age+2;}}
   ]
  },
  {
