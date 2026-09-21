@@ -1,21 +1,33 @@
 import {createInterface} from 'node:readline/promises';
 import {stdin as input,stdout as output} from 'node:process';
+import {readFile,writeFile} from 'node:fs/promises';
 import {Game} from '../core/game.js';
 import {printHeader,printNewHistory,printEvent,printActivities} from './presenter.js';
 import {assertValidState} from '../simulation/invariants.js';
+import {serializeGame} from '../core/save_system.js';
 
 function arg(name,fallback){
  const index=process.argv.indexOf('--'+name);
  return index>=0&&process.argv[index+1]!=null?process.argv[index+1]:fallback;
 }
 
-const targetAge=Math.max(1,Number(arg('to-age','80')));
+const targetAge=Math.max(1,Number(arg('to-age','100')));
+const loadPath=arg('load',null);
+const savePath=arg('save',null);
 const rl=createInterface({input,output});
-const seed=(await rl.question('Seed (boş bırak = rastgele): ')).trim()||String(Date.now());
-const game=new Game(seed);
-let historyIndex=0;
 
-console.log('\nLife Tree CLI başladı. Seed: '+seed+' | Hedef yaş: '+targetAge);
+let game;
+if(loadPath){
+ const raw=await readFile(loadPath,'utf8');
+ game=Game.fromSave(raw);
+ console.log('\nSave yüklendi: '+loadPath);
+}else{
+ const seed=(await rl.question('Seed (boş bırak = rastgele): ')).trim()||String(Date.now());
+ game=new Game(seed);
+}
+let historyIndex=game.state.history.length;
+
+console.log('\nLife Tree CLI başladı. Seed: '+game.seedText+' | Hedef yaş: '+targetAge);
 
 while(game.state.player.age<targetAge&&game.state.player.alive){
  printHeader(game);
@@ -46,6 +58,10 @@ while(game.state.player.age<targetAge&&game.state.player.alive){
  }
 
  assertValidState(game.state);
+ if(savePath){
+  await writeFile(savePath,serializeGame(game),'utf8');
+  console.log('✓ Autosave: '+savePath);
+ }
 }
 
 printHeader(game);
@@ -70,5 +86,8 @@ if(game.state.deathSummary){
   for(const node of recap.decisions)console.log('  - '+node.age+' yaş: '+node.title+' → '+node.choice);
  }
  if(d.heirs?.length)console.log('Mirasçılar: '+d.heirs.map(h=>h.name+' ₺'+h.amount.toLocaleString('tr-TR')).join(' • '));
+}
+if(savePath){
+ await writeFile(savePath,serializeGame(game),'utf8');
 }
 await rl.close();
