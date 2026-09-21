@@ -58,7 +58,7 @@ export function processHealthYear(state,rng){
  }
 
  const severe=h.conditions.reduce((s,c)=>s+c.severity*(c.treatmentSuccessful?.45:1),0);
- const mortality=Math.min(.95,Math.max(0,ageMortalityBase(age)+(100-state.player.health.current)*.00030+severe*.0010));
+ const mortality=age>=120?1:Math.min(.95,Math.max(0,ageMortalityBase(age)+(100-state.player.health.current)*.00030+severe*.0010));
  if(rng.chance(mortality)){
   state.player.alive=false;
   state.death={age,year:state.year,cause:deathCause(state,rng.fork('cause'))};
