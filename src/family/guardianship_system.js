@@ -23,6 +23,7 @@ export function ensureGuardianship(state){
    startedAtAge:state.player.age
   };
   state.household.monthlyIncome=person.monthlyIncome??state.household.monthlyIncome;
+  state.household.people=Math.max(1,(state.household.people??1)+1);
   return state.guardianship;
  }
 
