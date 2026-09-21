@@ -6,6 +6,7 @@ const STUDENT_SUPPORT_BY_CLASS={düşük:3500,orta:7500,'üst-orta':11000,yükse
 
 export function ensurePersonalFinance(state){
  if(state.finance) return state.finance;
+ const studentAwayFromHome=Boolean(state.higherEducation?.enrolled&&state.higherEducation?.movedForUniversity);
  state.finance={
   cash:STARTING_CASH_BY_CLASS[state.household.economicClass]??5000,
   debt:0,
@@ -13,7 +14,7 @@ export function ensurePersonalFinance(state){
   monthlyExpenses:0,
   familySupportMonthly:0,
   childMonthlyCost:0,
-  lifestyle:{housing:'family',food:'standard',clothing:'basic',transport:'public'}
+  lifestyle:{housing:studentAwayFromHome?'shared':'family',food:'standard',clothing:'basic',transport:'public'}
  };
  return state.finance;
 }
