@@ -4,6 +4,7 @@ import {autoplay} from '../simulation/autoplay.js';
 import {validateState} from '../simulation/invariants.js';
 import {familyCompatibility} from '../career/career_taxonomy.js';
 import {geneticSummary} from '../health/genetic_system.js';
+import {physicalCapacity} from '../health/physical_capacity.js';
 
 function arg(name,fallback){
  const index=process.argv.indexOf('--'+name);
@@ -208,7 +209,7 @@ const report={
  },
 
  health:{
-  finalHealth:[],stress:[],fitness:[],conditionCounts:[],conditions:{},
+  finalHealth:[],physicalCapacity:[],stress:[],fitness:[],conditionCounts:[],conditions:{},
   diagnosisAges:{},treated:0,untreated:0,treatmentSuccess:0,treatmentFailure:0,
   treatmentAges:[],geneticDiagnoses:0,deathHealthHigh70:0,deathHealthLow25:0,
   checkups:0
@@ -258,12 +259,13 @@ function recordSnapshot(state){
  if(age<10||age%5!==0)return;
  const key=String(age);
  const bucket=report.longitudinal.byAge[key]??={
-  n:0,alive:0,health:0,stress:0,fitness:0,cash:0,debt:0,income:0,
+  n:0,alive:0,health:0,capacity:0,stress:0,fitness:0,cash:0,debt:0,income:0,
   employed:0,retired:0,married:0,children:0,conditions:0,friends:0,moves:0
  };
  bucket.n++;
  bucket.alive+=state.player.alive?1:0;
  bucket.health+=state.player.health.current??0;
+ bucket.capacity+=physicalCapacity(state);
  bucket.stress+=state.healthProfile?.stress??0;
  bucket.fitness+=state.healthProfile?.fitness??0;
  bucket.cash+=state.finance?.cash??0;
@@ -485,6 +487,7 @@ for(let i=0;i<lives;i++){
 
  // Health
  report.health.finalHealth.push(state.player.health.current??0);
+ report.health.physicalCapacity.push(physicalCapacity(state));
  report.health.stress.push(state.healthProfile?.stress??0);
  report.health.fitness.push(state.healthProfile?.fitness??0);
  const conditions=state.healthProfile?.conditions??[];
@@ -589,6 +592,7 @@ for(let i=0;i<lives;i++){
  report.correlations.rows.push({
   age,
   health:state.player.health.current??0,
+  physicalCapacity:physicalCapacity(state),
   conditions:conditions.length,
   constitution:state.player.health.constitution??0,
   discipline:state.player.personality?.discipline??0,
@@ -628,6 +632,7 @@ function summarizeLongitudinal(){
    n:b.n,
    survivalPct:pct(b.alive,b.n),
    avgHealth:avg(b.health,n,1),
+   avgPhysicalCapacity:avg(b.capacity,n,1),
    avgStress:avg(b.stress,n,1),
    avgFitness:avg(b.fitness,n,1),
    avgCash:Math.round(b.cash/n),
@@ -646,12 +651,12 @@ function summarizeLongitudinal(){
 }
 function correlationSummary(rows){
  const keys=[
-  'age','health','conditions','constitution','discipline','sociability','ambition','attractiveness',
+  'age','health','physicalCapacity','conditions','constitution','discipline','sociability','ambition','attractiveness',
   'parenthoodDesire','partnershipDesire','educationLevel','graduated','employed','careerExperience',
   'children','everMarried','friends','cash','debt','netWorth','migrations','childhoodClass'
  ];
  const result={};
- const targets=['age','health','conditions','graduated','careerExperience','children','everMarried','netWorth'];
+ const targets=['age','health','physicalCapacity','conditions','graduated','careerExperience','children','everMarried','netWorth'];
  for(const target of targets){
   result[target]={};
   for(const key of keys){
@@ -815,6 +820,7 @@ const summary={
 
  health:{
   finalHealth:distribution(report.health.finalHealth),
+  physicalCapacity:distribution(report.health.physicalCapacity),
   stress:distribution(report.health.stress),
   fitness:distribution(report.health.fitness),
   conditionCounts:distribution(report.health.conditionCounts),
