@@ -1,8 +1,20 @@
+import {addToTrustFund} from '../finance/trust_fund.js';
+import {ensureGuardianship} from './guardianship_system.js';
+
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
+
+function economicClass(income,people){
+ const perCapita=income/Math.max(1,people);
+ if(perCapita<18000)return 'düşük';
+ if(perCapita<38000)return 'orta';
+ if(perCapita<65000)return 'üst-orta';
+ return 'yüksek';
+}
 
 function mortalityChance(person){
  if(!person.alive)return 0;
  const age=person.age;
+ if(age<45)return .00035;
  if(age<55)return .001;
  const ageBase=(age-54)*.0022;
  const healthRisk=(100-(person.health?.current??70))*.00045;
@@ -15,9 +27,7 @@ function estateValue(person,rng){
 }
 
 function parentInheritanceShare(state,person,amount){
- const survivingSpouse=
-  person.id==='mother'?state.parents.father:
-  person.id==='father'?state.parents.mother:null;
+ const survivingSpouse=person.id==='mother'?state.parents.father:state.parents.mother;
  const spouseShare=survivingSpouse?.alive?Math.round(amount*.40):0;
  const childPool=amount-spouseShare;
  const heirs=1+(state.siblings?.length??0);
@@ -32,23 +42,46 @@ function grandparentInheritanceShare(state,person,amount){
  return Math.round((amount*.45)/Math.max(1,heirs));
 }
 
+function updateHouseholdAfterParentDeath(state,person){
+ if(person.id!=='mother'&&person.id!=='father')return;
+ state.household.monthlyIncome=Math.max(0,state.household.monthlyIncome-(person.monthlyIncome??0));
+ state.household.people=Math.max(1,(state.household.people??1)-1);
+ state.household.economicClass=economicClass(state.household.monthlyIncome,state.household.people);
+}
+
+function routeInheritance(state,person,amount){
+ if(amount<=0)return;
+ const source={sourceId:person.id,sourceName:person.name};
+ if(state.player.age<18){
+  addToTrustFund(state,amount,source);
+ }else{
+  state.pendingInheritance??=[];
+  state.pendingInheritance.push({...source,amount});
+ }
+}
+
 function markDeath(state,person,relation,rng){
  person.alive=false;
  person.deathAge=person.age;
  person.deathYear=state.year;
+ updateHouseholdAfterParentDeath(state,person);
+
  const gross=estateValue(person,rng);
  const share=person.id==='mother'||person.id==='father'
   ? parentInheritanceShare(state,person,gross)
   : grandparentInheritanceShare(state,person,gross);
- return {
-  entry:{age:state.player.age,kind:'family',text:relation+' '+person.name+' '+person.surname+' '+person.age+' yaşında hayatını kaybetti.'},
-  inheritance:share
+ routeInheritance(state,person,share);
+
+ const entry={
+  age:state.player.age,
+  kind:'family',
+  text:relation+' '+person.name+' '+person.surname+' '+person.age+' yaşında hayatını kaybetti.'
  };
+ return entry;
 }
 
 export function processElderFamilyYear(state,rng){
  const entries=[];
- const inheritances=[];
  const members=[
   [state.parents.mother,'Annen'],
   [state.parents.father,'Baban'],
@@ -62,15 +95,23 @@ export function processElderFamilyYear(state,rng){
   if(!person?.alive)continue;
   person.health.current=clamp((person.health.current??70)-Math.max(0,person.age-60)*.08+rng.fork(person.id).int(-2,1));
   if(rng.fork('death-'+person.id).chance(mortalityChance(person))){
-   const result=markDeath(state,person,relation,rng.fork('inheritance-'+person.id));
-   entries.push(result.entry);
-   if(result.inheritance>0)inheritances.push({sourceId:person.id,sourceName:person.name,amount:result.inheritance});
+   entries.push(markDeath(state,person,relation,rng.fork('inheritance-'+person.id)));
   }
  }
 
- if(inheritances.length){
-  state.pendingInheritance??=[];
-  state.pendingInheritance.push(...inheritances);
+ if(state.player.age<18&&!state.parents.mother.alive&&!state.parents.father.alive){
+  const before=state.guardianship;
+  const guardian=ensureGuardianship(state);
+  if(guardian&&!before){
+   entries.push({
+    age:state.player.age,
+    kind:'family',
+    text:guardian.type==='family'
+      ? guardian.relation+' '+guardian.guardianName+' vasin oldu.'
+      : 'Aile içinde uygun bir vasi kalmadığı için koruyucu sisteme alındın.'
+   });
+  }
  }
+
  return entries;
 }
