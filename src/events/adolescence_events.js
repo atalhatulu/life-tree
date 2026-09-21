@@ -58,7 +58,7 @@ export const adolescenceEvents=[
  {
   id:'after-high-school',
   title:'Lise Sonrası',
-  minAge:18,maxAge:18,once:true,majorDecision:true,priority:110,
+  minAge:18,maxAge:18,once:true,majorDecision:true,priority:160,
   condition:s=>s.education?.stage==='high',
   choices:[
    {
