@@ -20,8 +20,8 @@ export function ensureConditionProgression(condition){
 }
 
 function treatmentModifier(condition){
- if(condition.treatmentSuccessful===true)return -8;
- if(condition.treated===true)return -3;
+ if(condition.treatmentSuccessful===true)return -4.5;
+ if(condition.treated===true)return -2;
  return 0;
 }
 
@@ -31,7 +31,7 @@ function biologicalPressure(state,condition){
  const stress=state.healthProfile?.stress??40;
  const severity=condition.severity??1;
  return (
-  severity*2.2+
+  severity*1.7+
   Math.max(0,50-health)*.08+
   Math.max(0,45-fitness)*.05+
   Math.max(0,stress-50)*.035
@@ -57,7 +57,7 @@ export function processDiseaseProgressionYear(state,rng){
   p.stage=stageFromScore(p.score);
   p.lastProgressionAge=state.player.age;
 
-  if(condition.treatmentSuccessful===true&&p.score<=22){
+  if(condition.treatmentSuccessful===true&&p.score<=18&&p.stableYears>=1){
    p.status='remission';
    p.stableYears+=1;
   }else if(pressure<=0){
@@ -78,12 +78,12 @@ export function processDiseaseProgressionYear(state,rng){
   }
 
   const complicationChance=p.stage==='critical'
-   ?.18
+   ?.12
    :p.stage==='severe'
-    ?.07
+    ?.045
     :p.stage==='moderate'
-     ?.018
-     :.004;
+     ?.012
+     :.003;
 
   const treatedFactor=condition.treatmentSuccessful===true?.35:condition.treated===true?.70:1;
   if(rng.chance(complicationChance*treatedFactor)){
