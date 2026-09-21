@@ -1,3 +1,4 @@
+import {progressionBurden} from './disease_progression.js';
 import {geneticRiskMultiplier} from './genetic_system.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
@@ -33,8 +34,7 @@ function annualAgingWear(age){
 }
 
 function conditionBurden(condition){
- const treatmentFactor=condition.treatmentSuccessful===true?.25:condition.treated===true?.70:1;
- return condition.severity*treatmentFactor;
+ return progressionBurden(condition);
 }
 
 function deathCause(state,rng){
