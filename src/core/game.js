@@ -19,6 +19,7 @@ import {adultEvents} from '../events/adult_events.js';
 import {lateLifeEvents} from '../events/late_life_events.js';
 import {parentingEvents} from '../events/parenting_events.js';
 import {lateAgeEvents} from '../events/late_age_events.js';
+import {createWorldState,processWorldYear} from '../world/world_state.js';
 
 export class Game{
  constructor(seed=String(Date.now())){
@@ -31,6 +32,7 @@ export class Game{
   this.state.lifeTree={nodes:[]};
   this.state.social={friends:[],romance:null};
   this.state.actions={remaining:0,max:3};
+  this.state.world=createWorldState(2026);
   this.events=new EventEngine([...childhoodEvents,...adolescenceEvents,...adultEvents,...lateLifeEvents,...parentingEvents,...lateAgeEvents]);
   this.activeEventId=null;
  }
@@ -68,6 +70,7 @@ export class Game{
 
   const yearRng=this.rng.fork('year-'+this.state.year);
   const auto=[
+   ...processWorldYear(this.state,yearRng.fork('world')),
    ...processFamilyYear(this.state,yearRng.fork('family')),
    ...processElderFamilyYear(this.state,yearRng.fork('family-loss')),
    ...releaseTrustFund(this.state),
