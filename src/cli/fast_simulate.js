@@ -119,6 +119,11 @@ function eventChoiceKey(item){
 function childOutcome(child){
  return child.adultLife?.jobTitle??child.educationPlan??'minor/unknown';
 }
+function geneticRiskGroup(score){
+ if(score<40)return 'low';
+ if(score<65)return 'medium';
+ return 'high';
+}
 function closeFamily(state){
  return [
   state.parents?.mother,state.parents?.father,
@@ -218,7 +223,12 @@ const report={
 
  genetics:{
   affectedPeople:0,carrierPeople:0,affectedConditions:{},carrierConditions:{},
-  polygenic:{hypertension:[],metabolic:[],cardiac:[]}
+  polygenic:{hypertension:[],metabolic:[],cardiac:[]},
+  riskGroups:{
+   hypertension:{low:{n:0,diagnosed:0,diagnosisAges:[],critical:0,complications:0},medium:{n:0,diagnosed:0,diagnosisAges:[],critical:0,complications:0},high:{n:0,diagnosed:0,diagnosisAges:[],critical:0,complications:0}},
+   metabolic:{low:{n:0,diagnosed:0,diagnosisAges:[],critical:0,complications:0},medium:{n:0,diagnosed:0,diagnosisAges:[],critical:0,complications:0},high:{n:0,diagnosed:0,diagnosisAges:[],critical:0,complications:0}},
+   cardiac:{low:{n:0,diagnosed:0,diagnosisAges:[],critical:0,complications:0},medium:{n:0,diagnosed:0,diagnosisAges:[],critical:0,complications:0},high:{n:0,diagnosed:0,diagnosisAges:[],critical:0,complications:0}}
+  }
  },
 
  finance:{
@@ -518,7 +528,18 @@ for(let i=0;i<lives;i++){
  for(const label of genetics.affected)inc(report.genetics.affectedConditions,label);
  for(const label of genetics.carriers)inc(report.genetics.carrierConditions,label);
  for(const trait of Object.keys(report.genetics.polygenic)){
-  report.genetics.polygenic[trait].push(genetics.polygenic?.[trait]??50);
+  const score=genetics.polygenic?.[trait]??50;
+  report.genetics.polygenic[trait].push(score);
+  const group=geneticRiskGroup(score);
+  const bucket=report.genetics.riskGroups[trait][group];
+  bucket.n++;
+  const diagnosedCondition=(state.healthProfile?.conditions??[]).find(condition=>condition.id===trait);
+  if(diagnosedCondition){
+   bucket.diagnosed++;
+   if(diagnosedCondition.diagnosedAtAge!=null)bucket.diagnosisAges.push(diagnosedCondition.diagnosedAtAge);
+   if(diagnosedCondition.progression?.stage==='critical')bucket.critical++;
+   bucket.complications+=diagnosedCondition.progression?.complicationCount??0;
+  }
  }
 
  // Finance / assets / estate
@@ -851,7 +872,17 @@ const summary={
   carrierPct:pct(report.genetics.carrierPeople,valid),
   affectedConditions:report.genetics.affectedConditions,
   carrierConditions:report.genetics.carrierConditions,
-  polygenic:Object.fromEntries(Object.entries(report.genetics.polygenic).map(([k,v])=>[k,distribution(v)]))
+  polygenic:Object.fromEntries(Object.entries(report.genetics.polygenic).map(([k,v])=>[k,distribution(v)])),
+  riskGroups:Object.fromEntries(Object.entries(report.genetics.riskGroups).map(([trait,groups])=>[
+   trait,
+   Object.fromEntries(Object.entries(groups).map(([group,b])=>[group,{
+    n:b.n,
+    diagnosisPct:pct(b.diagnosed,b.n),
+    diagnosisAges:distribution(b.diagnosisAges),
+    criticalAmongDiagnosedPct:pct(b.critical,b.diagnosed),
+    complicationsPerDiagnosed:avg(b.complications,b.diagnosed)
+   }]))
+  ]))
  },
 
  finance:{
