@@ -31,7 +31,7 @@ export function performPhysicalActivity(state,id,rng){
  if(capacity<activity.minCapacity)throw new Error('Fiziksel kapasiten bu aktivite için yeterli değil.');
  if(cost>(state.finance?.cash??0))throw new Error('Bu aktiviteyi karşılayacak nakdin yok.');
 
- state.finance.cash-=cost;
+ if(cost>0)state.finance.cash-=cost;
  state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
  const efficiency=activityEfficiency(state)*ageTrainingFactor(state.player.age);
  const variation=1+rng.int(-1,1)*.08;
