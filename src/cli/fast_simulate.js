@@ -210,6 +210,7 @@ const report={
 
  health:{
   finalHealth:[],physicalCapacity:[],stress:[],fitness:[],conditionCounts:[],conditions:{},
+  progressionStages:{},progressionStatuses:{},complications:[],
   diagnosisAges:{},treated:0,untreated:0,treatmentSuccess:0,treatmentFailure:0,
   treatmentAges:[],geneticDiagnoses:0,deathHealthHigh70:0,deathHealthLow25:0,
   checkups:0
@@ -495,6 +496,11 @@ for(let i=0;i<lives;i++){
  for(const condition of conditions){
   inc(report.health.conditions,condition.label??condition.id);
   push(report.health.diagnosisAges,condition.label??condition.id,condition.diagnosedAtAge??state.player.age);
+  if(condition.progression){
+   inc(report.health.progressionStages,condition.progression.stage??'unknown');
+   inc(report.health.progressionStatuses,condition.progression.status??'unknown');
+   report.health.complications.push(condition.progression.complicationCount??0);
+  }
   if(condition.genetic)report.health.geneticDiagnoses++;
   if(condition.treated){
    report.health.treated++;
@@ -825,6 +831,9 @@ const summary={
   fitness:distribution(report.health.fitness),
   conditionCounts:distribution(report.health.conditionCounts),
   conditions:report.health.conditions,
+  progressionStages:report.health.progressionStages,
+  progressionStatuses:report.health.progressionStatuses,
+  complications:distribution(report.health.complications),
   diagnosisAges:averageAgeMap(report.health.diagnosisAges),
   treatedCount:report.health.treated,
   untreatedCount:report.health.untreated,
