@@ -189,6 +189,7 @@ test('side entrepreneurship preserves career and increases stress',()=>{
  autoplay(g,{toAge:30,policy:'vocational'});
  if(!g.state.player.alive)return;
  ensurePersonalFinance(g.state);
+ g.state.business=null;
  g.state.finance.cash=900000;
  g.state.player.personality.ambition=90;
  g.state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
