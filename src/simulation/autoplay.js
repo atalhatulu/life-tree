@@ -7,13 +7,13 @@ function chooseByPolicy(game,event,policy,rng){
  if(policy==='random') return rng.pick(choices);
 
  const preferred={
-  academic:{'high-school-path':'academic','after-high-school':'university','first-romance':'leave'},
-  social:{'high-school-path':'academic','after-high-school':'university','first-romance':'approach'},
-  vocational:{'high-school-path':'vocational','after-high-school':'work','first-romance':'approach'},
-  balanced:{'high-school-path':'academic','after-high-school':'university','first-romance':'approach'}
+  academic:{'high-school-path':'academic','after-high-school':'university','first-romance':'leave','gap-year-direction':'retry-university'},
+  social:{'high-school-path':'academic','after-high-school':'university','first-romance':'approach','gap-year-direction':'retry-university'},
+  vocational:{'high-school-path':'vocational','after-high-school':'work','first-romance':'approach','gap-year-direction':'seek-work'},
+  balanced:{'high-school-path':'academic','after-high-school':'university','first-romance':'approach','gap-year-direction':'retry-university'}
  }[policy]??{};
  const target=preferred[event.id];
- return choices.find(c=>c.id===target)??rng.pick(choices);
+ return choices.find(c=>c.id===target)??choices[0];
 }
 
 function activityOrder(game,policy,rng){
