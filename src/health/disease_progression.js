@@ -1,3 +1,4 @@
+import {geneticDiseaseModifiers} from './genetic_system.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 function stageFromScore(score){
@@ -9,8 +10,8 @@ function stageFromScore(score){
 
 export function ensureConditionProgression(condition){
  condition.progression??={
-  score:clamp((condition.severity??1)*20),
-  stage:stageFromScore(clamp((condition.severity??1)*20)),
+  score:clamp((condition.severity??1)*20+(condition.geneticCourse?.initialProgressionBonus??0)),
+  stage:stageFromScore(clamp((condition.severity??1)*20+(condition.geneticCourse?.initialProgressionBonus??0))),
   status:'active',
   stableYears:0,
   complicationCount:0,
@@ -49,6 +50,7 @@ export function processDiseaseProgressionYear(state,rng){
  const entries=[];
  const conditions=state.healthProfile?.conditions??[];
  for(const condition of conditions){
+  condition.geneticCourse??=geneticDiseaseModifiers(state,condition.id);
   const p=ensureConditionProgression(condition);
   const beforeStage=p.stage;
   const pressure=biologicalPressure(state,condition)+treatmentModifier(condition)+rng.int(-4,4);
@@ -85,8 +87,9 @@ export function processDiseaseProgressionYear(state,rng){
      ?.012
      :.003;
 
+  const genetics=condition.geneticCourse??geneticDiseaseModifiers(state,condition.id);
   const treatedFactor=condition.treatmentSuccessful===true?.35:condition.treated===true?.70:1;
-  if(rng.chance(complicationChance*treatedFactor)){
+  if(rng.chance(complicationChance*treatedFactor*genetics.complicationMultiplier)){
    p.complicationCount+=1;
    p.score=clamp(p.score+8);
    p.stage=stageFromScore(p.score);

@@ -136,3 +136,45 @@ export function geneticSummary(person){
  }
  return {affected,carriers,polygenic:{...(genetics.polygenic??{})}};
 }
+
+
+export function geneticDiseaseModifiers(state,conditionId){
+ const mapping={
+  hypertension:'hypertension',
+  metabolic:'metabolic',
+  cardiac:'cardiac'
+ };
+ const trait=mapping[conditionId];
+ const score=trait?geneticRiskScore(state,trait):50;
+ const normalized=Math.max(-.9,Math.min(.9,(score-50)/50));
+ let onsetAgeOffset=Math.round(-normalized*6);
+ let progressionMultiplier=Math.max(.78,Math.min(1.28,1+normalized*.28));
+ let complicationMultiplier=Math.max(.82,Math.min(1.24,1+normalized*.22));
+ let initialProgressionBonus=Math.max(0,Math.round(normalized*10));
+
+ if(conditionId==='cardiac'){
+  const fh=state.player.health?.genetics?.monogenic?.familial_hypercholesterolemia;
+  if(fh?.status==='affected'){
+   onsetAgeOffset-=5;
+   progressionMultiplier=Math.min(1.45,progressionMultiplier*1.18);
+   complicationMultiplier=Math.min(1.40,complicationMultiplier*1.15);
+   initialProgressionBonus+=8;
+  }
+ }
+
+ const direct=state.player.health?.genetics?.monogenic?.[conditionId];
+ if(direct?.status==='affected'){
+  onsetAgeOffset-=3;
+  progressionMultiplier=Math.min(1.50,progressionMultiplier*1.20);
+  complicationMultiplier=Math.min(1.45,complicationMultiplier*1.15);
+  initialProgressionBonus+=10;
+ }
+
+ return {
+  score,
+  onsetAgeOffset,
+  progressionMultiplier:Number(progressionMultiplier.toFixed(3)),
+  complicationMultiplier:Number(complicationMultiplier.toFixed(3)),
+  initialProgressionBonus
+ };
+}
