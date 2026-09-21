@@ -38,7 +38,7 @@ export class Game{
    this.state.grandparents.maternal.grandmother,this.state.grandparents.maternal.grandfather,
    this.state.grandparents.paternal.grandmother,this.state.grandparents.paternal.grandfather
   ];
-  for(const person of aging) person.age+=1;
+  for(const person of aging) if(person.alive) person.age+=1;
 
   const yearRng=this.rng.fork('year-'+this.state.year);
   const auto=[
