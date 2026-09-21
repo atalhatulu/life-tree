@@ -27,6 +27,7 @@ export class Game{
  }
 
  ageOneYear(){
+  if(!this.state.player.alive) throw new Error('Bu hayat sona erdi.');
   this.state.player.age+=1;
   this.state.year+=1;
   this.state.actions.remaining=this.state.player.age>=5?this.state.actions.max:0;
