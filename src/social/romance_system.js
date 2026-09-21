@@ -15,6 +15,8 @@ export function createRomanticInterest(state,rng,id){
  const person=createPersonBase({id,name:rng.pick(FIRST_NAMES[sex]),surname:rng.pick(SURNAMES),sex,age:Math.max(14,state.player.age+rng.int(-1,1)),rng});
  person.role='romantic_interest';
  person.relationship=rng.int(42,70);
+ person.cityId=state.location?.cityId??state.origin?.cityId;
+ person.cityName=state.location?.cityName??state.origin?.cityName;
  assignPartnerWork(person,rng.fork('work'));
  return person;
 }
