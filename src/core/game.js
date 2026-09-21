@@ -12,6 +12,7 @@ import {performSocialActivity,availableSocialActivities,socialTargets} from '../
 import {processRomanceYear} from '../social/romance_system.js';
 import {processAdultYear} from '../life/adult_simulation.js';
 import {performActivity,availableActivities} from '../life/activity_system.js';
+import {performPhysicalActivity,availablePhysicalActivities} from '../health/physical_activity_system.js';
 import {EventEngine} from '../events/event_engine.js';
 import {parseSave} from './save_system.js';
 import {createDecisionSnapshot,restoreDecisionSnapshot} from '../timeline/snapshot.js';
@@ -139,6 +140,13 @@ export class Game{
  }
  socialTargets(){return socialTargets(this.state);}
  availableSocialActivities(targetId){return availableSocialActivities(this.state,targetId);}
+ performPhysicalActivity(id){
+  const used=this.state.actions.max-this.state.actions.remaining;
+  const result=performPhysicalActivity(this.state,id,this.rng.fork('physical-activity-'+this.state.year+'-'+used+'-'+id));
+  this.state.history.push({age:this.state.player.age,kind:'physical-activity',activityId:id,result});
+  return result;
+ }
+ availablePhysicalActivities(){return availablePhysicalActivities(this.state);}
  availableActivities(){return availableActivities(this.state);}
  pendingEvent(){return this.activeEventId?this.events.events.find(event=>event.id===this.activeEventId)??null:null;}
  eventChoices(event){return this.events.choicesFor(this.state,event);}
