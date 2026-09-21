@@ -15,4 +15,4 @@ jobs:
         with:
           node-version: 22
       - run: npm test
-      - run: npm run simulate -- --lives 1000 --to-age 18 --policy balanced
+      - run: npm run simulate -- --lives 1000 --to-age 30 --policy random
