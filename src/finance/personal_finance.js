@@ -44,7 +44,7 @@ function serviceDebt(state,available){
 
 export function processPersonalFinanceYear(state){
  const f=ensurePersonalFinance(state);
- f.monthlyIncome=state.career?.employed?state.career.monthlyIncome:0;
+ f.monthlyIncome=state.career?.employed?state.career.monthlyIncome:(state.retirement?.retired?state.retirement.pensionMonthly:0);
  f.familySupportMonthly=familySupport(state);
  f.partnerContributionMonthly=partnerContribution(state);
  f.monthlyExpenses=lifestyleMonthlyCost(state)+(f.childMonthlyCost??0);
