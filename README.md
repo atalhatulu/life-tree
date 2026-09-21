@@ -2,154 +2,105 @@
 
 Seeded, modular, state-driven life simulation written in JavaScript.
 
-## Current milestone: v0.7 — Türkiye 2026 test world
+## Current milestone: v0.8 — Türkiye internal migration
 
 The simulation supports a complete life arc from birth into advanced age and death.
 
-The core remains UI-independent. During the current balancing phase, new lives use **Türkiye in 2026** as the default test world so school, work, family, housing and city-level economic outcomes can be evaluated in one coherent setting.
+Türkiye 2026 remains the default balancing world. City is now a persistent life-state rather than cosmetic text.
 
-## Türkiye 2026 scenario
+## Türkiye 2026 world
 
-- Expanded Turkish first-name and surname pools
 - Procedural birth city
-- City-sensitive wages and job opportunity context
-- City-sensitive living and housing costs
-- Turkish primary, middle and high-school naming
-- Turkish university campuses and cities
-- Moving city for university
-- Student housing costs after moving away from family
-- 2026 TRY economic baseline
-- 2026 net minimum-wage baseline stored in country data
-- Türkiye city state exposed in CLI, recap and batch reports
+- City-sensitive wages, job availability, living costs and home prices
+- Turkish schools and university campuses
+- University-related city moves
+- Job-related city moves
+- Career-switch relocation
+- Partner-career relocation
+- One major hometown-return decision
+- Household moving costs
+- Partner moves with a cohabiting/married household
+- Old-city salaried work ends when returning home
+- Full migration history stored in state and death recap
+- Migration reason, age and cost visible in trace
+- Persistent hometown-attachment preference
 
-Current test cities include İstanbul, Ankara, İzmir, Bursa, Antalya, Adana, Konya, Gaziantep, Mersin, Eskişehir, Samsun, Kayseri, Diyarbakır and Trabzon.
+Current test cities:
+İstanbul, Ankara, İzmir, Bursa, Antalya, Adana, Konya, Gaziantep, Mersin, Eskişehir, Samsun, Kayseri, Diyarbakır and Trabzon.
 
-City multipliers are **simulation balancing parameters**, not live property listings or exact market quotes.
+City multipliers are simulation balancing parameters, not live listings.
 
-## Main systems
+## Migration behavior
 
-### Family and childhood
-- Procedural parents, grandparents and siblings
-- Genetics
-- Household economic background
-- Parent jobs, education and interests
-- Childhood development
-- Guardianship after parental loss
-- Minor inheritance trust funds
+A move can currently happen because of:
 
-### Education
-- Primary and middle school
-- School quality
-- Academic performance
-- High-school branches
-- University applications
-- Program-to-career matching
-- University campus/city assignment
-- Education-related city moves
+- university
+- first/new job
+- career switch
+- partner's career
+- returning to hometown
 
-### Career and economy
-- Procedural job offers
-- City-sensitive wages and opportunity
-- Labor-market conditions
-- Promotions and raises
-- Firing and unemployment
-- Protection against same-year promotion + firing
-- Career switching
-- Entrepreneurship
-- Side businesses and full-time businesses
-- Business closure
-- Career and entrepreneur retirement
-- Personal cash and debt
-- Taxes and ownership costs
-- Housing, food, clothing and transport standards
-- Cars and homes
-- Inheritance
+Cross-city job choices expose approximate moving cost before the decision.
 
-All money is expressed in **real 2026 TRY**. The background world model changes real living costs, wages, labor-market conditions and healthcare costs without requiring nominal inflation simulation.
+Moving can:
+- consume savings
+- create debt
+- change housing state
+- move spouse/partner with the household
+- change city wage/cost context
+- enter Life Tree as a major decision
 
-### Activities
-- School study during school years
-- University study while enrolled
-- Adult courses / continuing education after school
-- Exercise
-- Hobbies
-- Socializing
-- Work focus
-- Partner time
-- Checkups
-- Budget planning
+## Current batch balance
 
-### Relationships and generations
-- Friends
-- Adult relationships
-- Cohabitation
-- Marriage and divorce
-- Partner mortality and widowhood
-- Children
-- Parenting decisions
-- Child education choices
-- Adult child careers
-- Grandchildren
-- Friend and sibling loss
+The migration layer is stress-tested with full random lives.
 
-### Health and late life
-- Fitness and stress
-- Lifestyle effects
-- Health conditions
-- Treatment decisions
-- Age-based mortality
-- Retirement lifestyle
-- Elder-care needs
-- Estate planning
-- Death summary
-- Structured whole-life recap
-- Natural lifespan cap
+Current reference run:
+- 300 lives
+- 0 invalid states
+- average internal migrations: ~2.75
+- moved for university: ~29%
+- returned to hometown at least once: ~34%
 
-### Life Tree
-Important choices are stored as explicit Life Tree nodes.
+## Other major systems
 
-Major decisions store compact pre-choice snapshots, so a previous decision can be replayed as an alternate branch without mutating the original life.
+- Procedural family and genetics
+- Childhood and school development
+- High-school and university branches
+- Career, unemployment and entrepreneurship
+- Housing, cars, personal finance, taxes and debt
+- Adult relationships, marriage and divorce
+- Children, adult children and grandchildren
+- Health, treatment and mortality
+- Retirement, elder care and inheritance
+- Save/load
+- Life Tree snapshots and alternate branches
+- Whole-life recap and death summary
 
 ## CLI
 
-Play a life:
-
-```bash
-npm run play
-```
-
-Play toward a specific age:
+Play:
 
 ```bash
 npm run play -- --to-age 100
 ```
 
-Autosave / load:
-
-```bash
-npm run play -- --save save.json
-npm run play -- --load save.json --save save.json
-```
-
-Inspect one deterministic life:
+Trace one life:
 
 ```bash
 npm run trace -- --seed test-life --policy random --to-age 100
 ```
 
-Show routine yearly details too:
+Verbose trace:
 
 ```bash
 npm run trace -- --seed test-life --policy random --to-age 100 --verbose
 ```
 
-## Batch simulation
+Batch:
 
 ```bash
 npm run simulate -- --lives 5000 --to-age 100 --policy random
 ```
-
-The batch report includes birth-city distribution, current-city distribution and university city-move rate in addition to the existing education, career, retirement, business, relationship, health, estate and world statistics.
 
 ## Tests
 
@@ -157,7 +108,10 @@ The batch report includes birth-city distribution, current-city distribution and
 npm test
 ```
 
-GitHub Actions runs the complete test suite, a full-life random batch and one deterministic full-life trace on every push.
+GitHub Actions runs:
+- complete test suite
+- full-life random batch
+- deterministic full-life trace
 
 ## Architecture
 
@@ -187,11 +141,12 @@ src/
 
 ## Next milestones
 
-- Work-related city migration
-- Explicit move-city decisions in Life Tree
-- Türkiye-specific education and early-adult events
-- Deeper partner career and family visibility
-- Child/no-child reasoning and fertility-independent preference history
+- Türkiye-specific YKS / preference period
+- Student dormitory / family home / shared-flat choices
+- Military-service life interruption model
+- Public-sector / private-sector / self-employment distinctions
+- Richer partner career visibility
+- Child/no-child reasoning
 - More middle-age content
 - Life Tree branch explorer UI
 - Final browser/mobile interface
