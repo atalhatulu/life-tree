@@ -2,9 +2,20 @@
 
 Seeded, modular, state-driven life simulation written in JavaScript.
 
-## Current milestone: v0.8 — Türkiye internal migration
+## Current milestone: v0.9 — Life Pacing
 
 The simulation supports a complete life arc from birth into advanced age and death.
+
+### Life Pacing Governor
+
+Adult life is now centrally paced rather than allowing every eligible system to become a major event immediately.
+
+- discretionary major decisions have a global cooldown
+- career, relationship, family, asset and migration decisions have category cooldowns
+- critical transitions such as graduation, first job and urgent treatment bypass pacing
+- some adult years intentionally contain no decision event
+- promotion, firing, close-family/partner loss and new health diagnoses block unrelated major decisions in the same year
+- forced consequences can still follow naturally, such as finding a new job after returning home
 
 Türkiye 2026 remains the default balancing world. City is now a persistent life-state rather than cosmetic text.
 
