@@ -163,3 +163,43 @@ test('serious untreated condition prioritizes treatment decision',()=>{
  assert.equal(event?.id,'health-treatment');
  assert.ok(g.eventChoices(event).some(x=>x.id==='treat:cardiac'));
 });
+
+
+test('full-time entrepreneurship leaves salaried career',()=>{
+ const g=new Game('full-time-business');
+ autoplay(g,{toAge:30,policy:'vocational'});
+ if(!g.state.player.alive)return;
+ ensurePersonalFinance(g.state);
+ g.state.finance.cash=900000;
+ g.state.player.personality.ambition=90;
+ if(!g.state.career?.employed){
+  g.state.career={employed:true,title:'Muhasebeci',jobId:'accountant',monthlyIncome:80000,years:8,totalYears:8,performance:65};
+  g.state.player.job='Muhasebeci';
+  g.state.player.monthlyIncome=80000;
+ }
+ startBusiness(g.state,new RNG('full-time-launch'),'full-time');
+ assert.equal(g.state.business.mode,'full-time');
+ assert.equal(g.state.career.employed,false);
+ assert.equal(g.state.player.job,'Girişimci');
+ assert.equal(g.state.player.monthlyIncome,0);
+});
+
+test('side entrepreneurship preserves career and increases stress',()=>{
+ const g=new Game('side-business');
+ autoplay(g,{toAge:30,policy:'vocational'});
+ if(!g.state.player.alive)return;
+ ensurePersonalFinance(g.state);
+ g.state.finance.cash=900000;
+ g.state.player.personality.ambition=90;
+ g.state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
+ if(!g.state.career?.employed){
+  g.state.career={employed:true,title:'Muhasebeci',jobId:'accountant',monthlyIncome:80000,years:8,totalYears:8,performance:65};
+  g.state.player.job='Muhasebeci';
+  g.state.player.monthlyIncome=80000;
+ }
+ const stress=g.state.healthProfile.stress;
+ startBusiness(g.state,new RNG('side-launch'),'side');
+ assert.equal(g.state.business.mode,'side');
+ assert.equal(g.state.career.employed,true);
+ assert.ok(g.state.healthProfile.stress>stress);
+});
