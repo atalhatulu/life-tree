@@ -1,32 +1,12 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import { RNG } from '../src/core/rng.js';
-import { generateFamily } from '../src/family/family_generator.js';
-import { Game } from '../src/core/game.js';
+import test from 'node:test'; import assert from 'node:assert/strict';
+import {RNG} from '../src/core/rng.js'; import {generateFamily} from '../src/family/family_generator.js'; import {Game} from '../src/core/game.js';
 
-test('same seed generates identical family', () => {
-  const a = generateFamily(new RNG('abc-123'));
-  const b = generateFamily(new RNG('abc-123'));
-  assert.deepEqual(a, b);
-});
-
-test('different seeds generate different families', () => {
-  const a = generateFamily(new RNG('alpha'));
-  const b = generateFamily(new RNG('beta'));
-  assert.notDeepEqual(a, b);
-});
-
-test('player genetics remain valid', () => {
-  const family = generateFamily(new RNG('genetics'));
-  for (const value of Object.values(family.player.appearance)) {
-    assert.ok(value >= 1 && value <= 100);
-  }
-  assert.ok(family.player.health.constitution >= 1 && family.player.health.constitution <= 100);
-});
-
-test('aging increments age and year', () => {
-  const game = new Game('aging');
-  game.ageOneYear();
-  assert.equal(game.state.player.age, 1);
-  assert.equal(game.state.year, 2027);
-});
+test('same seed generates identical family',()=>assert.deepEqual(generateFamily(new RNG('abc-123')),generateFamily(new RNG('abc-123'))));
+test('different seeds generate different families',()=>assert.notDeepEqual(generateFamily(new RNG('alpha')),generateFamily(new RNG('beta'))));
+test('parents are biologically plausible at birth',()=>{for(let i=0;i<500;i++){const f=generateFamily(new RNG(`p-${i}`));assert.ok(f.parents.mother.age>=21&&f.parents.mother.age<=39);assert.ok(f.parents.father.age>=20);}});
+test('grandparents are older than their children by at least 18 years',()=>{for(let i=0;i<300;i++){const f=generateFamily(new RNG(`g-${i}`));assert.ok(f.grandparents.maternal.grandmother.age-f.parents.mother.age>=18);assert.ok(f.grandparents.maternal.grandfather.age-f.parents.mother.age>=19);assert.ok(f.grandparents.paternal.grandmother.age-f.parents.father.age>=18);assert.ok(f.grandparents.paternal.grandfather.age-f.parents.father.age>=19);}});
+test('siblings present at birth are always older and plausible',()=>{for(let i=0;i<500;i++){const f=generateFamily(new RNG(`s-${i}`));for(const s of f.siblings){assert.ok(s.age>=1);assert.ok(s.age<=f.parents.mother.age-18);}}});
+test('player genetics stay in plausible ranges',()=>{for(let i=0;i<500;i++){const f=generateFamily(new RNG(`x-${i}`));assert.ok(f.player.appearance.heightCm>=145&&f.player.appearance.heightCm<=205);assert.ok(f.player.appearance.attractiveness>=1&&f.player.appearance.attractiveness<=100);assert.ok(f.player.health.constitution>=1&&f.player.health.constitution<=100);}});
+test('household class and support metrics exist',()=>{const f=generateFamily(new RNG('house'));assert.ok(['düşük','orta','üst-orta','yüksek'].includes(f.household.economicClass));assert.ok(f.household.educationSupport>=0&&f.household.educationSupport<=100);assert.ok(f.household.hobbySupport>=0&&f.household.hobbySupport<=100);});
+test('aging advances player and close family together',()=>{const g=new Game('aging');const ma=g.state.parents.mother.age;g.ageOneYear();assert.equal(g.state.player.age,1);assert.equal(g.state.year,2027);assert.equal(g.state.parents.mother.age,ma+1);});
+test('school start can create a life-tree decision',()=>{const g=new Game('school-tree');let event=null;for(let i=0;i<7;i++){event=g.ageOneYear();if(event?.id==='school-start')break;}assert.ok(event);g.makeChoice(event,event.choices[0].id);assert.equal(g.state.lifeTree.nodes.length,1);assert.equal(g.state.lifeTree.nodes[0].eventId,'school-start');});
