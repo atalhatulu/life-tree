@@ -80,7 +80,7 @@ function genericCandidates(game,policy,rng){
  const lastCheck=state.healthProfile?.lastCheckupAge;
  const yearsSinceCheck=lastCheck==null?10:state.player.age-lastCheck;
  if(ids.has('study'))add('study',policyBias(policy,'study')*2.2+(state.education?.performance<65?1:0));
- if(ids.has('course'))add('course',policyBias(policy,'study')*1.2+(state.career?.employed?.6:1));
+ if(ids.has('course'))add('course',policyBias(policy,'study')*1.2+(state.career?.employed ? 0.6 : 1));
  if(ids.has('work-hard'))add('work-hard',policyBias(policy,'career')*1.6+(state.career?.performance<65?1:0));
  if(ids.has('budget'))add('budget',policyBias(policy,'finance')*1.4+Math.min(4,(state.finance?.debt??0)/1000000));
  if(ids.has('checkup'))add('checkup',policyBias(policy,'health')*1.2+Math.min(4,yearsSinceCheck*.6)+(state.healthProfile?.conditions?.length??0));
