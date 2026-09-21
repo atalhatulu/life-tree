@@ -73,7 +73,6 @@ test('untreated chronic disease creates persistent health burden and recovery ce
  g.state.player.health.current=100;
  g.state.player.health.constitution=70;
  ensurePersonalFinance(g.state);
- ensurePersonalFinance(g.state);
  g.state.finance.lifestyle={food:'healthy'};
  g.state.healthProfile={
   conditions:[{id:'metabolic',label:'Metabolik sorun',severity:2,diagnosedAtAge:35}],
@@ -202,4 +201,24 @@ test('critically depleted vital reserve can end life through ordinary mortality'
  processHealthYear(g.state,rng);
  assert.equal(g.state.player.alive,false);
  assert.equal(g.state.death.age,85);
+});
+
+
+test('lower constitution accelerates age-related reserve loss',()=>{
+ const low=new Game('aging-low-constitution');
+ const high=new Game('aging-high-constitution');
+ for(const g of [low,high]){
+  g.state.player.age=75;
+  g.state.player.health.current=80;
+  ensurePersonalFinance(g.state);
+  g.state.finance.lifestyle={food:'standard'};
+  g.state.healthProfile={conditions:[],stress:30,fitness:70,lastCheckupAge:null};
+ }
+ low.state.player.health.constitution=40;
+ high.state.player.health.constitution=90;
+ const rng={int:()=>0,chance:()=>false,fork:()=>({chance:()=>false})};
+ processHealthYear(low.state,rng);
+ processHealthYear(high.state,rng);
+ assert.ok(low.state.player.health.current<high.state.player.health.current);
+ assert.ok(low.state.healthProfile.fitness<high.state.healthProfile.fitness);
 });
