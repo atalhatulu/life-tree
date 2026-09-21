@@ -1,4 +1,7 @@
+import {settleEstate} from '../finance/estate_system.js';
+
 export function buildDeathSummary(state){
+ const estate=settleEstate(state);
  const tree=state.lifeTree?.nodes??[];
  const children=state.children??[];
  const relationships=state.social?.exSpouses?.length??0;
@@ -20,6 +23,8 @@ export function buildDeathSummary(state){
   carOwned:Boolean(state.assets?.car),
   finalCash:Math.round(state.finance?.cash??0),
   finalDebt:Math.round(state.finance?.debt??0),
+  estateNet:estate.net,
+  heirs:estate.heirs,
   majorDecisions:tree.length,
   healthConditions:state.healthProfile?.conditions?.map(c=>c.label)??[]
  };
