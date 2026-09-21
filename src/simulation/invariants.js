@@ -63,6 +63,15 @@ export function validateState(state){
   if(state.career?.employed)errors.push('retired player still employed');
   if(!Number.isFinite(state.retirement.pensionMonthly)||state.retirement.pensionMonthly<0)errors.push('invalid pension');
  }
+ if(state.trustFund){
+  if(!Number.isFinite(state.trustFund.balance)||state.trustFund.balance<0)errors.push('invalid trust fund balance');
+ }
+ if(state.lateLife){
+  if(!bounded(state.lateLife.mobility))errors.push('late-life mobility out of range');
+  if(!bounded(state.lateLife.isolation))errors.push('late-life isolation out of range');
+  if(state.lateLife.careMode&&!['family','home-care','assisted'].includes(state.lateLife.careMode))errors.push('invalid elder care mode');
+ }
+ if(state.guardianship&&state.player.age>=18&&!state.guardianship.endedAtAge)errors.push('adult player has active minor guardianship');
  if(state.estate){
   if(!Number.isFinite(state.estate.net)||state.estate.net<0)errors.push('invalid estate net');
   if(!Array.isArray(state.estate.heirs))errors.push('invalid estate heirs');
