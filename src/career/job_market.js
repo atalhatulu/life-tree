@@ -21,7 +21,8 @@ export function generateJobOffers(state,rng,count=3){
  const graduated=Boolean(state.higherEducation?.completed);
  const educationLevel=graduated?4:2;
  const careerTags=state.higherEducation?.careerTags??[];
- const eligible=JOBS.filter(j=>j.id!=='unemployed'&&j.educationMin<=educationLevel&&(graduated||ENTRY_JOB_IDS.includes(j.id)));
+ const currentId=state.career?.employed?state.career.jobId:null;
+ const eligible=JOBS.filter(j=>j.id!=='unemployed'&&j.id!==currentId&&j.educationMin<=educationLevel&&(graduated||ENTRY_JOB_IDS.includes(j.id)));
  const offers=eligible.map(job=>buildOffer(state,rng,job,careerTags,graduated));
 
  if(graduated&&careerTags.length){
