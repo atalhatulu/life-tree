@@ -1,16 +1,22 @@
+import {TURKEY_2026_ECONOMY} from '../data/countries/turkey/economy.js';
+import {locationProfile} from '../data/countries/turkey/profile.js';
+
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
-export const LIFESTYLE_COSTS={
- housing:{family:1000,shared:11000,studio:18000,apartment:28000,owned:6500},
- food:{frugal:2800,standard:4000,healthy:6500,premium:12000},
- clothing:{basic:1200,standard:3000,premium:7000},
- transport:{public:1800,car:9000}
-};
+export const LIFESTYLE_COSTS=TURKEY_2026_ECONOMY.lifestyle;
 
 export function lifestyleMonthlyCost(state){
  const l=state.finance?.lifestyle??{housing:'family',food:'standard',clothing:'basic',transport:'public'};
- const leisure={family:1800,shared:2600,studio:3200,apartment:4500,owned:4200}[l.housing]??3000;
- return LIFESTYLE_COSTS.housing[l.housing]+LIFESTYLE_COSTS.food[l.food]+LIFESTYLE_COSTS.clothing[l.clothing]+LIFESTYLE_COSTS.transport[l.transport]+leisure;
+ const city=locationProfile(state);
+ const baseHousing=LIFESTYLE_COSTS.housing[l.housing];
+ const baseFood=LIFESTYLE_COSTS.food[l.food];
+ const baseClothing=LIFESTYLE_COSTS.clothing[l.clothing];
+ const baseTransport=LIFESTYLE_COSTS.transport[l.transport];
+ const leisure=LIFESTYLE_COSTS.leisure[l.housing]??3000;
+
+ const housing=Math.round(baseHousing*city.housing);
+ const other=Math.round((baseFood+baseClothing+baseTransport+leisure)*city.cost);
+ return housing+other;
 }
 
 export function lifestyleEffects(state){
