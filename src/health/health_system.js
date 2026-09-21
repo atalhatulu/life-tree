@@ -4,7 +4,9 @@ const CONDITIONS=[
  {id:'hypertension',label:'Yüksek tansiyon',minAge:32,base:.012,severity:2},
  {id:'back-pain',label:'Kronik bel ağrısı',minAge:28,base:.018,severity:1},
  {id:'metabolic',label:'Metabolik sorun',minAge:35,base:.010,severity:2},
- {id:'anxiety',label:'Anksiyete',minAge:18,base:.012,severity:1}
+ {id:'anxiety',label:'Anksiyete',minAge:18,base:.012,severity:1},
+ {id:'cardiac',label:'Kalp-damar hastalığı',minAge:48,base:.007,severity:3},
+ {id:'cancer',label:'Kanser',minAge:52,base:.004,severity:3}
 ];
 
 export function ensureHealthProfile(state){
@@ -36,7 +38,7 @@ export function processHealthYear(state,rng){
   }
  }
 
- const severe=h.conditions.reduce((s,c)=>s+c.severity,0);
+ const severe=h.conditions.reduce((s,c)=>s+c.severity*(c.treatmentSuccessful?.45:1),0);
  const mortality=age<45?0:Math.max(0,(age-44)*.0008+(100-state.player.health.current)*.00025+severe*.0008);
  if(rng.chance(mortality)){
   state.player.alive=false;
