@@ -1,5 +1,5 @@
 import {progressionBurden} from './disease_progression.js';
-import {geneticRiskMultiplier} from './genetic_system.js';
+import {geneticRiskMultiplier,geneticDiseaseModifiers} from './genetic_system.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 const CONDITIONS=[
@@ -98,11 +98,16 @@ export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
   :simulatedHealth;
 
  for(const condition of CONDITIONS){
-  if(age<condition.minAge||h.conditions.some(c=>c.id===condition.id)) continue;
+  const geneticCourse=geneticDiseaseModifiers(state,condition.id);
+  const effectiveMinAge=Math.max(0,condition.minAge+geneticCourse.onsetAgeOffset);
+  if(age<effectiveMinAge||h.conditions.some(c=>c.id===condition.id)) continue;
   const geneticMultiplier=geneticRiskMultiplier(state,condition.id);
   const chance=condition.base*geneticMultiplier+(100-state.player.health.current)*.00025+h.stress*.00012;
   if(rng.chance(chance)){
-   h.conditions.push({id:condition.id,label:condition.label,severity:condition.severity,diagnosedAtAge:age});
+   h.conditions.push({
+    id:condition.id,label:condition.label,severity:condition.severity,diagnosedAtAge:age,
+    geneticCourse:{...geneticCourse}
+   });
    state.player.health.current=clamp(state.player.health.current-condition.severity*4);
    entries.push({age,kind:'health',paceBlock:true,text:condition.label+' yaşamını etkilemeye başladı.'});
   }
