@@ -26,6 +26,22 @@ function familySupport(state){
  return Math.round((STUDENT_SUPPORT_BY_CLASS[state.household.economicClass]??4500)*relationFactor);
 }
 
+function effectiveTaxRate(monthly,retired=false){
+ if(retired)return .06;
+ if(monthly<=40000)return .12;
+ if(monthly<=80000)return .18;
+ if(monthly<=140000)return .23;
+ return .28;
+}
+
+function recurringOwnershipCosts(state){
+ let monthly=0;
+ if(state.assets?.home)monthly+=Math.round((state.assets.home.price??0)*.007/12);
+ if(state.assets?.car)monthly+=Math.round((state.assets.car.price??0)*.025/12);
+ monthly+=(state.healthProfile?.conditions?.length??0)*1200;
+ return monthly;
+}
+
 function partnerContribution(state){
  const r=state.social?.romance;
  if(!r||!['cohabiting','married'].includes(r.status)) return 0;
@@ -48,8 +64,11 @@ export function processPersonalFinanceYear(state){
  f.familySupportMonthly=familySupport(state);
  f.partnerContributionMonthly=partnerContribution(state);
  f.monthlyExpenses=lifestyleMonthlyCost(state)+(f.childMonthlyCost??0);
- const annualIncome=(f.monthlyIncome+f.familySupportMonthly+f.partnerContributionMonthly)*12;
- const annualExpense=f.monthlyExpenses*12;
+ const taxRate=effectiveTaxRate(f.monthlyIncome,Boolean(state.retirement?.retired));
+ f.monthlyTax=Math.round(f.monthlyIncome*taxRate);
+ f.ownershipCostsMonthly=recurringOwnershipCosts(state);
+ const annualIncome=(f.monthlyIncome-f.monthlyTax+f.familySupportMonthly+f.partnerContributionMonthly)*12;
+ const annualExpense=(f.monthlyExpenses+f.ownershipCostsMonthly)*12;
  let annualNet=annualIncome-annualExpense;
 
  if(annualNet>=0){
