@@ -83,6 +83,7 @@ export function processBusinessYear(state,rng){
  if(rng.chance(closureChance)){
   b.active=false;
   b.closedAtAge=state.player.age;
+  b.exitType='closure';
   if(b.mode==='full-time'){
    state.player.job=null;
    state.player.jobId=null;
