@@ -65,3 +65,56 @@ test('treatment consumes money or creates debt and closes untreated state',()=>{
  assert.ok(g.state.finance.debt>=beforeDebt);
  assert.ok(typeof result.condition.treatmentSuccessful==='boolean');
 });
+
+
+test('elderly sibling loss is recorded and dead sibling stops aging',()=>{
+ const g=new Game('sibling-loss-unit');
+ g.state.player.age=78;
+ g.state.year=2104;
+ const sibling=g.state.siblings[0]??structuredClone(g.state.player);
+ if(!g.state.siblings.length){
+  sibling.id='sibling-test';
+  sibling.name='Test';
+  sibling.surname=g.state.player.surname;
+  g.state.siblings.push(sibling);
+ }
+ sibling.alive=true;
+ sibling.age=100;
+ sibling.health.current=0;
+ const {processFamilyYear}=await import('../src/family/family_simulation.js');
+ let entries=[];
+ for(let i=0;i<100&&sibling.alive;i++){
+  entries=processFamilyYear(g.state,new RNG('sibling-loss-'+i));
+ }
+ assert.equal(sibling.alive,false);
+ assert.ok(entries.some(e=>e.text.includes('hayatını kaybetti')));
+ const deathAge=sibling.age;
+ processFamilyYear(g.state,new RNG('sibling-after-death'));
+ assert.equal(sibling.age,deathAge);
+});
+
+test('elderly friend loss removes friend from active circle',async()=>{
+ const g=new Game('friend-loss-unit');
+ g.state.player.age=80;
+ g.state.year=2106;
+ const friend=structuredClone(g.state.player);
+ friend.id='friend-test';
+ friend.name='Arkadaş';
+ friend.age=100;
+ friend.alive=true;
+ friend.relationship=90;
+ friend.health.current=0;
+ g.state.social.friends=[friend];
+ g.state.healthProfile={conditions:[],stress:30,fitness:40,lastCheckupAge:79};
+ g.state.lateLife={mobility:45,isolation:20,careNeed:false,careMode:null,retirementStyle:null};
+ const {processSocialYear}=await import('../src/social/social_simulation.js');
+ let lost=false;
+ for(let i=0;i<100&&!lost;i++){
+  const entries=processSocialYear(g.state,new RNG('friend-loss-'+i));
+  lost=entries.some(e=>e.text.includes('hayatını kaybetti'));
+ }
+ assert.equal(lost,true);
+ assert.equal(g.state.social.friends.some(f=>f.id==='friend-test'),false);
+ assert.ok((g.state.social.deceasedFriends??[]).some(f=>f.id==='friend-test'));
+ assert.ok(g.state.lateLife.isolation>=20);
+});
