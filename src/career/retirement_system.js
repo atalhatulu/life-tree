@@ -6,7 +6,7 @@ function careerRetirementEligibility(state){
 
 function businessRetirementEligibility(state){
  const b=state.business;
- return state.player.age>=60&&Boolean(b?.active)&&b.mode==='full-time'&&(b.years??0)>=5;
+ return state.player.age>=60&&Boolean(b)&&(b.active||b.closedAtAge===state.player.age)&&b.mode==='full-time'&&(b.years??0)>=5;
 }
 
 export function retirementEligibility(state){
@@ -34,7 +34,7 @@ function retireFromCareer(state){
 function retireFromBusiness(state){
  const b=state.business;
  const healthFactor=Math.max(.30,Math.min(1.35,(b.health??50)/65));
- const saleValue=Math.max(0,Math.round((b.capital??0)*healthFactor));
+ const saleValue=b.active?Math.max(0,Math.round((b.capital??0)*healthFactor)):0;
  state.finance??={cash:0,debt:0};
  state.finance.cash=(state.finance.cash??0)+saleValue;
 
