@@ -6,7 +6,7 @@ const EVENT_PACING={
  'relationship-commitment':{category:'relationship',globalGap:2,categoryGap:4},
  'marriage-after-cohabiting':{category:'relationship',globalGap:2,categoryGap:4},
  'child-decision':{category:'family',globalGap:2,categoryGap:4},
- 'child-education-plan':{category:'family',globalGap:1,categoryGap:3},
+ 'child-education-plan':{category:'family',globalGap:2,categoryGap:3},
 
  'move-out':{category:'housing',globalGap:2,categoryGap:4},
  'buy-car':{category:'asset',globalGap:2,categoryGap:5},
