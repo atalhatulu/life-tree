@@ -2,7 +2,7 @@
 
 Seeded, modular, state-driven life simulation written in JavaScript.
 
-## Current milestone: v0.12 — Fast Simulation Audit
+## Current milestone: v0.12 — Fast Simulation Full Telemetry
 
 The simulation supports a complete life arc from birth into advanced age and death.
 
@@ -226,3 +226,31 @@ src/
 - More middle-age content
 - Life Tree branch explorer UI
 - Final browser/mobile interface
+
+
+### Fast Simulation Full Telemetry
+
+`npm run fast-sim -- --lives 100 --to-age 100 --policy random`
+
+Fast Sim runs the real deterministic life simulation in batch mode and now collects full-system telemetry rather than only a few summary KPIs.
+
+Measured domains include:
+- population, sex, city, childhood class, siblings and guardianship
+- personality, appearance, constitution and adult preferences
+- lifespan, death causes, health-at-death and age distributions
+- parent/grandparent/sibling/friend losses, inheritance and trust funds
+- school path, aptitude, performance, university applications, graduation and degree-career alignment
+- career experience, job families, transitions, promotions, firings, unemployment, retirement and pensions
+- entrepreneurship, business survival, profit, employees and exit type
+- dating, cohabitation, marriage, divorce, widowhood, children and grandchildren
+- friendship formation and loss
+- migration routes, reasons, ages and costs
+- health, diagnoses, treatment outcomes, stress, fitness and checkups
+- monogenic carrier/affected state and polygenic risk distributions
+- cash, debt, net worth, assets, taxes, household support and estate values
+- world-economy shocks and final macro indices
+- Life Tree pacing, event frequencies, choices and activities
+- five-year longitudinal snapshots across the life course
+- cross-system correlations for traits, education, career, family, health and wealth
+
+The report also keeps bounded anomaly samples so aggregate statistics can be traced back to concrete deterministic seeds.
