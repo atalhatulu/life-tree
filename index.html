@@ -19,31 +19,15 @@
       </header>
 
       <section class="stats" aria-label="Temel durum">
-        <div class="stat">
-          <span>Sağlık</span>
-          <div class="bar"><i id="healthBar"></i></div>
-          <b id="healthValue">0</b>
-        </div>
-        <div class="stat">
-          <span>Mutluluk</span>
-          <div class="bar"><i id="happinessBar"></i></div>
-          <b id="happinessValue">0</b>
-        </div>
-        <div class="stat">
-          <span>Görünüş</span>
-          <div class="bar"><i id="looksBar"></i></div>
-          <b id="looksValue">0</b>
-        </div>
+        <div class="stat"><span>Sağlık</span><div class="bar"><i id="healthBar"></i></div><b id="healthValue">0</b></div>
+        <div class="stat"><span>Mutluluk</span><div class="bar"><i id="happinessBar"></i></div><b id="happinessValue">0</b></div>
+        <div class="stat"><span>Görünüş</span><div class="bar"><i id="looksBar"></i></div><b id="looksValue">0</b></div>
       </section>
 
       <section id="screen" class="screen">
         <div id="lifeScreen" class="screen-panel active">
           <div id="eventCard" class="event-card hidden"></div>
-
-          <div class="section-head">
-            <h2>Hayat</h2>
-            <span id="seed"></span>
-          </div>
+          <div class="section-head"><h2>Hayat</h2><span id="seed"></span></div>
           <div id="timeline" class="timeline"></div>
         </div>
 
@@ -54,7 +38,7 @@
 
         <div id="activitiesScreen" class="screen-panel">
           <div class="section-head"><h2>Aktiviteler</h2></div>
-          <div class="empty-state">Aktiviteler Aşama 7'de açılacak.</div>
+          <div id="activities"></div>
         </div>
 
         <div id="assetsScreen" class="screen-panel">
@@ -63,19 +47,17 @@
         </div>
 
         <div id="careerScreen" class="screen-panel">
-          <div class="section-head"><h2>Kariyer</h2></div>
-          <div class="empty-state">Eğitim ve kariyer sistemi sonraki aşamalarda gelecek.</div>
+          <div class="section-head"><h2>Eğitim & Kariyer</h2></div>
+          <div id="career"></div>
         </div>
 
         <div id="treeScreen" class="screen-panel">
           <div class="section-head"><h2>Life Tree</h2></div>
-          <div class="empty-state">Önemli karar düğümleri burada dallanacak.</div>
+          <div id="lifeTree"></div>
         </div>
       </section>
 
-      <section class="age-zone">
-        <button id="ageUp" class="age-button">+1 YAŞ</button>
-      </section>
+      <section class="age-zone"><button id="ageUp" class="age-button">+1 YAŞ</button></section>
 
       <nav class="bottom-nav" aria-label="Ana menü">
         <button class="nav-item active" data-screen="lifeScreen"><span>◉</span><small>Hayat</small></button>
@@ -89,10 +71,7 @@
 
     <aside class="dev-panel">
       <label for="seedInput">Seed</label>
-      <div class="seed-row">
-        <input id="seedInput" placeholder="isteğe bağlı seed" />
-        <button id="applySeed">Başlat</button>
-      </div>
+      <div class="seed-row"><input id="seedInput" placeholder="isteğe bağlı seed" /><button id="applySeed">Başlat</button></div>
       <p>Bu panel sadece geliştirme sırasında var.</p>
     </aside>
   </main>
