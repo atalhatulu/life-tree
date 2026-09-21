@@ -62,7 +62,7 @@ export function ensureHealthProfile(state){
  return state.healthProfile;
 }
 
-export function processHealthYear(state,rng){
+export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
  const h=ensureHealthProfile(state);
  const entries=[];
  const age=state.player.age;
@@ -81,7 +81,7 @@ export function processHealthYear(state,rng){
  if(lifestyle?.food==='frugal')delta-=1;
  delta-=activeBurden*.70;
 
- const previousHealth=state.player.health.current;
+ const previousHealth=healthBeforeYear??state.player.health.current;
  const healthCeiling=clamp(100-activeBurden*6,20,100);
  const simulatedHealth=Math.min(
   healthCeiling,
