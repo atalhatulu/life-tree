@@ -45,15 +45,15 @@ export function performActivity(state,id,rng){
   }else result='Yeni bir beceri öğrenmek için kursa katıldın.';
  }
  if(id==='exercise'){
+  state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
   const efficiency=activityEfficiency(state);
-  const healthGain=Math.max(0,Math.round(rng.int(1,3)*efficiency));
-  const fitnessGain=Math.max(1,Math.round(rng.int(2,5)*efficiency));
-  state.player.health.current=clamp(state.player.health.current+healthGain);
-  state.player.appearance.build=clamp(state.player.appearance.build+Math.round(rng.int(0,2)*efficiency));
-  if(state.healthProfile)state.healthProfile.fitness=clamp(state.healthProfile.fitness+fitnessGain);
+  const fitnessGain=Math.max(.5,2.2*efficiency);
+  state.healthProfile.fitness=clamp(state.healthProfile.fitness+fitnessGain);
+  state.healthProfile.lastExerciseAge=state.player.age;
+  state.healthProfile.exerciseSessions=(state.healthProfile.exerciseSessions??0)+1;
   result=capacityBand(state)==='critical'
-   ?'Hafif egzersiz yapabildin; fiziksel durumun yoğun antrenmanı sınırladı.'
-   :'Egzersiz yaptın ve fiziksel durumuna yatırım yaptın.';
+   ?'Hafif egzersiz yaptın; fiziksel kapasiten yoğun antrenmanı sınırladı.'
+   :'Egzersiz yaptın ve fitness seviyeni geliştirdin.';
  }
  if(id==='socialize'){
   state.social??={friends:[]};
