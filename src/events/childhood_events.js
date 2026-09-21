@@ -4,7 +4,7 @@ export const childhoodEvents=[
   {id:'join',label:'İlgilen',result:'Ailenin sevdiği bir uğraşa sen de ilgi göstermeye başladın.',effect:s=>{const k=Object.keys(s.player.interests)[0];s.player.interests[k]=clamp(s.player.interests[k]+12);s.player.personality.curiosity=clamp(s.player.personality.curiosity+3);}},
   {id:'ignore',label:'Başka şeyler keşfet',result:'Kendi ilgilerini aramayı tercih ettin.',effect:s=>{s.player.personality.curiosity=clamp(s.player.personality.curiosity+7);}}
  ]},
- {id:'school-start',title:'Okul Başlıyor',minAge:6,maxAge:7,once:true,majorDecision:true,condition:s=>!s.education,weight:()=>12,choices:[
+ {id:'school-start',title:'Okul Başlıyor',minAge:6,maxAge:7,once:true,condition:s=>!s.education,weight:()=>12,choices:[
   {id:'embrace',label:'Hevesle başla',result:'Okula hevesli başladın.',effect:s=>{s.education={enrolled:true,performance:clamp(45+s.player.personality.curiosity*0.25+s.household.educationSupport*0.25),motivation:70};}},
   {id:'reluctant',label:'İsteksiz başla',result:'Okula alışman zaman aldı.',effect:s=>{s.education={enrolled:true,performance:clamp(35+s.player.personality.curiosity*0.18+s.household.educationSupport*0.2),motivation:45};}}
  ]},
