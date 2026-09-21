@@ -359,3 +359,11 @@ button { -webkit-tap-highlight-color: transparent; }
 .tree-node p { margin:4px 0; font-size:11px; }
 .chosen-path { color:#3f8c50; font-weight:800; }
 .alternate-path { color:#98a1b1; padding-left:8px; }
+
+.section-divider { margin:16px 3px 9px; font-size:10px; font-weight:850; letter-spacing:.08em; text-transform:uppercase; color:#8c96a8; }
+.empty-state.compact { padding:14px; }
+.activity-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+.activity-button { border:1px solid #d9dfe9; background:#f8fafc; border-radius:11px; padding:11px 9px; color:#3d4657; font-size:11px; font-weight:750; cursor:pointer; }
+.activity-button:hover { background:#eef3f7; }
+.activity-button:disabled { opacity:.45; cursor:default; }
+.activity-message { margin:10px 0 0 !important; padding:9px 10px; border-radius:10px; background:#f0f7f1; color:#477a51 !important; }
