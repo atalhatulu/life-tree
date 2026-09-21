@@ -43,7 +43,7 @@ export const adultEvents=[
     id:'stay-city',
     label:'Bulunduğum şehirde kal',
     result:'Kurulu düzenini bozmayıp bulunduğun şehirde kalmaya karar verdin.',
-    effect:s=>deferReturnHome(s,5)
+    effect:s=>deferReturnHome(s,8)
    }
   ]
  },
