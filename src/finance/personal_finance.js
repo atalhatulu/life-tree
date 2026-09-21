@@ -1,3 +1,5 @@
+import {lifestyleMonthlyCost} from '../lifestyle/lifestyle_system.js';
+
 const STARTING_CASH_BY_CLASS={düşük:2500,orta:7500,'üst-orta':18000,yüksek:50000};
 const STUDENT_SUPPORT_BY_CLASS={düşük:3500,orta:7500,'üst-orta':11000,yüksek:17000};
 
@@ -9,26 +11,10 @@ export function ensurePersonalFinance(state){
   monthlyIncome:0,
   monthlyExpenses:0,
   familySupportMonthly:0,
-  lifestyle:{
-   housing:'family',
-   food:'standard',
-   clothing:'basic',
-   transport:'public'
-  }
+  childMonthlyCost:0,
+  lifestyle:{housing:'family',food:'standard',clothing:'basic',transport:'public'}
  };
  return state.finance;
-}
-
-function monthlyExpenses(state){
- const f=state.finance;
- const base={
-  housing:{family:1000,shared:11000,studio:18000},
-  food:{frugal:2800,standard:4000,premium:12000},
-  clothing:{basic:1200,standard:3000,premium:7000},
-  transport:{public:1800,car:9000}
- };
- const leisure=f.lifestyle.housing==='family'?1800:3000;
- return base.housing[f.lifestyle.housing]+base.food[f.lifestyle.food]+base.clothing[f.lifestyle.clothing]+base.transport[f.lifestyle.transport]+leisure;
 }
 
 function familySupport(state){
@@ -40,19 +26,35 @@ function familySupport(state){
  return Math.round((STUDENT_SUPPORT_BY_CLASS[state.household.economicClass]??4500)*relationFactor);
 }
 
+function partnerContribution(state){
+ const r=state.social?.romance;
+ if(!r||!['cohabiting','married'].includes(r.status)) return 0;
+ return Math.round((r.monthlyIncome??0)*.55);
+}
+
+function serviceDebt(state,available){
+ const f=state.finance;
+ if(f.debt<=0||available<=0) return available;
+ const payment=Math.min(f.debt,Math.round(available*.55));
+ f.debt-=payment;
+ if(state.assets?.car?.remainingDebt) state.assets.car.remainingDebt=Math.max(0,state.assets.car.remainingDebt-payment*.18);
+ if(state.assets?.home?.remainingDebt) state.assets.home.remainingDebt=Math.max(0,state.assets.home.remainingDebt-payment*.82);
+ return available-payment;
+}
+
 export function processPersonalFinanceYear(state){
  const f=ensurePersonalFinance(state);
  f.monthlyIncome=state.career?.employed?state.career.monthlyIncome:0;
  f.familySupportMonthly=familySupport(state);
- f.monthlyExpenses=monthlyExpenses(state);
- const annualNet=(f.monthlyIncome+f.familySupportMonthly-f.monthlyExpenses)*12;
+ f.partnerContributionMonthly=partnerContribution(state);
+ f.monthlyExpenses=lifestyleMonthlyCost(state)+(f.childMonthlyCost??0);
+ const annualIncome=(f.monthlyIncome+f.familySupportMonthly+f.partnerContributionMonthly)*12;
+ const annualExpense=f.monthlyExpenses*12;
+ let annualNet=annualIncome-annualExpense;
 
  if(annualNet>=0){
-  if(f.debt>0){
-   const repayment=Math.min(f.debt,annualNet);
-   f.debt-=repayment;
-   f.cash+=annualNet-repayment;
-  }else f.cash+=annualNet;
+  annualNet=serviceDebt(state,annualNet);
+  f.cash+=annualNet;
  }else{
   const deficit=Math.abs(annualNet);
   const used=Math.min(f.cash,deficit);
@@ -60,9 +62,15 @@ export function processPersonalFinanceYear(state){
   f.debt+=deficit-used;
  }
 
+ const interest=Math.round(f.debt*.055);
+ f.debt+=interest;
+
  return [{
   age:state.player.age,
   kind:'finance',
-  text:'Yıllık bütçen işlendi. Birikim: ₺'+Math.round(f.cash).toLocaleString('tr-TR')+(f.debt>0?' • Borç: ₺'+Math.round(f.debt).toLocaleString('tr-TR'):'')
+  text:'Yıllık bütçe: gelir ₺'+Math.round(annualIncome).toLocaleString('tr-TR')+
+   ' • gider ₺'+Math.round(annualExpense).toLocaleString('tr-TR')+
+   ' • birikim ₺'+Math.round(f.cash).toLocaleString('tr-TR')+
+   (f.debt>0?' • borç ₺'+Math.round(f.debt).toLocaleString('tr-TR'):'')
  }];
 }
