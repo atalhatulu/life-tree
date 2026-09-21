@@ -19,7 +19,7 @@ export const adultEvents=[
   }))
  },
  {
-  id:'first-job',title:'İş Teklifleri',minAge:19,maxAge:65,once:false,majorDecision:true,priority:120,
+  id:'first-job',title:'İş Teklifleri',minAge:19,maxAge:72,once:false,majorDecision:true,priority:120,
   condition:s=>Array.isArray(s.pendingJobOffers)&&s.pendingJobOffers.length>0,
   choices:s=>s.pendingJobOffers.map(job=>({
    id:'job:'+job.id,label:job.title+' — ₺'+job.salary.toLocaleString('tr-TR')+'/ay',
