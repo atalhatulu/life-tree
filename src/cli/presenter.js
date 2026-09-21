@@ -1,10 +1,10 @@
-const LINE='─'.repeat(62);
+const LINE='─'.repeat(68);
 
 export function printHeader(game){
  const s=game.state;
  console.log('\n'+LINE);
- console.log(s.player.name+' '+s.player.surname+' — '+s.player.age+' yaş — '+s.year);
- console.log('Sağlık '+s.player.health.current+'/100 | Görünüş '+s.player.appearance.attractiveness+'/100 | Sınıf: '+s.household.economicClass);
+ console.log(s.player.name+' '+s.player.surname+' — '+s.player.age+' yaş — '+s.year+(s.player.alive?'':' — HAYAT SONA ERDİ'));
+ console.log('Sağlık '+Math.round(s.player.health.current)+'/100 | Görünüş '+s.player.appearance.attractiveness+'/100 | Köken: '+s.household.economicClass);
 
  if(s.education){
   console.log('Okul: '+s.education.schoolName+' | Başarı '+Math.round(s.education.performance)+'/100 | Motivasyon '+Math.round(s.education.motivation)+'/100');
@@ -12,14 +12,34 @@ export function printHeader(game){
  if(s.higherEducation){
   console.log('Üniversite: '+s.higherEducation.programTitle+' | '+(s.higherEducation.completed?'Mezun':'Sınıf '+s.higherEducation.year)+' | Performans '+Math.round(s.higherEducation.performance)+'/100');
  }
- if(s.career?.employed){
-  console.log('İş: '+s.career.title+' | ₺'+s.career.monthlyIncome.toLocaleString('tr-TR')+'/ay | Performans '+Math.round(s.career.performance)+'/100');
- }
- if(s.finance){
-  console.log('Birikim: ₺'+Math.round(s.finance.cash).toLocaleString('tr-TR')+' | Borç: ₺'+Math.round(s.finance.debt).toLocaleString('tr-TR'));
+ if(s.career){
+  console.log('Kariyer: '+(s.career.employed?s.career.title:'İşsiz')+
+   (s.career.employed?' | ₺'+s.career.monthlyIncome.toLocaleString('tr-TR')+'/ay | Seviye '+(s.career.level??1)+' | Memnuniyet '+Math.round(s.career.satisfaction??50)+'/100':''));
  }
 
- console.log('Arkadaş: '+s.social.friends.length+' | Aksiyon: '+s.actions.remaining+'/'+s.actions.max);
+ const r=s.social?.romance;
+ if(r){
+  const status={dating:'Sevgili',cohabiting:'Birlikte yaşıyor',married:'Evli'}[r.status]??'İlişki';
+  console.log('İlişki: '+r.name+' '+r.surname+' | '+status+' | '+Math.round(r.relationship)+'/100 | '+r.yearsTogether+' yıl');
+ }else console.log('İlişki: Yok');
+
+ if(s.children?.length){
+  console.log('Çocuklar: '+s.children.map(c=>c.name+' ('+c.age+')').join(', '));
+ }else if(s.player.age>=19) console.log('Çocuklar: Yok');
+
+ if(s.finance){
+  console.log('Yaşam: '+s.finance.lifestyle.housing+' / '+s.finance.lifestyle.food+' / '+s.finance.lifestyle.clothing+' / '+s.finance.lifestyle.transport);
+  console.log('Birikim: ₺'+Math.round(s.finance.cash).toLocaleString('tr-TR')+' | Borç: ₺'+Math.round(s.finance.debt).toLocaleString('tr-TR')+' | Aylık gider: ₺'+Math.round(s.finance.monthlyExpenses).toLocaleString('tr-TR'));
+ }
+ if(s.assets){
+  console.log('Varlıklar: '+(s.assets.home?s.assets.home.label:'ev yok')+' | '+(s.assets.car?s.assets.car.label:'araba yok'));
+ }
+ if(s.healthProfile){
+  const conditions=s.healthProfile.conditions.length?s.healthProfile.conditions.map(c=>c.label).join(', '):'tanı yok';
+  console.log('Sağlık profili: stres '+Math.round(s.healthProfile.stress)+'/100 | fitness '+Math.round(s.healthProfile.fitness)+'/100 | '+conditions);
+ }
+
+ console.log('Arkadaş: '+s.social.friends.length+' | Aksiyon: '+s.actions.remaining+'/'+s.actions.max+' | Life Tree: '+s.lifeTree.nodes.length+' düğüm');
  console.log(LINE);
 }
 
