@@ -78,8 +78,9 @@ export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
  h.stress=clamp(h.stress+rng.int(-3,3)+(state.finance?.debt>500000?3:0)+(state.career?.satisfaction<35?2:0));
 
  const previousFitness=h.fitness;
- const simulatedFitness=clamp(h.fitness+rng.int(-2,2)+(lifestyle?.food==='healthy'?2:0));
- h.fitness=wear.fitness>0?Math.min(simulatedFitness,clamp(previousFitness-wear.fitness)):simulatedFitness;
+ const exercisedRecently=(h.lastExerciseAge??-999)>=age-1;
+ const inactivityPenalty=age>=18&&!exercisedRecently?.75:age>=45&&!exercisedRecently?.35:0;
+ h.fitness=clamp(previousFitness-wear.fitness-inactivityPenalty);
 
  const activeBurden=h.conditions.reduce((sum,condition)=>sum+conditionBurden(condition),0);
  let delta=(state.player.health.constitution-60)*.02+(h.fitness-50)*.025-(h.stress-40)*.02;
