@@ -13,6 +13,7 @@ import {processInheritance} from '../finance/inheritance_system.js';
 import {processRetirementYear} from '../career/retirement_system.js';
 import {processBusinessYear} from '../career/entrepreneurship_system.js';
 import {finalizeDeath} from './death_summary.js';
+import {processLateLifeYear} from './late_age_system.js';
 
 export function processAdultYear(state,rng){
  const entries=[];
@@ -44,6 +45,7 @@ export function processAdultYear(state,rng){
  entries.push(...processInheritance(state));
  entries.push(...processRetirementYear(state));
  entries.push(...processBusinessYear(state,rng.fork('business')));
+ entries.push(...processLateLifeYear(state,rng.fork('late-life')));
 
  const effects=lifestyleEffects(state);
  state.healthProfile.stress=Math.max(0,Math.min(100,(state.healthProfile.stress??20)+effects.stress));
