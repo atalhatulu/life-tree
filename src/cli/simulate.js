@@ -20,7 +20,7 @@ const stats={
  widowed:0,careNeed:0,careModes:{},estatePlans:{},trustFunds:0,familyLosses:0,
  cash:0,debt:0,health:0,conditions:0,deaths:0,ages:0,estate:0,
  laborMarket:0,costOfLiving:0,wageIndex:0,healthcareCost:0,lifeRecaps:0,
- birthCities:{},currentCities:{},universityMoves:0,migrations:0,migrationReasons:{},returnHomes:0
+ birthCities:{},currentCities:{},universityMoves:0,migrations:0,migrationReasons:{},returnHomeLives:0
 };
 const errors=[];
 
@@ -52,10 +52,12 @@ for(let i=0;i<lives;i++){
  stats.currentCities[currentCity]=(stats.currentCities[currentCity]??0)+1;
  stats.universityMoves+=state.higherEducation?.movedForUniversity?1:0;
  stats.migrations+=(state.migrationHistory??[]).length;
+ let returnedHome=false;
  for(const move of state.migrationHistory??[]){
   stats.migrationReasons[move.reason]=(stats.migrationReasons[move.reason]??0)+1;
-  if(move.reason==='return-home')stats.returnHomes+=1;
+  if(move.reason==='return-home')returnedHome=true;
  }
+ if(returnedHome)stats.returnHomeLives+=1;
 
  stats.friends+=state.social.friends.length;
  stats.romance+=state.social.romance?1:0;
@@ -111,7 +113,7 @@ console.log('Final/current cities:',stats.currentCities);
 console.log('Moved city for university: '+(stats.universityMoves/lives*100).toFixed(1)+'%');
 console.log('Average internal migrations: '+(stats.migrations/lives).toFixed(2));
 console.log('Migration reasons:',stats.migrationReasons);
-console.log('Returned to hometown at least once (moves/lives): '+(stats.returnHomes/lives*100).toFixed(1)+'%');
+console.log('Returned to hometown at least once: '+(stats.returnHomeLives/lives*100).toFixed(1)+'%');
 console.log('High school paths:',stats.paths);
 console.log('Current paths:',stats.next);
 console.log('Average final age: '+(stats.ages/lives).toFixed(1));
