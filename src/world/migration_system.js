@@ -1,4 +1,5 @@
 import {TURKEY_CITIES,cityById} from '../data/countries/turkey/cities.js';
+import {ensurePersonalFinance} from '../finance/personal_finance.js';
 
 function cloneLocation(location){return location?structuredClone(location):null;}
 
@@ -43,8 +44,8 @@ export function moveToCity(state,toCityId,reason='personal',options={}){
  if(!from)throw new Error('Mevcut konum bilgisi yok.');
  if(from.cityId===to.id)return {moved:false,cost:0,from,to:cloneLocation(from)};
 
- const cost=movingCost(from.cityId,to.id,relocationHouseholdSize(state));
- state.finance??={cash:0,debt:0,lifestyle:{housing:'family',food:'standard',clothing:'basic',transport:'public'}};
+ const cost=Math.round(movingCost(from.cityId,to.id,relocationHouseholdSize(state))*(options.costMultiplier??1));
+ ensurePersonalFinance(state);
 
  const paid=Math.min(state.finance.cash??0,cost);
  state.finance.cash=Math.max(0,(state.finance.cash??0)-paid);
@@ -88,7 +89,10 @@ export function moveToCity(state,toCityId,reason='personal',options={}){
 }
 
 export function returnHome(state){
- return moveToCity(state,state.origin.cityId,'return-home',{housing:state.assets?.home?.cityId===state.origin.cityId?'owned':'family',stress:1});
+ const useOwned=state.assets?.home?.cityId===state.origin.cityId;
+ const result=moveToCity(state,state.origin.cityId,'return-home',{housing:useOwned?'owned':'family',stress:1});
+ if(state.finance?.lifestyle)state.finance.lifestyle.housing=useOwned?'owned':'family';
+ return result;
 }
 
 
