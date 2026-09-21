@@ -5,7 +5,7 @@ export const adolescenceEvents=[
  {
   id:'high-school-path',
   title:'Lise Yolunu Seçme Zamanı',
-  minAge:14,maxAge:14,once:true,majorDecision:true,priority:100,
+  minAge:14,maxAge:14,once:true,majorDecision:true,priority:180,
   condition:s=>s.education?.stage==='middle',
   choices:[
    {
@@ -58,7 +58,7 @@ export const adolescenceEvents=[
  {
   id:'after-high-school',
   title:'Lise Sonrası',
-  minAge:18,maxAge:18,once:true,majorDecision:true,priority:160,
+  minAge:18,maxAge:18,once:true,majorDecision:true,priority:190,
   condition:s=>s.education?.stage==='high',
   choices:[
    {
