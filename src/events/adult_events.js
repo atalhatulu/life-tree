@@ -13,8 +13,8 @@ export const adultEvents=[
   condition:s=>Array.isArray(s.pendingUniversityApplications)&&s.pendingUniversityApplications.length>0,
   choices:s=>s.pendingUniversityApplications.map(program=>({
    id:'program:'+program.id,
-   label:program.title+' — kabul ihtimali %'+program.admissionChance,
-   result:next=>next.higherEducation?.programId===program.id?program.title+' bölümüne kabul edildin.':program.title+' başvurun kabul edilmedi.',
+   label:program.universityName+' / '+program.title+' ('+program.cityName+') — kabul %'+program.admissionChance,
+   result:next=>next.higherEducation?.programId===program.id?program.universityName+' '+program.title+' bölümüne '+program.cityName+' şehrinde kabul edildin.':program.universityName+' başvurun kabul edilmedi.',
    effect:(next,rng)=>applyUniversityProgram(next,rng,program.id)
   }))
  },
