@@ -93,6 +93,9 @@ export function buildLifeRecap(state){
    finalYear:state.year
   },
   origin:{
+   country:state.country?.name??'Türkiye',
+   birthCity:state.origin?.cityName??null,
+   currentCity:state.location?.cityName??state.origin?.cityName??null,
    childhoodClass:state.player.background?.childhoodClass??state.household.economicClass,
    orphaned:Boolean(state.guardianship),
    trustFundReceived:state.trustFund?.released?state.trustFund.balance??0:0
