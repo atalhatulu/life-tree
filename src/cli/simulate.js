@@ -18,7 +18,8 @@ const stats={
  university:0,graduates:0,employed:0,degreeRelated:0,unemployed:0,
  retired:0,businesses:0,activeBusinesses:0,inheritance:0,
  widowed:0,careNeed:0,careModes:{},estatePlans:{},trustFunds:0,familyLosses:0,
- cash:0,debt:0,health:0,conditions:0,deaths:0,ages:0,estate:0
+ cash:0,debt:0,health:0,conditions:0,deaths:0,ages:0,estate:0,
+ laborMarket:0,costOfLiving:0,wageIndex:0,healthcareCost:0,lifeRecaps:0
 };
 const errors=[];
 
@@ -82,6 +83,12 @@ for(let i=0;i<lives;i++){
  stats.deaths+=state.player.alive?0:1;
  stats.ages+=state.player.age;
  stats.estate+=state.estate?.net??0;
+ const macro=state.world?.economy??{laborMarket:1,costOfLiving:1,wageIndex:1,healthcareCost:1};
+ stats.laborMarket+=macro.laborMarket;
+ stats.costOfLiving+=macro.costOfLiving;
+ stats.wageIndex+=macro.wageIndex;
+ stats.healthcareCost+=macro.healthcareCost;
+ stats.lifeRecaps+=state.deathSummary?.recap?1:0;
 }
 
 console.log('Life Tree batch simulation');
@@ -119,6 +126,11 @@ console.log('Average inheritance received: ₺'+Math.round(stats.inheritance/liv
 console.log('Average cash: ₺'+Math.round(stats.cash/lives).toLocaleString('tr-TR'));
 console.log('Average debt: ₺'+Math.round(stats.debt/lives).toLocaleString('tr-TR'));
 console.log('Average estate at death: ₺'+Math.round(stats.estate/Math.max(1,stats.deaths)).toLocaleString('tr-TR'));
+console.log('Death recaps created: '+stats.lifeRecaps+'/'+stats.deaths);
+console.log('Average labor market index: '+(stats.laborMarket/lives).toFixed(3));
+console.log('Average cost-of-living index: '+(stats.costOfLiving/lives).toFixed(3));
+console.log('Average real wage index: '+(stats.wageIndex/lives).toFixed(3));
+console.log('Average healthcare-cost index: '+(stats.healthcareCost/lives).toFixed(3));
 console.log('Average Life Tree nodes: '+(stats.treeNodes/lives).toFixed(2));
 if(errors.length){
  console.log('Sample errors:',errors);
