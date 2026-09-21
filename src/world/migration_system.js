@@ -69,6 +69,12 @@ export function moveToCity(state,toCityId,reason='personal',options={}){
   reason
  };
 
+ const partner=state.social?.romance;
+ if(partner&&['cohabiting','married'].includes(partner.status)){
+  partner.cityId=to.id;
+  partner.cityName=to.name;
+ }
+
  state.migrationHistory??=[];
  state.migrationHistory.push({
   age:state.player.age,
@@ -90,9 +96,26 @@ export function moveToCity(state,toCityId,reason='personal',options={}){
 
 export function returnHome(state){
  const useOwned=state.assets?.home?.cityId===state.origin.cityId;
+ const previousJob=state.career?.employed?{
+  title:state.career.title,
+  years:state.career.years??0
+ }:null;
+
+ if(state.career?.employed){
+  state.career.previousJobs??=[];
+  state.career.previousJobs.push(previousJob);
+  state.career.employed=false;
+  state.player.job=null;
+  state.player.jobId=null;
+  state.player.monthlyIncome=0;
+  state.nextPath='work';
+  state.unemployedSinceAge=state.player.age;
+  state.pendingJobOffers=null;
+ }
+
  const result=moveToCity(state,state.origin.cityId,'return-home',{housing:useOwned?'owned':'family',stress:1});
  if(state.finance?.lifestyle)state.finance.lifestyle.housing=useOwned?'owned':'family';
- return result;
+ return {...result,leftJob:Boolean(previousJob),previousJob};
 }
 
 
