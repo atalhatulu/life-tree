@@ -2,11 +2,29 @@
 
 Seeded, modular, state-driven life simulation written in JavaScript.
 
-## Current milestone: v0.6
+## Current milestone: v0.7 — Türkiye 2026 test world
 
-The simulation now supports a complete life arc from birth into advanced age and death.
+The simulation supports a complete life arc from birth into advanced age and death.
 
-The core is UI-independent. The CLI and browser interface consume the same simulation state.
+The core remains UI-independent. During the current balancing phase, new lives use **Türkiye in 2026** as the default test world so school, work, family, housing and city-level economic outcomes can be evaluated in one coherent setting.
+
+## Türkiye 2026 scenario
+
+- Expanded Turkish first-name and surname pools
+- Procedural birth city
+- City-sensitive wages and job opportunity context
+- City-sensitive living and housing costs
+- Turkish primary, middle and high-school naming
+- Turkish university campuses and cities
+- Moving city for university
+- Student housing costs after moving away from family
+- 2026 TRY economic baseline
+- 2026 net minimum-wage baseline stored in country data
+- Türkiye city state exposed in CLI, recap and batch reports
+
+Current test cities include İstanbul, Ankara, İzmir, Bursa, Antalya, Adana, Konya, Gaziantep, Mersin, Eskişehir, Samsun, Kayseri, Diyarbakır and Trabzon.
+
+City multipliers are **simulation balancing parameters**, not live property listings or exact market quotes.
 
 ## Main systems
 
@@ -26,12 +44,16 @@ The core is UI-independent. The CLI and browser interface consume the same simul
 - High-school branches
 - University applications
 - Program-to-career matching
+- University campus/city assignment
+- Education-related city moves
 
 ### Career and economy
 - Procedural job offers
+- City-sensitive wages and opportunity
 - Labor-market conditions
 - Promotions and raises
 - Firing and unemployment
+- Protection against same-year promotion + firing
 - Career switching
 - Entrepreneurship
 - Side businesses and full-time businesses
@@ -43,7 +65,19 @@ The core is UI-independent. The CLI and browser interface consume the same simul
 - Cars and homes
 - Inheritance
 
-All money is expressed in **real 2026 TRY**. The world model changes real living costs, wages, labor-market conditions and healthcare costs without requiring nominal inflation simulation.
+All money is expressed in **real 2026 TRY**. The background world model changes real living costs, wages, labor-market conditions and healthcare costs without requiring nominal inflation simulation.
+
+### Activities
+- School study during school years
+- University study while enrolled
+- Adult courses / continuing education after school
+- Exercise
+- Hobbies
+- Socializing
+- Work focus
+- Partner time
+- Checkups
+- Budget planning
 
 ### Relationships and generations
 - Friends
@@ -76,17 +110,6 @@ Important choices are stored as explicit Life Tree nodes.
 
 Major decisions store compact pre-choice snapshots, so a previous decision can be replayed as an alternate branch without mutating the original life.
 
-### World
-A lightweight background world simulation tracks:
-- labor market
-- real cost of living
-- real wages
-- healthcare costs
-- economic confidence
-- occasional recessions and strong economic periods
-
-The world is intentionally lighter than the personal-life simulation.
-
 ## CLI
 
 Play a life:
@@ -101,15 +124,10 @@ Play toward a specific age:
 npm run play -- --to-age 100
 ```
 
-Autosave:
+Autosave / load:
 
 ```bash
 npm run play -- --save save.json
-```
-
-Load a save:
-
-```bash
 npm run play -- --load save.json --save save.json
 ```
 
@@ -119,10 +137,10 @@ Inspect one deterministic life:
 npm run trace -- --seed test-life --policy random --to-age 100
 ```
 
-JSON trace:
+Show routine yearly details too:
 
 ```bash
-npm run trace -- --seed test-life --policy balanced --to-age 100 --json
+npm run trace -- --seed test-life --policy random --to-age 100 --verbose
 ```
 
 ## Batch simulation
@@ -131,14 +149,7 @@ npm run trace -- --seed test-life --policy balanced --to-age 100 --json
 npm run simulate -- --lives 5000 --to-age 100 --policy random
 ```
 
-Policies:
-- `random`
-- `balanced`
-- `academic`
-- `social`
-- `vocational`
-
-The batch runner reports state integrity plus education, career, retirement, business, relationships, generations, assets, health, mortality, estates, Life Tree and macro-world statistics.
+The batch report includes birth-city distribution, current-city distribution and university city-move rate in addition to the existing education, career, retirement, business, relationship, health, estate and world statistics.
 
 ## Tests
 
@@ -146,7 +157,7 @@ The batch runner reports state integrity plus education, career, retirement, bus
 npm test
 ```
 
-GitHub Actions runs the complete test suite and a separate full-life batch simulation on every push.
+GitHub Actions runs the complete test suite, a full-life random batch and one deterministic full-life trace on every push.
 
 ## Architecture
 
@@ -167,19 +178,20 @@ src/
 ├── timeline/
 ├── events/
 ├── simulation/
+├── data/
+│   └── countries/
+│       └── turkey/
 ├── cli/
 └── ui/
 ```
 
-Simulation rules remain separate from presentation.
-
 ## Next milestones
 
-- More event/content variety
-- Deeper child and sibling lives
-- More career specializations
-- Relationship conflict history
-- Richer illness and recovery paths
+- Work-related city migration
+- Explicit move-city decisions in Life Tree
+- Türkiye-specific education and early-adult events
+- Deeper partner career and family visibility
+- Child/no-child reasoning and fertility-independent preference history
+- More middle-age content
 - Life Tree branch explorer UI
-- Modern 2026 internet/social systems
 - Final browser/mobile interface
