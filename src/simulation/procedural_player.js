@@ -1,5 +1,5 @@
 import {scoreSocialActivity,relationshipValue} from '../social/social_activity_system.js';
-import {ensureRelationshipMemory} from '../social/relationship_memory.js';
+import {ensureRelationshipMemory,knownPreference} from '../social/relationship_memory.js';
 import {physicalCapacity} from '../health/physical_capacity.js';
 
 function policyBias(policy,key){
@@ -31,7 +31,9 @@ function bestSocialPlan(game,policy,rng){
    if(!scored)continue;
    const affordability=(state.finance?.cash??0)>0?activity.cost/Math.max(1,state.finance.cash):1;
    const frugalPenalty=policy==='frugal'?affordability*8:affordability*3;
-   const utility=need+scored.expectedDelta*.45-frugalPenalty+rng.int(-2,2)*.15;
+   const learned=knownPreference(state,target.id,activity.preferenceKind,activity.preferenceKey)??0;
+   const visibleExpected=activity.baseRelationship+learned*2+scored.repetition;
+   const utility=need+visibleExpected*.45-frugalPenalty+rng.int(-2,2)*.15;
    plans.push({targetId:target.id,activityId:activity.id,utility});
   }
  }
