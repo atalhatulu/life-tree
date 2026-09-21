@@ -61,3 +61,27 @@ test('branching from high-school decision creates independent alternate life',()
 test('invalid save payload is rejected',()=>{
  assert.throws(()=>parseSave('{"version":999}'),/Invalid save/);
 });
+
+
+test('pending decision survives save and load',()=>{
+ const game=new Game('save-pending-event');
+ let event=null;
+ while(game.state.player.age<7&&!event){
+  event=game.ageOneYear();
+ }
+ assert.ok(event);
+ assert.equal(game.activeEventId,event.id);
+
+ const restored=Game.fromSave(serializeGame(game));
+ const pending=restored.pendingEvent();
+ assert.ok(pending);
+ assert.equal(pending.id,event.id);
+ assert.deepEqual(
+  restored.eventChoices(pending).map(c=>c.id),
+  game.eventChoices(event).map(c=>c.id)
+ );
+
+ const first=restored.eventChoices(pending)[0];
+ restored.makeChoice(pending,first.id);
+ assert.equal(restored.activeEventId,null);
+});
