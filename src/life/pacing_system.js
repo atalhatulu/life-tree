@@ -34,6 +34,10 @@ export function inferPacingCategory(eventId){
  return EVENT_PACING[eventId]?.category??null;
 }
 
+function hasCurrentYearPaceBlock(state){
+ return (state.history??[]).some(item=>item.age===state.player.age&&item.paceBlock);
+}
+
 function lastMajorNode(state){
  const nodes=state.lifeTree?.nodes??[];
  return nodes.length?nodes[nodes.length-1]:null;
@@ -54,6 +58,7 @@ export function canPresentPacedEvent(state,event){
  const rule=pacingRule(event);
  if(!rule)return true;
  if(state.player.age<21)return true;
+ if(hasCurrentYearPaceBlock(state))return false;
 
  const latest=lastMajorNode(state);
  if(latest&&state.player.age-latest.age<rule.globalGap)return false;
