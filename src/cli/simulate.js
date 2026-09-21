@@ -19,7 +19,8 @@ const stats={
  retired:0,businesses:0,activeBusinesses:0,inheritance:0,
  widowed:0,careNeed:0,careModes:{},estatePlans:{},trustFunds:0,familyLosses:0,
  cash:0,debt:0,health:0,conditions:0,deaths:0,ages:0,estate:0,
- laborMarket:0,costOfLiving:0,wageIndex:0,healthcareCost:0,lifeRecaps:0
+ laborMarket:0,costOfLiving:0,wageIndex:0,healthcareCost:0,lifeRecaps:0,
+ birthCities:{},currentCities:{},universityMoves:0
 };
 const errors=[];
 
@@ -45,6 +46,11 @@ for(let i=0;i<lives;i++){
  stats.next[next]=(stats.next[next]??0)+1;
  const cls=state.player.background?.childhoodClass??state.household.economicClass;
  stats.classes[cls]=(stats.classes[cls]??0)+1;
+ const birthCity=state.origin?.cityName??'Bilinmiyor';
+ const currentCity=state.location?.cityName??birthCity;
+ stats.birthCities[birthCity]=(stats.birthCities[birthCity]??0)+1;
+ stats.currentCities[currentCity]=(stats.currentCities[currentCity]??0)+1;
+ stats.universityMoves+=state.higherEducation?.movedForUniversity?1:0;
 
  stats.friends+=state.social.friends.length;
  stats.romance+=state.social.romance?1:0;
@@ -95,6 +101,9 @@ console.log('Life Tree batch simulation');
 console.log('Lives: '+lives+' | Target age: '+toAge+' | Policy: '+policy);
 console.log('Invalid states: '+stats.invalid);
 console.log('Birth household classes:',stats.classes);
+console.log('Birth cities:',stats.birthCities);
+console.log('Final/current cities:',stats.currentCities);
+console.log('Moved city for university: '+(stats.universityMoves/lives*100).toFixed(1)+'%');
 console.log('High school paths:',stats.paths);
 console.log('Current paths:',stats.next);
 console.log('Average final age: '+(stats.ages/lives).toFixed(1));
