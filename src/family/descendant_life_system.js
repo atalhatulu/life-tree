@@ -4,8 +4,9 @@ const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 function assignAdultPath(child,rng){
  child.adultLife??={};
  if(child.adultLife.initialized)return;
- const educationChance=clamp(Math.round(35+(child.personality.curiosity??50)*.25+(child.personality.discipline??50)*.20));
- const college=rng.int(1,100)<=educationChance;
+ const educationChance=clamp(Math.round(25+(child.personality.curiosity??50)*.22+(child.personality.discipline??50)*.18+(child.educationSupport??40)*.35));
+ const forcedVocational=child.educationPlan==='vocational';
+ const college=!forcedVocational&&rng.int(1,100)<=educationChance;
  child.adultLife.educationLevel=college?4:rng.int(1,3);
  const eligible=JOBS.filter(j=>j.id!=='unemployed'&&j.educationMin<=child.adultLife.educationLevel);
  if(eligible.length){
