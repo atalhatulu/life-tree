@@ -46,17 +46,11 @@ function canHaveNewSibling(state) {
 
 export function processFamilyYear(state, rng) {
   const entries = [];
-  const familyMembers = [
-    state.parents.mother,
-    state.parents.father,
-    ...state.siblings,
-    state.grandparents.maternal.grandmother,
-    state.grandparents.maternal.grandfather,
-    state.grandparents.paternal.grandmother,
-    state.grandparents.paternal.grandfather
-  ];
-
-  for (const person of familyMembers) ageHealth(person, rng.fork('health-'+person.id));
+  // Parents and grandparents are handled by elder_system so their health
+  // is not processed twice in the same year. family_simulation owns sibling health.
+  for (const sibling of state.siblings) {
+    ageHealth(sibling, rng.fork('health-'+sibling.id));
+  }
   processSiblingLosses(state,rng,entries);
 
   if (canHaveNewSibling(state)) {
