@@ -2,7 +2,7 @@ import {performance} from 'node:perf_hooks';
 import {Game} from '../core/game.js';
 import {autoplay} from '../simulation/autoplay.js';
 import {validateState} from '../simulation/invariants.js';
-import {familyCompatibility} from '../career/career_taxonomy.js';
+import {auditCareerTransitions} from '../career/career_audit.js';
 import {geneticSummary} from '../health/genetic_system.js';
 import {physicalCapacity} from '../health/physical_capacity.js';
 
@@ -64,44 +64,6 @@ function wealthBucket(value){
  if(value<5000000)return '1m-5m';
  if(value<20000000)return '5m-20m';
  return '20m+';
-}
-function careerSequence(state){
- const archived=[...(state.careerProfile?.recentJobs??[])].reverse().map(x=>({
-  jobId:x.jobId,title:x.title,reason:x.reason,leftAtAge:x.leftAtAge
- }));
- const current=state.career?.jobId?[
-  {jobId:state.career.jobId,title:state.career.title,reason:'current',leftAtAge:null}
- ]:[];
- return [...archived,...current];
-}
-function transitionAudit(state){
- const seq=careerSequence(state);
- const issues=[];
- const degreeTags=state.higherEducation?.completed?(state.higherEducation.careerTags??[]):[];
-
- for(let i=1;i<seq.length;i++){
-  const from=seq[i-1],to=seq[i];
-  if(!from.jobId||!to.jobId)continue;
-
-  if(from.jobId===to.jobId){
-   issues.push({type:'same-occupation-return',job:to.title,after:from.reason});
-   continue;
-  }
-
-  if(familyCompatibility(from.jobId,to.jobId)!==0)continue;
-  const degreeBacked=degreeTags.includes(to.jobId);
-
-  if(from.reason==='entrepreneurship'){
-   issues.push({type:'post-business-distant-reentry',from:from.title,to:to.title});
-  }else if(from.reason==='career-switch'&&degreeBacked){
-   issues.push({type:'degree-backed-return',from:from.title,to:to.title});
-  }else if(from.reason==='career-switch'){
-   issues.push({type:'voluntary-unrelated-switch',from:from.title,to:to.title});
-  }else{
-   issues.push({type:'forced-unrelated-reemployment',from:from.title,to:to.title,after:from.reason});
-  }
- }
- return issues;
 }
 function historyCount(state,predicate){
  return (state.history??[]).filter(predicate).length;
@@ -414,7 +376,7 @@ for(let i=0;i<lives;i++){
  if(firstJobAge!=null)report.career.firstJobAges.push(firstJobAge);
  for(const item of state.careerProfile?.recentJobs??[])inc(report.career.exitReasons,item.reason??'unknown');
 
- const careerIssues=transitionAudit(state);
+ const careerIssues=auditCareerTransitions(state);
  for(const issue of careerIssues){
   if(issue.type==='voluntary-unrelated-switch')report.career.voluntaryUnrelated++;
   if(issue.type==='forced-unrelated-reemployment')report.career.forcedUnrelated++;
@@ -783,7 +745,8 @@ const summary={
    forcedUnrelatedReemploymentCount:report.career.forcedUnrelated,
    degreeBackedReturnCount:report.career.degreeBackedReturns,
    postBusinessDistantReentryCount:report.career.postBusinessDistant,
-   sameOccupationReturnCount:report.career.sameOccupationReturns
+   sameOccupationReturnCount:report.career.sameOccupationReturns,
+   rapidVoluntaryReturnCount:report.career.rapidVoluntaryReturns
   }
  },
 
