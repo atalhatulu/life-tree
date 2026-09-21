@@ -4,7 +4,8 @@ export function buildDeathSummary(state){
  const estate=settleEstate(state);
  const tree=state.lifeTree?.nodes??[];
  const children=state.children??[];
- const relationships=state.social?.exSpouses?.length??0;
+ const exSpouses=state.social?.exSpouses?.length??0;
+ const deceasedSpouses=(state.social?.deceasedPartners??[]).filter(p=>p.status==='married').length;
  const career=state.career;
  return {
   name:state.player.name+' '+state.player.surname,
@@ -18,7 +19,9 @@ export function buildDeathSummary(state){
   businessFounded:Boolean(state.business),
   children:children.length,
   grandchildren:state.grandchildren??0,
-  marriages:(state.social?.romance?.status==='married'?1:0)+relationships,
+  marriages:(state.social?.romance?.status==='married'?1:0)+exSpouses+deceasedSpouses,
+  widowed:deceasedSpouses>0||state.widowedAtAge!=null,
+  familyLosses:[state.parents.mother,state.parents.father,state.grandparents.maternal.grandmother,state.grandparents.maternal.grandfather,state.grandparents.paternal.grandmother,state.grandparents.paternal.grandfather].filter(p=>!p.alive).length,
   homeOwned:Boolean(state.assets?.home),
   carOwned:Boolean(state.assets?.car),
   finalCash:Math.round(state.finance?.cash??0),
