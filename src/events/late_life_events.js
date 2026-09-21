@@ -40,19 +40,26 @@ export const lateLifeEvents=[
   title:'Kendi İşini Kurmak',
   minAge:25,maxAge:58,once:false,majorDecision:false,priority:44,
   condition:s=>canStartBusiness(s)&&(s.preferences?.riskTolerance??50)>=55&&s.player.age>=(s.nextBusinessAge??25),
-  choices:[
+  choices:s=>[
+   ...(s.career?.employed?[{
+    id:'launch-side-business',
+    label:'İşimi bırakmadan yan girişim başlat',
+    majorDecision:true,
+    result:'Mevcut işini koruyup yan tarafta bir işletme kurdun.',
+    effect:(next,rng)=>{startBusiness(next,rng.fork('side-launch'),'side');next.nextBusinessAge=99;}
+   }]:[]),
    {
     id:'launch-business',
-    label:'Sermayenin bir kısmıyla şirket kur',
+    label:'Tam zamanlı girişimci ol',
     majorDecision:true,
-    result:'Kendi işletmeni kurdun.',
-    effect:(s,rng)=>{startBusiness(s,rng.fork('launch'));s.nextBusinessAge=99;}
+    result:'Kariyerini bırakıp kendi işletmene odaklandın.',
+    effect:(next,rng)=>{startBusiness(next,rng.fork('launch'),'full-time');next.nextBusinessAge=99;}
    },
    {
     id:'keep-career',
     label:'Mevcut düzenimi koru',
     result:'Şimdilik girişimcilik riskini almadın.',
-    effect:s=>{s.preferences.riskTolerance=Math.max(0,s.preferences.riskTolerance-5);s.nextBusinessAge=s.player.age+4;}
+    effect:next=>{next.preferences.riskTolerance=Math.max(0,next.preferences.riskTolerance-5);next.nextBusinessAge=next.player.age+4;}
    }
   ]
  },
