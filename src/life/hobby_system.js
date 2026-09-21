@@ -32,7 +32,8 @@ export function performHobby(state,id,rng){
  state.healthProfile.stress=clamp(state.healthProfile.stress-hobby.stressRelief);
 
  if(hobby.physicalGain){
-  const gain=hobby.physicalGain*activityEfficiency(state);
+  const adaptation=Math.max(.20,1-(state.healthProfile.fitness??50)/120);
+  const gain=hobby.physicalGain*activityEfficiency(state)*adaptation;
   state.healthProfile.fitness=clamp(state.healthProfile.fitness+gain);
   state.healthProfile.lastExerciseAge=state.player.age;
   state.healthProfile.exerciseSessions=(state.healthProfile.exerciseSessions??0)+1;
