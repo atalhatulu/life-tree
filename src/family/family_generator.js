@@ -33,6 +33,7 @@ export function generateNewbornSibling(rng, family, id) {
  const inherited = inheritFromParents(rng.fork('genetics'), mother, father, sex);
  sibling.appearance = inherited.appearance;
  sibling.health.constitution = inherited.health.constitution;
+ sibling.health.genetics = inherited.health.genetics;
  sibling.interests = deriveChildInterests(rng.fork('interests'), mother, father);
  return sibling;
 }
@@ -46,11 +47,11 @@ export function generateFamily(seed){
  mother.monthlyIncome=Math.round(mother.monthlyIncome*birthCity.wage);
  father.monthlyIncome=Math.round(father.monthlyIncome*birthCity.wage);
  const sex=root.chance(0.5)?'female':'male'; const child=createPersonBase({id:'player',name:nameFor(root.fork('child-name'),sex),surname,sex,age:0,rng:root.fork('child')});
- const inherited=inheritFromParents(root.fork('genetics'),mother,father,sex); child.appearance=inherited.appearance; child.health.constitution=inherited.health.constitution; child.interests=deriveChildInterests(root.fork('interests'),mother,father);
+ const inherited=inheritFromParents(root.fork('genetics'),mother,father,sex); child.appearance=inherited.appearance; child.health.constitution=inherited.health.constitution; child.health.genetics=inherited.health.genetics; child.interests=deriveChildInterests(root.fork('interests'),mother,father);
  const olderSiblingCount=root.weighted([{value:0,weight:4.5},{value:1,weight:3.4},{value:2,weight:1.5},{value:3,weight:0.6}]);
  const maxOlderAge=Math.max(0,Math.min(14,motherAge-18));
  const siblings=[];
- for(let i=0;i<olderSiblingCount&&maxOlderAge>0;i+=1){ const srng=root.fork(`sibling-${i}`); const ssex=srng.chance(.5)?'female':'male'; const age=srng.int(1,maxOlderAge); const s=createPersonBase({id:`sibling-${i}`,name:nameFor(srng,ssex),surname,sex:ssex,age,rng:srng}); const inheritedSibling=inheritFromParents(srng.fork('genetics'),mother,father,ssex); s.appearance=inheritedSibling.appearance; s.health.constitution=inheritedSibling.health.constitution; siblings.push(s); }
+ for(let i=0;i<olderSiblingCount&&maxOlderAge>0;i+=1){ const srng=root.fork(`sibling-${i}`); const ssex=srng.chance(.5)?'female':'male'; const age=srng.int(1,maxOlderAge); const s=createPersonBase({id:`sibling-${i}`,name:nameFor(srng,ssex),surname,sex:ssex,age,rng:srng}); const inheritedSibling=inheritFromParents(srng.fork('genetics'),mother,father,ssex); s.appearance=inheritedSibling.appearance; s.health.constitution=inheritedSibling.health.constitution; s.health.genetics=inheritedSibling.health.genetics; siblings.push(s); }
  siblings.sort((a,b)=>b.age-a.age);
  const people=2+siblings.length+1; const monthlyIncome=mother.monthlyIncome+father.monthlyIncome; const cls=economicClass(monthlyIncome/Math.max(.75,birthCity.cost),people);
  child.background.childhoodClass=cls;
