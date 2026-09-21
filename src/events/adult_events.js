@@ -61,7 +61,7 @@ export const adultEvents=[
   id:'first-job',title:'İş Teklifleri',minAge:19,maxAge:72,once:false,majorDecision:true,priority:120,
   condition:s=>Array.isArray(s.pendingJobOffers)&&s.pendingJobOffers.length>0,
   choices:s=>s.pendingJobOffers.map(job=>({
-   id:'job:'+job.id,label:job.title+' — '+job.cityName+' — ₺'+job.salary.toLocaleString('tr-TR')+'/ay',
+   id:'job:'+job.id,label:job.title+' — '+job.cityName+' — ₺'+job.salary.toLocaleString('tr-TR')+'/ay'+(job.requiresMove?' • taşınma ~₺'+job.moveCost.toLocaleString('tr-TR'):''),
    result:next=>job.requiresMove?job.cityName+' şehrine taşınıp '+job.title+' olarak çalışmaya başladın.':job.title+' olarak '+job.cityName+' şehrinde çalışmaya başladın.',effect:next=>acceptJob(next,job.id)
   }))
  },
@@ -70,7 +70,7 @@ export const adultEvents=[
   condition:s=>Array.isArray(s.pendingCareerOffers)&&s.pendingCareerOffers.length>0&&s.career?.employed,
   choices:s=>[
    ...s.pendingCareerOffers.map(job=>({
-    id:'switch:'+job.id,label:job.title+' — '+job.cityName+' — ₺'+job.salary.toLocaleString('tr-TR')+'/ay',majorDecision:true,
+    id:'switch:'+job.id,label:job.title+' — '+job.cityName+' — ₺'+job.salary.toLocaleString('tr-TR')+'/ay'+(job.requiresMove?' • taşınma ~₺'+job.moveCost.toLocaleString('tr-TR'):''),majorDecision:true,
     result:job.requiresMove?job.cityName+' şehrine taşınıp '+job.title+' pozisyonuna geçtin.':job.title+' pozisyonuna geçtin.',effect:next=>switchJob(next,job)
    })),
    {id:'stay',label:'Mevcut işimde kal',result:'Mevcut kariyerinde kalmayı seçtin.',effect:next=>{next.pendingCareerOffers=null;next.career.satisfaction=Math.min(100,next.career.satisfaction+3);}}
