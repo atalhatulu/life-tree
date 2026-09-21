@@ -9,7 +9,7 @@ export class EventEngine{
    return this.choicesFor(state,e).length>0;
   });
  }
- choicesFor(state,event){return event.choices.filter(choice=>!choice.condition||choice.condition(state));}
+ choicesFor(state,event){const raw=typeof event.choices==='function'?event.choices(state):event.choices;return raw.filter(choice=>!choice.condition||choice.condition(state));}
  choose(state,rng){
   const candidates=this.eligible(state);
   if(!candidates.length)return null;
