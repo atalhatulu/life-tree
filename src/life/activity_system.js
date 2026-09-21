@@ -1,3 +1,4 @@
+import {growTrait} from '../character/personality_dynamics.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export const ACTIVITY_DEFS=[
@@ -26,17 +27,17 @@ export function performActivity(state,id,rng){
  if(id==='study'){
   if(state.higherEducation?.enrolled){
    state.higherEducation.performance=clamp(state.higherEducation.performance+rng.int(2,5));
-   state.player.personality.discipline=clamp(state.player.personality.discipline+1);
+   state.player.personality.discipline=growTrait(state.player.personality.discipline,1);
    result='Üniversite çalışmalarına zaman ayırdın.';
   }else{
    state.education.studyEffort=clamp((state.education.studyEffort??0)+rng.int(25,40));
-   state.player.personality.discipline=clamp(state.player.personality.discipline+1);
+   state.player.personality.discipline=growTrait(state.player.personality.discipline,1);
    result='Ders çalıştın. Bu yılki çalışma düzenin güçlendi.';
   }
  }
  if(id==='course'){
-  state.player.personality.curiosity=clamp(state.player.personality.curiosity+rng.int(1,3));
-  state.player.personality.discipline=clamp(state.player.personality.discipline+rng.int(0,2));
+  state.player.personality.curiosity=growTrait(state.player.personality.curiosity,rng.int(1,3));
+  state.player.personality.discipline=growTrait(state.player.personality.discipline,rng.int(0,2));
   if(state.career?.employed){
    state.career.performance=clamp(state.career.performance+rng.int(1,3));
    result='Mesleki bir kursa katılıp kendini geliştirdin.';
@@ -50,12 +51,12 @@ export function performActivity(state,id,rng){
  }
  if(id==='socialize'){
   state.social??={friends:[]};
-  state.player.personality.sociability=clamp(state.player.personality.sociability+2);
+  state.player.personality.sociability=growTrait(state.player.personality.sociability,2);
   if(state.social.friends.length){const f=rng.pick(state.social.friends);f.relationship=clamp(f.relationship+4);result=f.name+' ile vakit geçirdin.';} else result='İnsanlarla vakit geçirip daha sosyal olmaya çalıştın.';
  }
  if(id==='hobby'){
   const interests=Object.entries(state.player.interests).sort((a,b)=>b[1]-a[1]);
-  if(!interests.length){state.player.personality.curiosity=clamp(state.player.personality.curiosity+2);result='Yeni uğraşlar keşfetmeye çalıştın.';}
+  if(!interests.length){state.player.personality.curiosity=growTrait(state.player.personality.curiosity,2);result='Yeni uğraşlar keşfetmeye çalıştın.';}
   else {const [name]=interests[0];state.player.interests[name]=clamp(state.player.interests[name]+rng.int(3,6));result=name+' hobinle ilgilendin.';}
  }
  if(id==='work-hard'){

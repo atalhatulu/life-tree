@@ -1,3 +1,4 @@
+import {changeTrait} from '../character/personality_dynamics.js';
 import {enterMiddleSchool,graduationReadiness} from '../education/pathways.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
@@ -15,8 +16,8 @@ export function processAdolescenceYear(state,rng){
  const p=state.player;
  const friends=state.social?.friends??[];
  const peerAverage=friends.length?friends.reduce((sum,f)=>sum+(f.relationship??50),0)/friends.length:50;
- p.personality.sociability=clamp(p.personality.sociability+rng.int(-2,2)+(peerAverage>70?1:0));
- p.personality.ambition=clamp(p.personality.ambition+rng.int(-2,2)+(state.education?.performance>70?1:0));
+ p.personality.sociability=changeTrait(p.personality.sociability,rng.int(-2,2)+(peerAverage>70?1:0));
+ p.personality.ambition=changeTrait(p.personality.ambition,rng.int(-2,2)+(state.education?.performance>70?1:0));
 
  if(state.education?.enrolled){
   const stress=Math.max(0,(state.household.educationSupport-70)*.04)+(state.education.performance>80?1:0);
