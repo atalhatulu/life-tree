@@ -1,6 +1,7 @@
 import {JOBS} from '../data/catalog.js';
 import {economy} from '../world/world_state.js';
-import {locationProfile} from '../data/countries/turkey/profile.js';
+import {cityById} from '../data/countries/turkey/cities.js';
+import {chooseJobOfferCity,moveToCity} from '../world/migration_system.js';
 
 const ENTRY_JOB_IDS=['cleaner','mechanic','cook','shopkeeper','driver','accountant'];
 
@@ -15,10 +16,22 @@ function buildOffer(state,rng,job,careerTags,graduated){
  const low=job.income[0],high=job.income[1];
  const degreeSalaryBoost=graduated&&related?1.08:1;
  const macro=economy(state);
- const city=locationProfile(state);
- const salary=Math.round(rng.fork(job.id).int(low,Math.max(low,Math.round(low+(high-low)*.45)))*degreeSalaryBoost*macro.wageIndex*city.wage);
- const chance=Math.min(95,Math.max(8,Math.round(45+fit*.20+state.player.personality.discipline*.15+state.player.personality.sociability*.10+(related?12:0)+(macro.laborMarket-1)*28+(city.jobs-1)*18)));
- return {...job,fit,salary,offerChance:chance,related,score:fit+chance*.4};
+ const city=chooseJobOfferCity(state,rng.fork('city-'+job.id));
+ const salary=Math.round(
+  rng.fork(job.id).int(low,Math.max(low,Math.round(low+(high-low)*.45)))*
+  degreeSalaryBoost*macro.wageIndex*city.wage
+ );
+ const chance=Math.min(95,Math.max(8,Math.round(
+  45+fit*.20+state.player.personality.discipline*.15+state.player.personality.sociability*.10+
+  (related?12:0)+(macro.laborMarket-1)*28+(city.jobs-1)*18
+ )));
+ const currentCityId=state.location?.cityId??state.origin?.cityId;
+ return {
+  ...job,fit,salary,offerChance:chance,related,
+  cityId:city.id,cityName:city.name,
+  requiresMove:city.id!==currentCityId,
+  score:fit+chance*.4+(city.id===currentCityId?5:0)
+ };
 }
 
 export function generateJobOffers(state,rng,count=3){
@@ -41,6 +54,12 @@ export function generateJobOffers(state,rng,count=3){
 export function acceptJob(state,jobId){
  const offer=state.pendingJobOffers?.find(j=>j.id===jobId);
  if(!offer) throw new Error('Bu iş teklifi artık geçerli değil.');
+
+ let moveResult=null;
+ if(offer.requiresMove){
+  moveResult=moveToCity(state,offer.cityId,'job',{housing:'shared',stress:4});
+ }
+
  state.career={
   employed:true,
   jobId:offer.id,
@@ -49,14 +68,16 @@ export function acceptJob(state,jobId){
   years:0,
   totalYears:state.career?.totalYears??0,
   performance:50,
-  degreeRelated:Boolean(offer.related)
+  degreeRelated:Boolean(offer.related),
+  cityId:offer.cityId,
+  cityName:offer.cityName
  };
  state.player.job=offer.title;
  state.player.jobId=offer.id;
  state.player.monthlyIncome=offer.salary;
  state.nextPath='work';
  state.pendingJobOffers=null;
- return offer;
+ return {...offer,moveResult};
 }
 
 export function progressCareerYear(state,rng){
