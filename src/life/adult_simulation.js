@@ -8,7 +8,6 @@ import {processPartnershipYear} from '../social/partnership_system.js';
 import {processChildrenYear,ensureChildren} from '../family/parenting_system.js';
 import {processHealthYear,ensureHealthProfile} from '../health/health_system.js';
 import {ensureAdultPreferences} from './adult_preferences.js';
-import {processElderFamilyYear} from '../family/elder_system.js';
 import {processDescendantLives} from '../family/descendant_life_system.js';
 import {processInheritance} from '../finance/inheritance_system.js';
 import {processRetirementYear} from '../career/retirement_system.js';
@@ -42,7 +41,6 @@ export function processAdultYear(state,rng){
  entries.push(...processPartnershipYear(state,rng.fork('partnership')));
  entries.push(...processChildrenYear(state,rng.fork('children')));
  entries.push(...processDescendantLives(state,rng.fork('descendants')));
- entries.push(...processElderFamilyYear(state,rng.fork('elders')));
  entries.push(...processInheritance(state));
  entries.push(...processRetirementYear(state));
  entries.push(...processBusinessYear(state,rng.fork('business')));
