@@ -58,6 +58,9 @@ export function validateState(state){
   if(!Number.isFinite(state.business.capital)||state.business.capital<0)errors.push('invalid business capital');
   if(!bounded(state.business.health))errors.push('invalid business health');
   if(!Number.isFinite(state.business.monthlyProfit))errors.push('invalid business profit');
+  if(!['full-time','side'].includes(state.business.mode))errors.push('invalid business mode');
+  if(state.business.mode==='full-time'&&state.business.active&&state.career?.employed)errors.push('full-time entrepreneur still salaried');
+  if(state.business.active&&state.business.closedAtAge!=null)errors.push('closed business still active');
  }
  if(state.retirement?.retired){
   if(state.career?.employed)errors.push('retired player still employed');
