@@ -34,6 +34,15 @@ function effectiveTaxRate(monthly,retired=false){
  return .28;
 }
 
+function lateLifeCareCosts(state){
+ const mode=state.lateLife?.careMode;
+ if(!mode)return 0;
+ if(mode==='family')return 3000;
+ if(mode==='home-care')return 14000;
+ if(mode==='assisted')return 26000;
+ return 0;
+}
+
 function recurringOwnershipCosts(state){
  let monthly=0;
  if(state.assets?.home)monthly+=Math.round((state.assets.home.price??0)*.007/12);
@@ -63,11 +72,12 @@ export function processPersonalFinanceYear(state){
  f.monthlyIncome=state.career?.employed?state.career.monthlyIncome:(state.retirement?.retired?state.retirement.pensionMonthly:0);
  f.familySupportMonthly=familySupport(state);
  f.partnerContributionMonthly=partnerContribution(state);
- f.monthlyExpenses=lifestyleMonthlyCost(state)+(f.childMonthlyCost??0);
+ f.adultChildSupportMonthly=state.lateLife?.familySupportMonthly??0;
+ f.monthlyExpenses=lifestyleMonthlyCost(state)+(f.childMonthlyCost??0)+lateLifeCareCosts(state);
  const taxRate=effectiveTaxRate(f.monthlyIncome,Boolean(state.retirement?.retired));
  f.monthlyTax=Math.round(f.monthlyIncome*taxRate);
  f.ownershipCostsMonthly=recurringOwnershipCosts(state);
- const annualIncome=(f.monthlyIncome-f.monthlyTax+f.familySupportMonthly+f.partnerContributionMonthly)*12;
+ const annualIncome=(f.monthlyIncome-f.monthlyTax+f.familySupportMonthly+f.partnerContributionMonthly+f.adultChildSupportMonthly)*12;
  const annualExpense=(f.monthlyExpenses+f.ownershipCostsMonthly)*12;
  let annualNet=annualIncome-annualExpense;
 
