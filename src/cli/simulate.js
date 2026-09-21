@@ -15,10 +15,13 @@ const stats={
  invalid:0,
  paths:{},
  next:{},
+ classes:{},
  friends:0,
  romance:0,
  performance:0,
- treeNodes:0
+ readiness:0,
+ treeNodes:0,
+ admissions:0
 };
 const errors=[];
 
@@ -43,20 +46,27 @@ for(let i=0;i<lives;i++){
  stats.paths[path]=(stats.paths[path]??0)+1;
  const next=state.nextPath??'none';
  stats.next[next]=(stats.next[next]??0)+1;
+ const cls=state.household.economicClass;
+ stats.classes[cls]=(stats.classes[cls]??0)+1;
  stats.friends+=state.social.friends.length;
  stats.romance+=state.social.romance?1:0;
  stats.performance+=state.education?.performance??0;
+ stats.readiness+=state.education?.graduationReadiness??0;
  stats.treeNodes+=state.lifeTree.nodes.length;
+ stats.admissions+=state.education?.admissionSucceeded?1:0;
 }
 
 console.log('Life Tree batch simulation');
 console.log('Lives: '+lives+' | To age: '+toAge+' | Policy: '+policy);
 console.log('Invalid states: '+stats.invalid);
+console.log('Household classes:',stats.classes);
 console.log('High school paths:',stats.paths);
 console.log('Age-18 next paths:',stats.next);
+console.log('Admission success: '+(stats.admissions/lives*100).toFixed(1)+'%');
 console.log('Average friends: '+(stats.friends/lives).toFixed(2));
 console.log('Romance rate: '+(stats.romance/lives*100).toFixed(1)+'%');
 console.log('Average school performance: '+(stats.performance/lives).toFixed(1));
+console.log('Average graduation readiness: '+(stats.readiness/lives).toFixed(1));
 console.log('Average Life Tree nodes: '+(stats.treeNodes/lives).toFixed(2));
 if(errors.length){
  console.log('Sample errors:',errors);
