@@ -1,3 +1,4 @@
+import {archiveCareer} from './career_profile.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export function canStartBusiness(state){
@@ -35,6 +36,8 @@ export function startBusiness(state,rng,mode='full-time'){
  };
 
  if(mode==='full-time'&&state.career?.employed){
+  archiveCareer(state,'entrepreneurship');
+  state.career.exitReason='entrepreneurship';
   state.career.employed=false;
   state.player.job='Girişimci';
   state.player.jobId='entrepreneur';
