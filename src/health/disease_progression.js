@@ -50,6 +50,7 @@ export function processDiseaseProgressionYear(state,rng){
  const entries=[];
  const conditions=state.healthProfile?.conditions??[];
  for(const condition of conditions){
+  condition.geneticCourse??=geneticDiseaseModifiers(state,condition.id);
   const p=ensureConditionProgression(condition);
   const beforeStage=p.stage;
   const pressure=biologicalPressure(state,condition)+treatmentModifier(condition)+rng.int(-4,4);
