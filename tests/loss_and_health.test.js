@@ -159,3 +159,44 @@ test('elderly friend loss removes friend from active circle',async()=>{
  assert.ok((g.state.social.deceasedFriends??[]).some(f=>f.id==='friend-test'));
  assert.ok(g.state.lateLife.isolation>=20);
 });
+
+
+test('adult health and fitness lose a small amount to aging every year',()=>{
+ const g=new Game('annual-aging-wear');
+ g.state.player.age=50;
+ g.state.player.health.current=90;
+ g.state.player.health.constitution=80;
+ g.state.finance.lifestyle={food:'healthy'};
+ g.state.healthProfile={conditions:[],stress:20,fitness:80,lastCheckupAge:null};
+ const beforeHealth=g.state.player.health.current;
+ const beforeFitness=g.state.healthProfile.fitness;
+ const rng={int:()=>2,chance:()=>false,fork:()=>({chance:()=>false})};
+ processHealthYear(g.state,rng);
+ assert.ok(g.state.player.health.current<beforeHealth);
+ assert.ok(g.state.healthProfile.fitness<beforeFitness);
+});
+
+test('ordinary mortality cannot kill while vital bars are still healthy',()=>{
+ const g=new Game('reserve-gated-mortality');
+ g.state.player.age=95;
+ g.state.player.health.current=75;
+ g.state.player.health.constitution=60;
+ g.state.healthProfile={conditions:[],stress:40,fitness:65,lastCheckupAge:null};
+ g.state.lateLife={mobility:60,isolation:20,careNeed:false,careMode:null,retirementStyle:null};
+ const rng={int:()=>0,chance:()=>true,fork:()=>({chance:()=>true})};
+ processHealthYear(g.state,rng);
+ assert.equal(g.state.player.alive,true);
+});
+
+test('critically depleted vital reserve can end life through ordinary mortality',()=>{
+ const g=new Game('depleted-reserve-mortality');
+ g.state.player.age=85;
+ g.state.player.health.current=5;
+ g.state.player.health.constitution=40;
+ g.state.healthProfile={conditions:[],stress:70,fitness:12,lastCheckupAge:null};
+ g.state.lateLife={mobility:10,isolation:40,careNeed:true,careMode:null,retirementStyle:null};
+ const rng={int:()=>0,chance:()=>true,fork:()=>({chance:()=>false})};
+ processHealthYear(g.state,rng);
+ assert.equal(g.state.player.alive,false);
+ assert.equal(g.state.death.age,85);
+});
