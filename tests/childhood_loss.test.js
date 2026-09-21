@@ -4,6 +4,7 @@ import {Game} from '../src/core/game.js';
 import {RNG} from '../src/core/rng.js';
 import {processElderFamilyYear} from '../src/family/elder_system.js';
 import {releaseTrustFund} from '../src/finance/trust_fund.js';
+import {ensureGuardianship} from '../src/family/guardianship_system.js';
 
 function forceOldParents(g){
  g.state.player.age=10;
@@ -62,4 +63,17 @@ test('minor inheritance stays locked until adulthood',()=>{
  assert.equal(g.state.trustFund.released,true);
  assert.equal(entries.length,1);
  assert.ok((g.state.finance?.cash??0)>=balance);
+});
+
+
+test('guardianship closes when minor reaches adulthood',()=>{
+ const g=new Game('guardian-adulthood');
+ forceOldParents(g);
+ for(let i=0;i<120&&(g.state.parents.mother.alive||g.state.parents.father.alive);i++){
+  processElderFamilyYear(g.state,new RNG('guardian-adult-'+i));
+ }
+ assert.ok(g.state.guardianship);
+ g.state.player.age=18;
+ ensureGuardianship(g.state);
+ assert.equal(g.state.guardianship.endedAtAge,18);
 });
