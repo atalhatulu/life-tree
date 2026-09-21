@@ -1,3 +1,4 @@
+import {enrollPrimarySchool} from '../education/school_system.js';
 const clamp=v=>Math.max(0,Math.min(100,v));
 export const childhoodEvents=[
  {id:'first-family-hobby',title:'Evde Bir Merak',minAge:5,maxAge:9,once:true,condition:s=>Object.keys(s.player.interests).length>0,weight:()=>4,choices:[
@@ -5,8 +6,8 @@ export const childhoodEvents=[
   {id:'ignore',label:'Başka şeyler keşfet',result:'Kendi ilgilerini aramayı tercih ettin.',effect:s=>{s.player.personality.curiosity=clamp(s.player.personality.curiosity+7);}}
  ]},
  {id:'school-start',title:'Okul Başlıyor',minAge:6,maxAge:7,once:true,condition:s=>!s.education,weight:()=>12,choices:[
-  {id:'embrace',label:'Hevesle başla',result:'Okula hevesli başladın.',effect:s=>{s.education={enrolled:true,performance:clamp(45+s.player.personality.curiosity*0.25+s.household.educationSupport*0.25),motivation:70};}},
-  {id:'reluctant',label:'İsteksiz başla',result:'Okula alışman zaman aldı.',effect:s=>{s.education={enrolled:true,performance:clamp(35+s.player.personality.curiosity*0.18+s.household.educationSupport*0.2),motivation:45};}}
+  {id:'embrace',label:'Hevesle başla',result:s=>`${s.education.schoolName} okuluna hevesli başladın.`,effect:(s,rng)=>enrollPrimarySchool(s,rng,'embrace')},
+  {id:'reluctant',label:'İsteksiz başla',result:s=>`${s.education.schoolName} okuluna alışman zaman aldı.`,effect:(s,rng)=>enrollPrimarySchool(s,rng,'reluctant')}
  ]},
  {id:'parent-study-pressure',title:'Ders Baskısı',minAge:8,maxAge:15,condition:s=>s.education?.enrolled&&s.household.educationSupport>55,weight:s=>1+s.household.educationSupport/60,choices:[
   {id:'study',label:'Daha çok çalış',result:'Derslerine daha fazla zaman ayırdın.',effect:s=>{s.education.performance=clamp(s.education.performance+6);s.player.personality.discipline=clamp(s.player.personality.discipline+2);}},
