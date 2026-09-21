@@ -11,6 +11,7 @@ export function createChild(state,rng,id){
  const inherited=inheritFromParents(rng.fork('genetics'),state.player,partner,sex);
  child.appearance=inherited.appearance;
  child.health.constitution=inherited.health.constitution;
+ child.health.genetics=inherited.health.genetics;
  child.role='child';
  child.relationship=70;
  return child;
