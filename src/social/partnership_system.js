@@ -42,7 +42,7 @@ export function processPartnershipYear(state,rng){
   state.widowedAtAge=wasMarried?state.player.age:null;
   state.nextDatingAge=state.player.age+2;
   state.datingAttempts=Math.max(0,(state.datingAttempts??0)-2);
-  entries.push({age:state.player.age,kind:'relationship',text:r.name+' '+r.surname+' hayatını kaybetti.'});
+  entries.push({age:state.player.age,kind:'relationship',paceBlock:true,text:r.name+' '+r.surname+' hayatını kaybetti.'});
   return entries;
  }
 
