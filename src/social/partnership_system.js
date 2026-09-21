@@ -24,6 +24,12 @@ export function processPartnershipYear(state,rng){
  const delta=Math.round(compatibility*.03)-financeStress+rng.int(-4,4);
  r.relationship=clamp((r.relationship??55)+delta);
 
+ if(r.status!=='married'&&r.yearsTogether>=2&&r.relationship<40&&rng.chance(.18)){
+  entries.push({age:state.player.age,kind:'relationship',text:r.name+' ile ilişkin sona erdi.'});
+  state.social.romance=null;
+  return entries;
+ }
+
  if(r.status==='married'){
   r.marriageYears=(r.marriageYears??0)+1;
   if(r.relationship<25&&rng.chance(.18)){
