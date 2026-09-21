@@ -62,17 +62,24 @@ export function acceptJob(state,jobId){
   moveResult=moveToCity(state,offer.cityId,'job',{housing:'shared',stress:4});
  }
 
+ const prior=state.career;
+ const previousJobs=[...(prior?.previousJobs??[])];
+ if(prior?.title&&!prior.employed){
+  const alreadyArchived=previousJobs.some(job=>job.title===prior.title&&job.years===(prior.years??0));
+  if(!alreadyArchived)previousJobs.push({title:prior.title,years:prior.years??0});
+ }
  state.career={
   employed:true,
   jobId:offer.id,
   title:offer.title,
   monthlyIncome:offer.salary,
   years:0,
-  totalYears:state.career?.totalYears??0,
+  totalYears:prior?.totalYears??0,
   performance:50,
   degreeRelated:Boolean(offer.related),
   cityId:offer.cityId,
-  cityName:offer.cityName
+  cityName:offer.cityName,
+  previousJobs
  };
  state.player.job=offer.title;
  state.player.jobId=offer.id;
