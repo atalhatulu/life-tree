@@ -27,14 +27,14 @@ export function processCareerDynamics(state,rng){
   state.player.monthlyIncome=c.monthlyIncome;
   c.stability=clamp(c.stability+8);
   promotedThisYear=true;
-  entries.push({age:state.player.age,kind:'career',text:'Terfi aldın. Kariyer seviyen '+c.level+' oldu.'});
+  entries.push({age:state.player.age,kind:'career',paceBlock:true,text:'Terfi aldın. Kariyer seviyen '+c.level+' oldu.'});
  }
 
  const macro=economy(state);
  const marketRisk=Math.max(0,(1-macro.laborMarket)*.08);
  const firingChance=Math.min(.22,(c.performance<35?.10:c.stability<30?.06:.008)+marketRisk);
  if(!promotedThisYear&&rng.chance(firingChance)){
-  entries.push({age:state.player.age,kind:'career',text:c.title+' işinden çıkarıldın.'});
+  entries.push({age:state.player.age,kind:'career',paceBlock:true,text:c.title+' işinden çıkarıldın.'});
   c.employed=false;
   state.player.job=null;
   state.player.jobId=null;
