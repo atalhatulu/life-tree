@@ -24,12 +24,18 @@ export function processRomanceYear(state,rng){
  if(state.social.romance===undefined) state.social.romance=null;
  const age=state.player.age;
  const entries=[];
- if(age<14) return entries;
- if(state.social.romance){
-  state.social.romance.age+=1;
-  state.social.romance.relationship=clamp(state.social.romance.relationship+rng.int(-6,5));
-  if(state.social.romance.relationship<25&&rng.chance(.28)&&state.social.romance.status!=='married'){
-   entries.push({age,kind:'relationship',text:state.social.romance.name+' ile ilişkin sona erdi.'});
+ if(age<14||!state.social.romance) return entries;
+
+ const partner=state.social.romance;
+ partner.age+=1;
+
+ // Ergenlikte ilişki daha basit bir modelle akar.
+ // Yetişkinlikte ilişki kalitesi, uyumluluk, finansal baskı ve ölüm
+ // partnership_system tarafından yönetilir.
+ if(age<=18){
+  partner.relationship=clamp(partner.relationship+rng.int(-6,5));
+  if(partner.relationship<25&&rng.chance(.28)){
+   entries.push({age,kind:'relationship',text:partner.name+' ile ilişkin sona erdi.'});
    state.social.romance=null;
   }
  }
