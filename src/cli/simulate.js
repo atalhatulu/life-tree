@@ -17,6 +17,7 @@ const stats={
  performance:0,readiness:0,treeNodes:0,admissions:0,
  university:0,graduates:0,employed:0,degreeRelated:0,unemployed:0,
  retired:0,businesses:0,activeBusinesses:0,inheritance:0,
+ widowed:0,careNeed:0,careModes:{},estatePlans:{},trustFunds:0,familyLosses:0,
  cash:0,debt:0,health:0,conditions:0,deaths:0,ages:0,estate:0
 };
 const errors=[];
@@ -64,6 +65,14 @@ for(let i=0;i<lives;i++){
  stats.retired+=state.retirement?.retired?1:0;
  stats.businesses+=state.business?1:0;
  stats.activeBusinesses+=state.business?.active?1:0;
+ stats.widowed+=state.widowedAtAge!=null?1:0;
+ stats.careNeed+=state.lateLife?.careNeed?1:0;
+ const careMode=state.lateLife?.careMode??'none';
+ stats.careModes[careMode]=(stats.careModes[careMode]??0)+1;
+ const estatePlan=state.estatePlan?.type??'none';
+ stats.estatePlans[estatePlan]=(stats.estatePlans[estatePlan]??0)+1;
+ stats.trustFunds+=state.trustFund?.released?1:0;
+ stats.familyLosses+=[state.parents.mother,state.parents.father,state.grandparents.maternal.grandmother,state.grandparents.maternal.grandfather,state.grandparents.paternal.grandmother,state.grandparents.paternal.grandfather].filter(p=>!p.alive).length;
 
  stats.inheritance+=(state.inheritanceHistory??[]).reduce((sum,x)=>sum+x.amount,0);
  stats.cash+=state.finance?.cash??0;
@@ -91,6 +100,12 @@ console.log('Retired: '+(stats.retired/lives*100).toFixed(1)+'%');
 console.log('Degree-related careers: '+(stats.degreeRelated/lives*100).toFixed(1)+'%');
 console.log('Ever founded business: '+(stats.businesses/lives*100).toFixed(1)+'%');
 console.log('Active business: '+(stats.activeBusinesses/lives*100).toFixed(1)+'%');
+console.log('Widowed at least once: '+(stats.widowed/lives*100).toFixed(1)+'%');
+console.log('Current elder-care need: '+(stats.careNeed/lives*100).toFixed(1)+'%');
+console.log('Care modes:',stats.careModes);
+console.log('Estate plans:',stats.estatePlans);
+console.log('Released childhood trust fund: '+(stats.trustFunds/lives*100).toFixed(1)+'%');
+console.log('Average close-family losses: '+(stats.familyLosses/lives).toFixed(2));
 console.log('Active relationship: '+(stats.romance/lives*100).toFixed(1)+'%');
 console.log('Married: '+(stats.married/lives*100).toFixed(1)+'%');
 console.log('Average children: '+(stats.children/lives).toFixed(2));
