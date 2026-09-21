@@ -52,6 +52,7 @@ export function switchJob(state,job){
   title:job.title,
   monthlyIncome:job.salary,
   years:0,
+  totalYears:old?.totalYears??0,
   performance:50,
   degreeRelated:Boolean(job.related),
   level:1,
