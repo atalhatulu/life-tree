@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Game} from '../src/core/game.js';
 import {RNG} from '../src/core/rng.js';
-import {generateJobOffers} from '../src/career/job_market.js';
+import {generateJobOffers,acceptJob} from '../src/career/job_market.js';
 import {ensureCareerProfile,recordCareerYear,archiveCareer} from '../src/career/career_profile.js';
 
 function employed(game,{jobId,title,income=90000,years=8,satisfaction=55}){
@@ -122,7 +122,8 @@ test('reemployment does not duplicate an already archived exit',()=>{
  const before=ensureCareerProfile(g.state).recentJobs.length;
  const offer=g.state.pendingJobOffers[0];
  assert.ok(offer);
- // mimic accepting a valid offer through the public path
- // imported lazily above through job_market module exports
+ acceptJob(g.state,offer.id);
+ const after=ensureCareerProfile(g.state).recentJobs.length;
  assert.equal(before,1);
+ assert.equal(after,1);
 });
