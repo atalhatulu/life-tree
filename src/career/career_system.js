@@ -1,7 +1,8 @@
 import {generateJobOffers} from './job_market.js';
 import {economy} from '../world/world_state.js';
 import {moveToCity} from '../world/migration_system.js';
-import {archiveCareer} from './career_profile.js';
+import {archiveCareer,yearsInFamily} from './career_profile.js';
+import {metaFor} from './career_taxonomy.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export function deepenCareerState(state){
@@ -68,10 +69,13 @@ export function switchJob(state,job){
  archiveCareer(state,'career-switch');
  let moveResult=null;
  if(job.requiresMove)moveResult=moveToCity(state,job.cityId,'career-switch',{housing:'shared',stress:4});
+ const family=job.family??metaFor(job.id).family;
+ const familyYears=yearsInFamily(state,family);
  state.career={
   employed:true,
   jobId:job.id,
   title:job.title,
+  family,
   monthlyIncome:job.salary,
   years:0,
   totalYears:old?.totalYears??0,
@@ -79,9 +83,11 @@ export function switchJob(state,job){
   degreeRelated:Boolean(job.related),
   cityId:job.cityId??state.location?.cityId,
   cityName:job.cityName??state.location?.cityName,
-  level:1,
+  level:Math.max(1,Math.min(3,1+Math.floor(familyYears/6))),
   satisfaction:55,
   stability:60,
+  enteredAtAge:state.player.age,
+  transitionReason:job.transitionReason??'career-switch',
   previousJobs:[...(old?.previousJobs??[]),old?{title:old.title,years:old.years}:null].filter(Boolean)
  };
  state.player.job=job.title;
