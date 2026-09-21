@@ -35,7 +35,8 @@ export function performPhysicalActivity(state,id,rng){
  state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
  const efficiency=activityEfficiency(state)*ageTrainingFactor(state.player.age);
  const variation=1+rng.int(-1,1)*.08;
- const gain=Math.max(.3,activity.fitnessGain*efficiency*variation);
+ const adaptation=Math.max(.25,1-(state.healthProfile.fitness??50)/115);
+ const gain=Math.max(.25,activity.fitnessGain*efficiency*variation*adaptation);
  state.healthProfile.fitness=clamp(state.healthProfile.fitness+gain);
  state.healthProfile.lastExerciseAge=state.player.age;
  state.healthProfile.exerciseSessions=(state.healthProfile.exerciseSessions??0)+1;
