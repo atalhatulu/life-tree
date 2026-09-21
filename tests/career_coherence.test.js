@@ -127,3 +127,31 @@ test('reemployment does not duplicate an already archived exit',()=>{
  assert.equal(before,1);
  assert.equal(after,1);
 });
+
+
+test('recent unemployment keeps search within coherent careers',()=>{
+ const g=new Game('recent-unemployment');
+ employed(g,{jobId:'developer',title:'Yazılımcı',income:115000,years:8});
+ archiveCareer(g.state,'fired');
+ g.state.career.employed=false;
+ g.state.career.exitReason='fired';
+ g.state.player.job=null;
+ g.state.player.jobId=null;
+ g.state.unemployedSinceAge=g.state.player.age;
+ const offers=generateJobOffers(g.state,new RNG('recent-unemployment-offers'),20,{mode:'reemployment'});
+ assert.ok(offers.length>0);
+ assert.equal(offers.some(x=>['cook','mechanic','cleaner','driver','shopkeeper'].includes(x.id)),false);
+});
+
+test('long unemployment can open fallback entry work',()=>{
+ const g=new Game('long-unemployment');
+ employed(g,{jobId:'developer',title:'Yazılımcı',income:115000,years:8});
+ archiveCareer(g.state,'fired');
+ g.state.career.employed=false;
+ g.state.career.exitReason='fired';
+ g.state.player.job=null;
+ g.state.player.jobId=null;
+ g.state.unemployedSinceAge=g.state.player.age-4;
+ const offers=generateJobOffers(g.state,new RNG('long-unemployment-offers'),20,{mode:'reemployment'});
+ assert.ok(offers.some(x=>['cook','mechanic','cleaner','driver','shopkeeper'].includes(x.id)));
+});
