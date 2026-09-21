@@ -3,6 +3,7 @@ import {generateFamily} from '../family/family_generator.js';
 import {processFamilyYear} from '../family/family_simulation.js';
 import {processElderFamilyYear} from '../family/elder_system.js';
 import {releaseTrustFund} from '../finance/trust_fund.js';
+import {ensureGuardianship} from '../family/guardianship_system.js';
 import {processChildhoodYear} from '../life/childhood_simulation.js';
 import {processAdolescenceYear} from '../life/adolescence_simulation.js';
 import {processSocialYear} from '../social/social_simulation.js';
@@ -43,6 +44,8 @@ export class Game{
    this.state.grandparents.paternal.grandmother,this.state.grandparents.paternal.grandfather
   ];
   for(const person of aging) if(person.alive) person.age+=1;
+
+  ensureGuardianship(this.state);
 
   const yearRng=this.rng.fork('year-'+this.state.year);
   const auto=[
