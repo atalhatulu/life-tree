@@ -181,10 +181,11 @@ export function canConsiderReturnHome(state){
  if(state.hasReturnedHome)return false;
  if(state.player.age<28||state.player.age>70)return false;
  if(state.player.age<(state.nextReturnHomeAge??28))return false;
+ if((state.preferences?.hometownAttachment??50)<58)return false;
  const yearsAway=state.year-(state.location.sinceYear??state.year);
  return yearsAway>=3;
 }
 
-export function deferReturnHome(state,years=5){
+export function deferReturnHome(state,years=8){
  state.nextReturnHomeAge=state.player.age+years;
 }
