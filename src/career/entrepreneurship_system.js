@@ -30,11 +30,12 @@ export function processBusinessYear(state,rng){
  b.years+=1;
  const founderScore=(state.player.personality.ambition??50)*.25+(state.player.personality.discipline??50)*.25+(state.player.personality.sociability??50)*.15;
  const volatility=rng.int(-18,22);
- b.health=clamp(b.health+(founderScore-35)*.12+volatility*.35);
- b.monthlyProfit=Math.max(-45000,Math.round(b.capital*.018*(b.health/55)+rng.int(-18000,24000)));
+ b.health=clamp(b.health+(founderScore-35)*.10+volatility*.42-2);
+ b.monthlyProfit=Math.max(-55000,Math.round(b.capital*.016*(b.health/55)+rng.int(-24000,26000)));
+ if(b.monthlyProfit<0)b.health=clamp(b.health-5);
  if(b.monthlyProfit>35000&&rng.chance(.25))b.employees+=rng.int(1,3);
 
- if(b.monthlyProfit>0)state.finance.cash+=b.monthlyProfit*12;
+ if(b.monthlyProfit>0)state.finance.cash+=Math.round(b.monthlyProfit*12*.80);
  else{
   const loss=Math.abs(b.monthlyProfit*12);
   const used=Math.min(state.finance.cash,loss);
@@ -42,7 +43,8 @@ export function processBusinessYear(state,rng){
   state.finance.debt+=loss-used;
  }
 
- if(b.health<12&&rng.chance(.35)){
+ const closureChance=b.health<15?.55:b.health<28?.20:.01;
+ if(rng.chance(closureChance)){
   b.active=false;
   b.closedAtAge=state.player.age;
   state.nextPath=state.career?.employed?'work':'gap';
