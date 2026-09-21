@@ -25,11 +25,11 @@ function annualAgingWear(age){
  if(age<30)return {health:.05,fitness:.10};
  if(age<45)return {health:.15,fitness:.25};
  if(age<60)return {health:.55,fitness:.65};
- if(age<70)return {health:1.5,fitness:1.6};
- if(age<80)return {health:2.8,fitness:2.9};
- if(age<90)return {health:4.2,fitness:4.3};
- if(age<100)return {health:6.0,fitness:6.2};
- return {health:7.5,fitness:7.7};
+ if(age<70)return {health:2.0,fitness:2.1};
+ if(age<80)return {health:3.5,fitness:3.6};
+ if(age<90)return {health:5.2,fitness:5.3};
+ if(age<100)return {health:6.5,fitness:6.7};
+ return {health:8.0,fitness:8.2};
 }
 
 function conditionBurden(condition){
