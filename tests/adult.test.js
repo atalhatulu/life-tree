@@ -49,7 +49,13 @@ test('300 random adult lives reach age 30 without state violations',()=>{
   autoplay(g,{toAge:30,policy:'random'});
   const errors=validateState(g.state);
   assert.deepEqual(errors,[],g.seedText+' -> '+errors.join('; '));
-  assert.equal(g.state.player.age,30);
+  assert.ok(g.state.player.age<=30);
+  if(!g.state.player.alive){
+   assert.ok(g.state.death);
+   assert.ok(g.state.deathSummary);
+  }else{
+   assert.equal(g.state.player.age,30);
+  }
   if(g.state.career?.employed) employed++;
  }
  assert.ok(employed>=270);
