@@ -33,7 +33,8 @@ export function processCareerDynamics(state,rng){
   state.player.jobId=null;
   state.player.monthlyIncome=0;
   state.nextPath='work';
-  state.pendingJobOffers=generateJobOffers(state,rng.fork('post-firing'));
+  state.unemployedSinceAge=state.player.age;
+  state.pendingJobOffers=null;
   return entries;
  }
 
