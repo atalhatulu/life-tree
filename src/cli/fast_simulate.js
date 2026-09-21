@@ -77,7 +77,7 @@ const report={
  age:{sum:0,min:null,max:null,buckets:{}},
  education:{graduates:0,programs:{}},
  career:{employedAtEnd:0,retired:0,transitions:0,voluntaryUnrelated:0,forcedUnrelated:0,degreeBackedReturns:0,postBusinessDistant:0,sameOccupationReturns:0,finalJobs:{},issues:[]},
- relationships:{marriedAtEnd:0,activeAtEnd:0,everWidowed:0,children:0,childless:0,grandchildren:0},
+ relationships:{marriedAtEnd:0,activeAtEnd:0,everMarried:0,everWidowed:0,children:0,childless:0,marriedChildless:0,grandchildren:0},
  migration:{moves:0,returnHomeLives:0,reasons:{}},
  health:{sumFinalHealth:0,sumConditions:0,conditions:{},deathsByCause:{},lowHealthDeaths:0,highHealthDeaths:0,deathHealthSum:0},
  genetics:{affectedPeople:0,carrierPeople:0,affectedConditions:{},carrierConditions:{},polygenic:{hypertension:0,metabolic:0,cardiac:0}},
@@ -144,10 +144,20 @@ for(let i=0;i<lives;i++){
  const romance=state.social?.romance;
  if(romance)report.relationships.activeAtEnd++;
  if(romance?.status==='married')report.relationships.marriedAtEnd++;
+ const everMarried=Boolean(
+  romance?.status==='married'||
+  (state.social?.exSpouses?.length??0)>0||
+  (state.social?.deceasedPartners??[]).some(p=>p.status==='married')||
+  state.widowedAtAge!=null
+ );
+ if(everMarried)report.relationships.everMarried++;
  if(state.widowedAtAge!=null)report.relationships.everWidowed++;
  const children=state.children?.length??0;
  report.relationships.children+=children;
- if(children===0)report.relationships.childless++;
+ if(children===0){
+  report.relationships.childless++;
+  if(everMarried)report.relationships.marriedChildless++;
+ }
  report.relationships.grandchildren+=state.grandchildren??0;
 
  const moves=state.migrationHistory??[];
@@ -218,9 +228,11 @@ const summary={
  relationships:{
   activeAtEndPct:pct(report.relationships.activeAtEnd,valid),
   marriedAtEndPct:pct(report.relationships.marriedAtEnd,valid),
+  everMarriedPct:pct(report.relationships.everMarried,valid),
   everWidowedPct:pct(report.relationships.everWidowed,valid),
   averageChildren:avg(report.relationships.children,valid),
   childlessPct:pct(report.relationships.childless,valid),
+  childlessAmongEverMarriedPct:pct(report.relationships.marriedChildless,Math.max(1,report.relationships.everMarried)),
   averageGrandchildren:avg(report.relationships.grandchildren,valid)
  },
  migration:{
