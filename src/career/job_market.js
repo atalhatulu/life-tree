@@ -1,3 +1,4 @@
+import {physicalCapacity,workCapacityModifier} from '../health/physical_capacity.js';
 import {JOBS} from '../data/catalog.js';
 import {economy} from '../world/world_state.js';
 import {chooseJobOfferCity,moveToCity,movingCost,relocationHouseholdSize} from '../world/migration_system.js';
@@ -214,7 +215,8 @@ export function progressCareerYear(state,rng){
  if(!c?.employed)return [];
  c.years+=1;
  c.totalYears=(c.totalYears??0)+1;
- const target=Math.min(100,state.player.personality.discipline*.35+state.player.personality.sociability*.15+state.player.health.current*.15+35);
+ const capacity=physicalCapacity(state);
+ const target=Math.min(100,state.player.personality.discipline*.35+state.player.personality.sociability*.15+capacity*.15+35+workCapacityModifier(state));
  c.performance=Math.max(0,Math.min(100,c.performance+(target-c.performance)*.3+rng.int(-4,4)));
  if(c.performance>72&&rng.chance(.22)){
   const raise=Math.round(c.monthlyIncome*rng.int(4,10)/100);
