@@ -43,6 +43,7 @@ export function acceptJob(state,jobId){
   title:offer.title,
   monthlyIncome:offer.salary,
   years:0,
+  totalYears:state.career?.totalYears??0,
   performance:50,
   degreeRelated:Boolean(offer.related)
  };
