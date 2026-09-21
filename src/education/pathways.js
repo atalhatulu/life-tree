@@ -1,3 +1,4 @@
+import {SCHOOL_PREFIXES} from '../data/countries/turkey/education.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 const talentScore=(state)=>{
@@ -27,7 +28,7 @@ export function enterMiddleSchool(state,rng){
  const e=state.education;
  if(!e?.enrolled||e.stage!=='primary') return false;
  e.stage='middle';
- e.schoolName=rng.pick(['Atatürk','Cumhuriyet','Yunus Emre','Mevlana','Şehitler','Güneş'])+' Ortaokulu';
+ e.schoolName=rng.pick(SCHOOL_PREFIXES)+' Ortaokulu';
  e.quality=clamp(e.quality+rng.int(-5,5),25,95);
  e.motivation=clamp(e.motivation+rng.int(-5,4));
  return true;
@@ -43,7 +44,7 @@ export function selectHighSchoolPath(state,rng,pathId){
  state.education.pathLabel=option.label;
  state.education.admissionChance=option.successChance;
  state.education.admissionSucceeded=admitted;
- state.education.schoolName=admitted?rng.pick(['Atatürk','Cumhuriyet','Bilim','Gelecek','Mimar Sinan','Barış'])+' '+suffix:'Yerel Anadolu Lisesi';
+ state.education.schoolName=admitted?rng.pick(SCHOOL_PREFIXES)+' '+suffix:'Yerel Anadolu Lisesi';
  state.education.quality=clamp(state.education.quality+(admitted?rng.int(1,8):rng.int(-8,-1)),25,95);
  state.education.motivation=clamp(state.education.motivation+(admitted?5:-7));
  return {admitted,option};
