@@ -14,6 +14,7 @@ import {processRetirementYear} from '../career/retirement_system.js';
 import {processBusinessYear} from '../career/entrepreneurship_system.js';
 import {finalizeDeath} from './death_summary.js';
 import {processLateLifeYear} from './late_age_system.js';
+import {generatePartnerMoveOpportunity} from '../world/migration_system.js';
 
 export function processAdultYear(state,rng){
  const entries=[];
@@ -25,6 +26,7 @@ export function processAdultYear(state,rng){
  ensureChildren(state);
  ensureHealthProfile(state);
  ensureAdultPreferences(state,rng.fork('preferences'));
+ generatePartnerMoveOpportunity(state,rng.fork('partner-migration'));
 
  if(state.nextPath==='university'&&!state.higherEducation&&!state.pendingUniversityApplications){
   state.pendingUniversityApplications=generateUniversityApplications(state,rng.fork('university-apps-'+age));
