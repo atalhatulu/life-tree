@@ -79,6 +79,13 @@ export function validateState(state){
   if(!Number.isFinite(state.estate.net)||state.estate.net<0)errors.push('invalid estate net');
   if(!Array.isArray(state.estate.heirs))errors.push('invalid estate heirs');
  }
+ if(state.world?.economy){
+  const e=state.world.economy;
+  if(!Number.isFinite(e.laborMarket)||e.laborMarket<.65||e.laborMarket>1.35)errors.push('world labor market out of range');
+  if(!Number.isFinite(e.costOfLiving)||e.costOfLiving<.70||e.costOfLiving>1.35)errors.push('world cost of living out of range');
+  if(!Number.isFinite(e.wageIndex)||e.wageIndex<.75||e.wageIndex>1.30)errors.push('world wage index out of range');
+  if(!Number.isFinite(e.healthcareCost)||e.healthcareCost<.75||e.healthcareCost>1.40)errors.push('world healthcare cost out of range');
+ }
  if(state.assets?.car&&state.finance?.lifestyle?.transport!=='car')errors.push('car asset without car transport lifestyle');
  if(!p.alive&&!state.death)errors.push('dead player missing death record');
  if(!p.alive&&!state.deathSummary)errors.push('dead player missing death summary');
