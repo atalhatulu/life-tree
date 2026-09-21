@@ -80,4 +80,5 @@ export const adolescenceEvents=[
     effect:s=>{s.education.graduationReadiness=graduationReadiness(s);s.nextPath='gap';}
    }
   ]
-};
+ }
+];
