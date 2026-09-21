@@ -10,6 +10,7 @@
     "test:adult": "node --test tests/adult.test.js",
     "play": "node src/cli/play.js",
     "simulate": "node src/cli/simulate.js",
+    "trace": "node src/cli/trace.js",
     "start": "python3 -m http.server 8080"
   }
 }
