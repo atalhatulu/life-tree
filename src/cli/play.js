@@ -55,10 +55,20 @@ for(const node of game.state.lifeTree.nodes){
 }
 if(game.state.deathSummary){
  const d=game.state.deathSummary;
+ const recap=d.recap;
  console.log('\nÖlüm özeti:');
- console.log(d.name+' — '+d.age+' yaş | '+d.birthYear+'-'+d.deathYear);
- console.log('Kariyer: '+d.career+' | Çocuk: '+d.children+' | Torun: '+d.grandchildren+' | Büyük karar: '+d.majorDecisions);
- console.log('Net tereke: ₺'+d.estateNet.toLocaleString('tr-TR'));
+ console.log(d.name+' — '+d.age+' yaş | '+d.birthYear+'-'+d.deathYear+' | Neden: '+d.cause);
+ console.log('Eğitim: '+d.education+' | Kariyer: '+d.career+(d.retired?' | Emekli':''));
+ console.log('Aile: '+d.children+' çocuk • '+d.grandchildren+' torun • '+d.marriages+' evlilik');
+ console.log('Kayıplar: '+d.familyLosses+' yakın aile • '+d.friendLosses+' arkadaş');
+ console.log('Varlıklar: '+(d.homeOwned?'ev sahibi':'ev yok')+' • '+(d.carOwned?'araba sahibi':'araba yok'));
+ console.log('Miras aldığın toplam: ₺'+d.inheritanceReceived.toLocaleString('tr-TR'));
+ console.log('Net tereke: ₺'+d.estateNet.toLocaleString('tr-TR')+' | Plan: '+d.estatePlan);
+ console.log('Life Tree: '+d.majorDecisions+' büyük karar');
+ if(recap?.decisions?.length){
+  console.log('Dönüm noktaları:');
+  for(const node of recap.decisions)console.log('  - '+node.age+' yaş: '+node.title+' → '+node.choice);
+ }
  if(d.heirs?.length)console.log('Mirasçılar: '+d.heirs.map(h=>h.name+' ₺'+h.amount.toLocaleString('tr-TR')).join(' • '));
 }
 await rl.close();
