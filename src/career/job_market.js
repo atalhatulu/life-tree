@@ -1,7 +1,7 @@
 import {JOBS} from '../data/catalog.js';
 import {economy} from '../world/world_state.js';
 import {cityById} from '../data/countries/turkey/cities.js';
-import {chooseJobOfferCity,moveToCity} from '../world/migration_system.js';
+import {chooseJobOfferCity,moveToCity,movingCost,relocationHouseholdSize} from '../world/migration_system.js';
 
 const ENTRY_JOB_IDS=['cleaner','mechanic','cook','shopkeeper','driver','accountant'];
 
@@ -26,10 +26,12 @@ function buildOffer(state,rng,job,careerTags,graduated){
   (related?12:0)+(macro.laborMarket-1)*28+(city.jobs-1)*18
  )));
  const currentCityId=state.location?.cityId??state.origin?.cityId;
+ const requiresMove=city.id!==currentCityId;
+ const moveCost=requiresMove?movingCost(currentCityId,city.id,relocationHouseholdSize(state)):0;
  return {
   ...job,fit,salary,offerChance:chance,related,
   cityId:city.id,cityName:city.name,
-  requiresMove:city.id!==currentCityId,
+  requiresMove,moveCost,
   score:fit+chance*.4+(city.id===currentCityId?5:0)
  };
 }
