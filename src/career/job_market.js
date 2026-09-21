@@ -58,7 +58,9 @@ function qualification(state,job,mode){
  const compatibility=familyCompatibility(currentId,job.id);
  if(job.id===currentId)return {eligible:false,exactDegree:false,reason:'same-job'};
  if(compatibility>=65)return {eligible:true,exactDegree:false,reason:'adjacent-family'};
- if(familyYears>=3)return {eligible:true,exactDegree:false,reason:'experienced-family'};
+ // Prior experience in a distant sector is not enough to make an unrelated
+ // voluntary switch coherent. Returning to an old distant career requires a
+ // dedicated return/retraining path rather than appearing as a normal offer.
  return {eligible:false,exactDegree:false,reason:'retraining-required'};
 }
 
@@ -166,11 +168,8 @@ export function acceptJob(state,jobId){
  if(offer.requiresMove)moveResult=moveToCity(state,offer.cityId,'job',{housing:'shared',stress:4});
 
  const prior=state.career;
- if(prior?.jobId&&!prior.employed){
-  const recent=recentJobRecord(state,prior.jobId);
-  if(!recent||recent.leftAtAge!==state.player.age)archiveCareer(state,prior.exitReason??'reemployment');
- }
-
+ // Career exits are archived at the moment they happen (firing, relocation,
+ // entrepreneurship, career switch). Do not archive again on re-employment.
  const previousJobs=[...(prior?.previousJobs??[])];
  state.career={
   employed:true,
