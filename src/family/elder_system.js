@@ -77,6 +77,7 @@ function markDeath(state,person,relation,rng){
  const entry={
   age:state.player.age,
   kind:'family',
+  paceBlock:true,
   text:relation+' '+person.name+' '+person.surname+' '+person.age+' yaşında hayatını kaybetti.'
  };
  return entry;
