@@ -49,9 +49,10 @@ function bestPhysicalPlan(game,policy,rng){
   const costRatio=(state.finance?.cash??0)>0?activity.cost/Math.max(1,state.finance.cash):1;
   const frugalPenalty=policy==='frugal'?costRatio*8:costRatio*2;
   const intensityFit=Math.max(0,activity.minCapacity-capacity)*.2;
+  const preference=state.player.preferencesProfile?.activities?.[activity.preferenceKey]??0;
   return {
    id:activity.id,
-   utility:need+activity.fitnessGain*.55-frugalPenalty-intensityFit+rng.int(-2,2)*.12
+   utility:need+activity.fitnessGain*.55+preference*.35-frugalPenalty-intensityFit+rng.int(-2,2)*.12
   };
  }).sort((a,b)=>b.utility-a.utility);
  return ranked[0]??null;
