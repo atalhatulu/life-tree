@@ -44,10 +44,42 @@ export function generateFamily(seed){
  const motherAge=root.int(21,39); const fatherAge=Math.max(20,motherAge+root.int(-3,7));
  const mother=makeAdult({rng:root.fork('mother'),sex:'female',surname,id:'mother',age:motherAge});
  const father=makeAdult({rng:root.fork('father'),sex:'male',surname,id:'father',age:fatherAge});
+
+ // Grandparents are founder genomes. Parents inherit from them, then every
+ // younger generation inherits from the already-derived parental genomes.
+ const maternalGrandparents=makeGrandparents(root,mother,'maternal');
+ const paternalGrandparents=makeGrandparents(root,father,'paternal');
+
+ const inheritedMother=inheritFromParents(
+  root.fork('mother-lineage-genetics'),
+  maternalGrandparents.grandmother,
+  maternalGrandparents.grandfather,
+  mother.sex
+ );
+ mother.appearance=inheritedMother.appearance;
+ mother.health.constitution=inheritedMother.health.constitution;
+ mother.health.genetics=inheritedMother.health.genetics;
+
+ const inheritedFather=inheritFromParents(
+  root.fork('father-lineage-genetics'),
+  paternalGrandparents.grandmother,
+  paternalGrandparents.grandfather,
+  father.sex
+ );
+ father.appearance=inheritedFather.appearance;
+ father.health.constitution=inheritedFather.health.constitution;
+ father.health.genetics=inheritedFather.health.genetics;
+
  mother.monthlyIncome=Math.round(mother.monthlyIncome*birthCity.wage);
  father.monthlyIncome=Math.round(father.monthlyIncome*birthCity.wage);
- const sex=root.chance(0.5)?'female':'male'; const child=createPersonBase({id:'player',name:nameFor(root.fork('child-name'),sex),surname,sex,age:0,rng:root.fork('child')});
- const inherited=inheritFromParents(root.fork('genetics'),mother,father,sex); child.appearance=inherited.appearance; child.health.constitution=inherited.health.constitution; child.health.genetics=inherited.health.genetics; child.interests=deriveChildInterests(root.fork('interests'),mother,father);
+
+ const sex=root.chance(0.5)?'female':'male';
+ const child=createPersonBase({id:'player',name:nameFor(root.fork('child-name'),sex),surname,sex,age:0,rng:root.fork('child')});
+ const inherited=inheritFromParents(root.fork('genetics'),mother,father,sex);
+ child.appearance=inherited.appearance;
+ child.health.constitution=inherited.health.constitution;
+ child.health.genetics=inherited.health.genetics;
+ child.interests=deriveChildInterests(root.fork('interests'),mother,father);
  const olderSiblingCount=root.weighted([{value:0,weight:4.5},{value:1,weight:3.4},{value:2,weight:1.5},{value:3,weight:0.6}]);
  const maxOlderAge=Math.max(0,Math.min(14,motherAge-18));
  const siblings=[];
@@ -59,7 +91,7 @@ export function generateFamily(seed){
  for(const s of siblings) child.relationships[s.id]=relationshipSeed(root.fork(`rel-${s.id}`),child,s,66);
  const educationSupport=Math.round((mother.education.level+father.education.level)*8+(mother.personality.discipline+father.personality.discipline)*0.18);
  const hobbySupport=Math.round((Object.keys(mother.interests).length+Object.keys(father.interests).length)*10+(mother.personality.curiosity+father.personality.curiosity)*0.12);
- return {player:child,parents:{mother,father},grandparents:{maternal:makeGrandparents(root,mother,'maternal'),paternal:makeGrandparents(root,father,'paternal')},siblings,
+ return {player:child,parents:{mother,father},grandparents:{maternal:maternalGrandparents,paternal:paternalGrandparents},siblings,
   country:{id:'TR',name:'Türkiye'},
   origin:{countryId:'TR',cityId:birthCity.id,cityName:birthCity.name},
   location:{countryId:'TR',cityId:birthCity.id,cityName:birthCity.name,sinceYear:2026},
