@@ -17,9 +17,9 @@ export function performActivity(state,id,rng){
  let result='';
  if(id==='study'){
   if(!state.education?.enrolled)throw new Error('Henüz okula başlamadın.');
-  state.education.performance=clamp(state.education.performance+rng.int(2,5));
+  state.education.studyEffort=clamp((state.education.studyEffort??0)+rng.int(25,40));
   state.player.personality.discipline=clamp(state.player.personality.discipline+1);
-  result='Ders çalıştın ve okul performansın biraz yükseldi.';
+  result='Ders çalıştın. Bu yılki çalışma düzenin güçlendi.';
  }
  if(id==='exercise'){
   state.player.health.current=clamp(state.player.health.current+rng.int(1,3));
