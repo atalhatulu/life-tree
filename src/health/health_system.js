@@ -114,10 +114,14 @@ export function processHealthYear(state,rng){
  // Truly sudden events (accident, acute catastrophe, etc.) belong to their own
  // event systems and may bypass this gate explicitly.
  if(normalDeathEligible(state)){
-  const mortality=Math.min(.98,Math.max(
-   0,
-   ageMortalityBase(age)+(100-state.player.health.current)*.0015+mortalityBurden*.004
-  ));
+  // Reaching zero health means the body's ordinary reserve is exhausted.
+  // Before zero, death is still probabilistic and depends on age/disease burden.
+  const mortality=state.player.health.current<=0
+   ?1
+   :Math.min(.98,Math.max(
+    0,
+    ageMortalityBase(age)+(100-state.player.health.current)*.0015+mortalityBurden*.004
+   ));
   if(rng.chance(mortality)){
    state.player.alive=false;
    state.death={age,year:state.year,cause:deathCause(state,rng.fork('cause'))};
