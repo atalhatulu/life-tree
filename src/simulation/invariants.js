@@ -1,8 +1,14 @@
+import {TURKEY_CITIES} from '../data/countries/turkey/cities.js';
 function bounded(value,min=0,max=100){return Number.isFinite(value)&&value>=min&&value<=max;}
 
 export function validateState(state){
  const errors=[];
  const p=state.player;
+ const validCityIds=new Set(TURKEY_CITIES.map(city=>city.id));
+ if(state.country?.id==='TR'){
+  if(!validCityIds.has(state.origin?.cityId))errors.push('invalid origin city: '+state.origin?.cityId);
+  if(!validCityIds.has(state.location?.cityId))errors.push('invalid current city: '+state.location?.cityId);
+ }
  const checks=[
   ['health.current',p.health.current],['health.constitution',p.health.constitution],
   ['appearance.attractiveness',p.appearance.attractiveness],['appearance.build',p.appearance.build],
