@@ -31,6 +31,7 @@ console.log('Life Tree trace');
 console.log('Seed: '+seed+' | Policy: '+policy+' | Target: '+toAge);
 console.log('Final: '+game.state.player.name+' '+game.state.player.surname+
  ' | '+game.state.player.age+' yaş | '+(game.state.player.alive?'hayatta':'öldü'));
+console.log('Doğum: '+(game.state.origin?.cityName??'—')+' | Son konum: '+(game.state.location?.cityName??'—'));
 
 const routineKinds=new Set(['activity','finance']);
 const visibleHistory=verbose
@@ -55,6 +56,7 @@ if(game.state.lifeTree.nodes.length){
 
 const recap=game.state.deathSummary?.recap??buildLifeRecap(game.state);
 console.log('\nÖzet:');
+console.log(' Şehir: '+(recap.origin.birthCity??'—')+' -> '+(recap.origin.currentCity??'—'));
 console.log(' Eğitim: '+(recap.education.university??recap.education.highSchoolPath??'—'));
 console.log(' Kariyer geçmişi: '+(recap.work.history.map(x=>x.title).join(' -> ')||'—'));
 console.log(' İlişki geçmişi: '+(recap.relationships.map(x=>x.name+' ['+x.status+']').join(' -> ')||'—'));
