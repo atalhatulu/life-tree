@@ -1,6 +1,7 @@
 import {generateUniversityApplications,progressUniversityYear} from '../education/university_system.js';
 import {generateJobOffers,progressCareerYear} from '../career/job_market.js';
 import {processCareerDynamics} from '../career/career_system.js';
+import {recordCareerYear} from '../career/career_profile.js';
 import {ensurePersonalFinance,processPersonalFinanceYear} from '../finance/personal_finance.js';
 import {ensureAssets} from '../assets/asset_system.js';
 import {lifestyleEffects} from '../lifestyle/lifestyle_system.js';
@@ -32,7 +33,7 @@ export function processAdultYear(state,rng){
   state.pendingUniversityApplications=generateUniversityApplications(state,rng.fork('university-apps-'+age));
  }
  if(state.nextPath==='work'&&!state.career?.employed&&!state.pendingJobOffers){
-  state.pendingJobOffers=generateJobOffers(state,rng.fork('job-offers-'+age));
+  state.pendingJobOffers=generateJobOffers(state,rng.fork('job-offers-'+age),3,{mode:(state.careerProfile?.totalExperience??0)>0?'reemployment':'entry'});
  }
  if(state.nextPath==='gap'&&!state.pendingUniversityApplications&&!state.pendingJobOffers){
   state.gapYears=(state.gapYears??0)+1;
@@ -40,6 +41,7 @@ export function processAdultYear(state,rng){
 
  entries.push(...progressUniversityYear(state,rng.fork('university-progress')));
  entries.push(...progressCareerYear(state,rng.fork('career-progress')));
+ recordCareerYear(state);
  entries.push(...processCareerDynamics(state,rng.fork('career-dynamics')));
  entries.push(...processPartnershipYear(state,rng.fork('partnership')));
  entries.push(...processChildrenYear(state,rng.fork('children')));
