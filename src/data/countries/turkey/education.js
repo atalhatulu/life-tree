@@ -3,12 +3,24 @@ export const SCHOOL_PREFIXES=[
  'Şehit Öğretmenler','Gazi','Fatih','Hacı Bektaş Veli','Namık Kemal','Halide Edip Adıvar'
 ];
 
-export const UNIVERSITY_NAMES=[
- 'Anadolu Üniversitesi','Ankara Üniversitesi','Bursa Uludağ Üniversitesi',
- 'Dokuz Eylül Üniversitesi','Ege Üniversitesi','Gazi Üniversitesi',
- 'İstanbul Üniversitesi','Marmara Üniversitesi','Yıldız Teknik Üniversitesi',
- 'Akdeniz Üniversitesi','Çukurova Üniversitesi','Selçuk Üniversitesi'
+export const UNIVERSITIES=[
+ {id:'istanbul-university',name:'İstanbul Üniversitesi',cityId:'istanbul'},
+ {id:'marmara',name:'Marmara Üniversitesi',cityId:'istanbul'},
+ {id:'yildiz',name:'Yıldız Teknik Üniversitesi',cityId:'istanbul'},
+ {id:'ankara-university',name:'Ankara Üniversitesi',cityId:'ankara'},
+ {id:'gazi',name:'Gazi Üniversitesi',cityId:'ankara'},
+ {id:'ege',name:'Ege Üniversitesi',cityId:'izmir'},
+ {id:'dokuz-eylul',name:'Dokuz Eylül Üniversitesi',cityId:'izmir'},
+ {id:'uludag',name:'Bursa Uludağ Üniversitesi',cityId:'bursa'},
+ {id:'anadolu',name:'Anadolu Üniversitesi',cityId:'eskisehir'},
+ {id:'akdeniz',name:'Akdeniz Üniversitesi',cityId:'antalya'},
+ {id:'cukurova',name:'Çukurova Üniversitesi',cityId:'adana'},
+ {id:'selcuk',name:'Selçuk Üniversitesi',cityId:'konya'},
+ {id:'gaziantep',name:'Gaziantep Üniversitesi',cityId:'gaziantep'},
+ {id:'ondokuz-mayis',name:'Ondokuz Mayıs Üniversitesi',cityId:'samsun'}
 ];
+
+export const UNIVERSITY_NAMES=UNIVERSITIES.map(x=>x.name);
 
 export const UNIVERSITY_PROGRAMS=[
  {id:'engineering',title:'Mühendislik',minReadiness:58,duration:4,interests:['teknoloji','matematik'],careerTags:['engineer','developer']},
