@@ -1,6 +1,7 @@
 import {UNIVERSITY_PROGRAMS} from '../data/university_programs.js';
 import {UNIVERSITIES} from '../data/countries/turkey/education.js';
-import {cityById,TURKEY_CITIES} from '../data/countries/turkey/cities.js';
+import {cityById} from '../data/countries/turkey/cities.js';
+import {moveToCity} from '../world/migration_system.js';
 
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
@@ -65,7 +66,8 @@ export function applyUniversityProgram(state,rng,programId){
    performance:clamp(Math.round((state.education.performance??50)*.55+state.player.personality.discipline*.25+state.player.personality.curiosity*.20)),
    completed:false
   };
-  state.location={countryId:'TR',cityId:offer.cityId,cityName:offer.cityName,sinceYear:state.year,reason:moved?'university':'education'};
+  if(moved)moveToCity(state,offer.cityId,'university',{housing:'shared',stress:2,costMultiplier:.55});
+  else state.location={...state.location,reason:'education'};
   state.nextPath='university';
  }else{
   state.nextPath='gap';
