@@ -1,5 +1,5 @@
 import {HOBBY_ACTIVITIES,hobbyById} from './hobby_catalog.js';
-import {activityEfficiency} from '../health/physical_capacity.js';
+import {applyFitnessTraining} from '../health/physical_activity_system.js';
 import {growTrait} from '../character/personality_dynamics.js';
 import {economy} from '../world/world_state.js';
 
@@ -32,11 +32,7 @@ export function performHobby(state,id,rng){
  state.healthProfile.stress=clamp(state.healthProfile.stress-hobby.stressRelief);
 
  if(hobby.physicalGain){
-  const adaptation=Math.max(.20,1-(state.healthProfile.fitness??50)/120);
-  const gain=hobby.physicalGain*activityEfficiency(state)*adaptation;
-  state.healthProfile.fitness=clamp(state.healthProfile.fitness+gain);
-  state.healthProfile.lastExerciseAge=state.player.age;
-  state.healthProfile.exerciseSessions=(state.healthProfile.exerciseSessions??0)+1;
+  applyFitnessTraining(state,hobby.physicalGain);
  }
  if(hobby.curiosityGain){
   state.player.personality.curiosity=growTrait(state.player.personality.curiosity,hobby.curiosityGain);
