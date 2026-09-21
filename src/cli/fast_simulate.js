@@ -42,8 +42,13 @@ function transitionAudit(state){
 
   // A salaried job followed by full-time entrepreneurship is not a direct
   // profession-to-profession jump even if the next salaried job is distant.
+  const degreeTags=state.higherEducation?.completed?(state.higherEducation.careerTags??[]):[];
+  const degreeBacked=degreeTags.includes(to.jobId);
+
   if(from.reason==='entrepreneurship'){
    issues.push({type:'post-business-distant-reentry',from:from.title,to:to.title});
+  }else if(from.reason==='career-switch'&&degreeBacked){
+   issues.push({type:'degree-backed-return',from:from.title,to:to.title});
   }else if(from.reason==='career-switch'){
    issues.push({type:'voluntary-unrelated-switch',from:from.title,to:to.title});
   }else{
@@ -71,7 +76,7 @@ const report={
  valid:0,invalid:0,deaths:0,
  age:{sum:0,min:null,max:null,buckets:{}},
  education:{graduates:0,programs:{}},
- career:{employedAtEnd:0,retired:0,transitions:0,voluntaryUnrelated:0,forcedUnrelated:0,postBusinessDistant:0,sameOccupationReturns:0,finalJobs:{},issues:[]},
+ career:{employedAtEnd:0,retired:0,transitions:0,voluntaryUnrelated:0,forcedUnrelated:0,degreeBackedReturns:0,postBusinessDistant:0,sameOccupationReturns:0,finalJobs:{},issues:[]},
  relationships:{marriedAtEnd:0,activeAtEnd:0,everWidowed:0,children:0,childless:0,grandchildren:0},
  migration:{moves:0,returnHomeLives:0,reasons:{}},
  health:{sumFinalHealth:0,sumConditions:0,conditions:{},deathsByCause:{},lowHealthDeaths:0,highHealthDeaths:0,deathHealthSum:0},
@@ -129,6 +134,7 @@ for(let i=0;i<lives;i++){
  for(const issue of careerIssues){
   if(issue.type==='voluntary-unrelated-switch')report.career.voluntaryUnrelated++;
   if(issue.type==='forced-unrelated-reemployment')report.career.forcedUnrelated++;
+  if(issue.type==='degree-backed-return')report.career.degreeBackedReturns++;
   if(issue.type==='post-business-distant-reentry')report.career.postBusinessDistant++;
   if(issue.type==='same-occupation-return')report.career.sameOccupationReturns++;
   if(report.samples.careerIssues.length<16)report.samples.careerIssues.push({seed:game.seedText,...issue});
@@ -204,6 +210,7 @@ const summary={
   averageTransitions:avg(report.career.transitions,valid),
   voluntaryUnrelatedSwitchCount:report.career.voluntaryUnrelated,
   forcedUnrelatedReemploymentCount:report.career.forcedUnrelated,
+  degreeBackedReturnCount:report.career.degreeBackedReturns,
   postBusinessDistantReentryCount:report.career.postBusinessDistant,
   sameOccupationReturnCount:report.career.sameOccupationReturns,
   finalJobs:report.career.finalJobs
