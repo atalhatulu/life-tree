@@ -1,6 +1,6 @@
 {
   "name": "life-tree",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,6 +10,7 @@
     "test:adult": "node --test tests/adult.test.js",
     "play": "node src/cli/play.js",
     "simulate": "node src/cli/simulate.js",
+    "fast-sim": "node src/cli/fast_simulate.js",
     "trace": "node src/cli/trace.js",
     "branch": "node src/cli/branch.js",
     "showcase": "node src/cli/showcase.js",

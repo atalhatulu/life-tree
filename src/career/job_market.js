@@ -43,13 +43,23 @@ function qualification(state,job,mode){
 
  if(mode==='reemployment'){
   const core=dominantCareerFamily(state);
-  const compatible=core?meta.family===core||familyCompatibility(
-   ensureCareerProfile(state).recentJobs[0]?.jobId,job.id
-  )>=65:false;
+  const recentJobId=ensureCareerProfile(state).recentJobs[0]?.jobId;
+  const compatible=core?meta.family===core||familyCompatibility(recentJobId,job.id)>=65:false;
+  const unemployedYears=Math.max(0,state.player.age-(state.unemployedSinceAge??state.player.age));
+  const fallbackAllowed=unemployedYears>=3;
+
   return {
-   eligible:jobYears>0||familyYears>=2||compatible||meta.entry,
+   eligible:jobYears>0||familyYears>=2||compatible||(fallbackAllowed&&meta.entry),
    exactDegree:false,
-   reason:jobYears>0?'prior-job':familyYears>=2?'family-experience':compatible?'adjacent-family':'fallback-entry'
+   reason:jobYears>0
+    ?'prior-job'
+    :familyYears>=2
+      ?'family-experience'
+      :compatible
+        ?'adjacent-family'
+        :fallbackAllowed
+          ?'long-unemployment-fallback'
+          :'career-mismatch'
   };
  }
 
@@ -58,7 +68,9 @@ function qualification(state,job,mode){
  const compatibility=familyCompatibility(currentId,job.id);
  if(job.id===currentId)return {eligible:false,exactDegree:false,reason:'same-job'};
  if(compatibility>=65)return {eligible:true,exactDegree:false,reason:'adjacent-family'};
- if(familyYears>=3)return {eligible:true,exactDegree:false,reason:'experienced-family'};
+ // Prior experience in a distant sector is not enough to make an unrelated
+ // voluntary switch coherent. Returning to an old distant career requires a
+ // dedicated return/retraining path rather than appearing as a normal offer.
  return {eligible:false,exactDegree:false,reason:'retraining-required'};
 }
 
@@ -166,11 +178,8 @@ export function acceptJob(state,jobId){
  if(offer.requiresMove)moveResult=moveToCity(state,offer.cityId,'job',{housing:'shared',stress:4});
 
  const prior=state.career;
- if(prior?.jobId&&!prior.employed){
-  const recent=recentJobRecord(state,prior.jobId);
-  if(!recent||recent.leftAtAge!==state.player.age)archiveCareer(state,prior.exitReason??'reemployment');
- }
-
+ // Career exits are archived at the moment they happen (firing, relocation,
+ // entrepreneurship, career switch). Do not archive again on re-employment.
  const previousJobs=[...(prior?.previousJobs??[])];
  state.career={
   employed:true,
@@ -196,6 +205,7 @@ export function acceptJob(state,jobId){
  state.player.monthlyIncome=offer.salary;
  state.nextPath='work';
  state.pendingJobOffers=null;
+ state.unemployedSinceAge=null;
  return {...offer,moveResult};
 }
 

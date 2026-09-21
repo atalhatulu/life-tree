@@ -2,7 +2,7 @@
 
 Seeded, modular, state-driven life simulation written in JavaScript.
 
-## Current milestone: v0.11 — Genetic Inheritance Core
+## Current milestone: v0.12 — Fast Simulation Audit
 
 The simulation supports a complete life arc from birth into advanced age and death.
 
@@ -43,6 +43,29 @@ Adult life is now centrally paced rather than allowing every eligible system to 
 - forced consequences can still follow naturally, such as finding a new job after returning home
 
 Türkiye 2026 remains the default balancing world. City is now a persistent life-state rather than cosmetic text.
+
+### Fast simulation audit
+
+A dedicated high-speed audit runner now executes the real deterministic life engine in batch and reports systemic quality metrics.
+
+Run:
+
+`npm run fast-sim -- --lives 100 --to-age 100 --policy random`
+
+It reports:
+
+- invalid-state rate and throughput
+- age/death distribution
+- education outcomes
+- career transition coherence and causal re-employment categories
+- marriage/parenthood conversion
+- migration frequency and reasons
+- health-at-death and condition incidence
+- inherited carrier/affected genetic states
+- pacing density
+- finance/asset aggregates
+
+The 100-life audit is also part of CI so large changes can be checked against systemic regressions before the longer 300-life batch.
 
 ### Multigenerational genetics
 
