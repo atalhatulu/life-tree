@@ -8,6 +8,12 @@ import {processPartnershipYear} from '../social/partnership_system.js';
 import {processChildrenYear,ensureChildren} from '../family/parenting_system.js';
 import {processHealthYear,ensureHealthProfile} from '../health/health_system.js';
 import {ensureAdultPreferences} from './adult_preferences.js';
+import {processElderFamilyYear} from '../family/elder_system.js';
+import {processDescendantLives} from '../family/descendant_life_system.js';
+import {processInheritance} from '../finance/inheritance_system.js';
+import {processRetirementYear} from '../career/retirement_system.js';
+import {processBusinessYear} from '../career/entrepreneurship_system.js';
+import {finalizeDeath} from './death_summary.js';
 
 export function processAdultYear(state,rng){
  const entries=[];
@@ -35,6 +41,11 @@ export function processAdultYear(state,rng){
  entries.push(...processCareerDynamics(state,rng.fork('career-dynamics')));
  entries.push(...processPartnershipYear(state,rng.fork('partnership')));
  entries.push(...processChildrenYear(state,rng.fork('children')));
+ entries.push(...processDescendantLives(state,rng.fork('descendants')));
+ entries.push(...processElderFamilyYear(state,rng.fork('elders')));
+ entries.push(...processInheritance(state));
+ entries.push(...processRetirementYear(state));
+ entries.push(...processBusinessYear(state,rng.fork('business')));
 
  const effects=lifestyleEffects(state);
  state.healthProfile.stress=Math.max(0,Math.min(100,(state.healthProfile.stress??20)+effects.stress));
@@ -46,5 +57,6 @@ export function processAdultYear(state,rng){
  }
 
  entries.push(...processHealthYear(state,rng.fork('health')));
+ if(!state.player.alive)finalizeDeath(state);
  return entries;
 }
