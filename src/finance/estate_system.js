@@ -54,7 +54,7 @@ function distribute(state,net){
 
 export function settleEstate(state){
  if(state.estate)return state.estate;
- const gross=Math.round((state.finance?.cash??0)+assetValue(state));
+ const gross=Math.round((state.finance?.cash??0)+(state.finance?.savings??0)+assetValue(state));
  const debt=Math.round(state.finance?.debt??0);
  const net=Math.max(0,gross-debt);
  const heirs=distribute(state,net);
