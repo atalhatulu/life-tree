@@ -57,6 +57,20 @@ function bestPhysicalPlan(game,policy,rng){
  return ranked[0]??null;
 }
 
+function bestHobbyPlan(game,policy,rng){
+ const options=game.availableHobbies();
+ if(!options.length)return null;
+ const stress=game.state.healthProfile?.stress??20;
+ const ranked=options.map(hobby=>{
+  const interest=game.state.player.interests?.[hobby.interest]??0;
+  const costRatio=(game.state.finance?.cash??0)>0?hobby.cost/Math.max(1,game.state.finance.cash):1;
+  const frugalPenalty=policy==='frugal'?costRatio*8:costRatio*2;
+  const utility=1.5+interest*.025+Math.max(0,stress-35)*.03-frugalPenalty+rng.int(-2,2)*.15;
+  return {id:hobby.id,utility};
+ }).sort((a,b)=>b.utility-a.utility);
+ return ranked[0]??null;
+}
+
 function genericCandidates(game,policy,rng){
  const state=game.state;
  const ids=new Set(game.availableActivities().map(a=>a.id));
@@ -70,7 +84,6 @@ function genericCandidates(game,policy,rng){
  if(ids.has('work-hard'))add('work-hard',policyBias(policy,'career')*1.6+(state.career?.performance<65?1:0));
  if(ids.has('budget'))add('budget',policyBias(policy,'finance')*1.4+Math.min(4,(state.finance?.debt??0)/1000000));
  if(ids.has('checkup'))add('checkup',policyBias(policy,'health')*1.2+Math.min(4,yearsSinceCheck*.6)+(state.healthProfile?.conditions?.length??0));
- if(ids.has('hobby'))add('hobby',policyBias(policy,'hobby')*1.3+Math.max(0,50-(state.healthProfile?.stress??20))*.005);
  return out;
 }
 
@@ -82,6 +95,13 @@ export function proceduralActionPlan(game,policy,rng){
   type:'physical',
   id:physical.id,
   utility:physical.utility+policyBias(policy,'physical')*1.8
+ });
+
+ const hobby=bestHobbyPlan(game,policy,rng.fork('hobby'));
+ if(hobby)candidates.push({
+  type:'hobby',
+  id:hobby.id,
+  utility:hobby.utility+policyBias(policy,'hobby')*1.4
  });
 
  const social=bestSocialPlan(game,policy,rng.fork('social'));
@@ -104,6 +124,7 @@ export function performProceduralYearActions(game,policy,rng){
    .filter(candidate=>{
     if(candidate.type==='social'&&usedTypes.has('social')&&policy!=='social')return false;
     if(candidate.type==='physical'&&usedTypes.has('physical'))return false;
+    if(candidate.type==='hobby'&&usedTypes.has('hobby'))return false;
     if(candidate.type==='generic'&&usedTypes.has('generic:'+candidate.id))return false;
     return true;
    });
@@ -114,6 +135,7 @@ export function performProceduralYearActions(game,policy,rng){
    let result;
    if(selected.type==='social')result=game.performSocialActivity(selected.targetId,selected.id);
    else if(selected.type==='physical')result=game.performPhysicalActivity(selected.id);
+   else if(selected.type==='hobby')result=game.performHobby(selected.id);
    else result=game.performActivity(selected.id);
    results.push({selected,result});
    usedTypes.add(selected.type==='generic'?'generic:'+selected.id:selected.type);
