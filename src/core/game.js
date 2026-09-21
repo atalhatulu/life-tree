@@ -50,6 +50,7 @@ export class Game{
    ...processAdultYear(this.state,yearRng.fork('adult'))
   ];
   this.state.history.push(...auto);
+  if(!this.state.player.alive)return null;
   return this.events.choose(this.state,yearRng.fork('event'));
  }
 
