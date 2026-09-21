@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Game} from '../src/core/game.js';
 import {processRelationshipMaintenanceYear} from '../src/social/relationship_maintenance.js';
+import {knownPreference} from '../src/social/relationship_memory.js';
 import {performSocialActivity} from '../src/social/social_activity_system.js';
 import {performPhysicalActivity} from '../src/health/physical_activity_system.js';
 import {processHealthYear} from '../src/health/health_system.js';
@@ -114,4 +115,13 @@ test('procedural social choice respects affordability and preferences through re
  assert.ok(results.length>0);
  assert.ok(g.state.history.some(x=>['social-activity','physical-activity','hobby','activity'].includes(x.kind)));
  assert.ok(g.state.finance.cash>=0);
+});
+
+
+test('NPC preference becomes known only after sharing that activity',()=>{
+ const g=adult('preference-learning');
+ g.state.parents.mother.preferencesProfile.food.pizza=2;
+ assert.equal(knownPreference(g.state,'mother','food','pizza'),null);
+ performSocialActivity(g.state,'mother','pizza',{int:()=>0});
+ assert.equal(knownPreference(g.state,'mother','food','pizza'),2);
 });
