@@ -11,6 +11,7 @@ import {EventEngine} from '../events/event_engine.js';
 import {childhoodEvents} from '../events/childhood_events.js';
 import {adolescenceEvents} from '../events/adolescence_events.js';
 import {adultEvents} from '../events/adult_events.js';
+import {lateLifeEvents} from '../events/late_life_events.js';
 
 export class Game{
  constructor(seed=String(Date.now())){
@@ -23,7 +24,7 @@ export class Game{
   this.state.lifeTree={nodes:[]};
   this.state.social={friends:[],romance:null};
   this.state.actions={remaining:0,max:3};
-  this.events=new EventEngine([...childhoodEvents,...adolescenceEvents,...adultEvents]);
+  this.events=new EventEngine([...childhoodEvents,...adolescenceEvents,...adultEvents,...lateLifeEvents]);
  }
 
  ageOneYear(){
