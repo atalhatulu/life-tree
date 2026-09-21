@@ -32,6 +32,7 @@ export class Game{
   this.state.social={friends:[],romance:null};
   this.state.actions={remaining:0,max:3};
   this.events=new EventEngine([...childhoodEvents,...adolescenceEvents,...adultEvents,...lateLifeEvents,...parentingEvents,...lateAgeEvents]);
+  this.activeEventId=null;
  }
 
  static fromSave(payloadOrText){
@@ -40,6 +41,7 @@ export class Game{
   game.state=structuredClone(payload.state);
   game.rng.seed=payload.rng.seed>>>0;
   game.rng.state=payload.rng.state>>>0;
+  game.activeEventId=payload.activeEventId??null;
   return game;
  }
 
@@ -76,8 +78,10 @@ export class Game{
    ...processAdultYear(this.state,yearRng.fork('adult'))
   ];
   this.state.history.push(...auto);
-  if(!this.state.player.alive)return null;
-  return this.events.choose(this.state,yearRng.fork('event'));
+  if(!this.state.player.alive){this.activeEventId=null;return null;}
+  const event=this.events.choose(this.state,yearRng.fork('event'));
+  this.activeEventId=event?.id??null;
+  return event;
  }
 
  makeChoice(event,choiceId){
@@ -96,6 +100,7 @@ export class Game{
    resolved.decision.snapshot=snapshot;
    this.state.lifeTree.nodes.push(resolved.decision);
   }
+  this.activeEventId=null;
   return resolved.result;
  }
 
@@ -117,5 +122,6 @@ export class Game{
  }
 
  availableActivities(){return availableActivities(this.state);}
+ pendingEvent(){return this.activeEventId?this.events.events.find(event=>event.id===this.activeEventId)??null:null;}
  eventChoices(event){return this.events.choicesFor(this.state,event);}
 }
