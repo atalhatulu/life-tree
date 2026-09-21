@@ -7,6 +7,8 @@ import {ensureGuardianship} from '../family/guardianship_system.js';
 import {processChildhoodYear} from '../life/childhood_simulation.js';
 import {processAdolescenceYear} from '../life/adolescence_simulation.js';
 import {processSocialYear} from '../social/social_simulation.js';
+import {processRelationshipMaintenanceYear} from '../social/relationship_maintenance.js';
+import {performSocialActivity,availableSocialActivities,socialTargets} from '../social/social_activity_system.js';
 import {processRomanceYear} from '../social/romance_system.js';
 import {processAdultYear} from '../life/adult_simulation.js';
 import {performActivity,availableActivities} from '../life/activity_system.js';
@@ -79,6 +81,7 @@ export class Game{
    ...processChildhoodYear(this.state,yearRng.fork('childhood')),
    ...processGeneticHealthYear(this.state,yearRng.fork('genetic-health')),
    ...processDiseaseProgressionYear(this.state,yearRng.fork('disease-progression')),
+   ...processRelationshipMaintenanceYear(this.state),
    ...processSocialYear(this.state,yearRng.fork('social')),
    ...processAdolescenceYear(this.state,yearRng.fork('adolescence')),
    ...processRomanceYear(this.state,yearRng.fork('romance')),
@@ -128,6 +131,14 @@ export class Game{
   return result;
  }
 
+ performSocialActivity(targetId,activityId){
+  const used=this.state.actions.max-this.state.actions.remaining;
+  const result=performSocialActivity(this.state,targetId,activityId,this.rng.fork('social-activity-'+this.state.year+'-'+used+'-'+targetId+'-'+activityId));
+  this.state.history.push({age:this.state.player.age,kind:'social-activity',targetId,activityId,result});
+  return result;
+ }
+ socialTargets(){return socialTargets(this.state);}
+ availableSocialActivities(targetId){return availableSocialActivities(this.state,targetId);}
  availableActivities(){return availableActivities(this.state);}
  pendingEvent(){return this.activeEventId?this.events.events.find(event=>event.id===this.activeEventId)??null:null;}
  eventChoices(event){return this.events.choicesFor(this.state,event);}
