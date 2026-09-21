@@ -2,7 +2,7 @@ import {performance} from 'node:perf_hooks';
 import {Game} from '../core/game.js';
 import {autoplay} from '../simulation/autoplay.js';
 import {validateState} from '../simulation/invariants.js';
-import {auditCareerTransitions} from '../career/career_audit.js';
+import {auditCareerTransitions,careerTransitionCount} from '../career/career_audit.js';
 import {geneticSummary} from '../health/genetic_system.js';
 import {physicalCapacity} from '../health/physical_capacity.js';
 
@@ -367,7 +367,7 @@ for(let i=0;i<lives;i++){
  }
  if(state.career?.title)inc(report.career.finalJobs,state.career.title);
  if(state.career?.family)inc(report.career.finalFamilies,state.career.family);
- report.career.transitions.push(Math.max(0,careerSequence(state).length-1));
+ report.career.transitions.push(careerTransitionCount(state));
  report.career.totalExperience.push(state.careerProfile?.totalExperience??state.career?.totalYears??0);
  for(const [jobId,years] of Object.entries(state.careerProfile?.experienceByJob??{}))inc(report.career.jobYears,jobId,years);
  for(const [family,years] of Object.entries(state.careerProfile?.experienceByFamily??{}))inc(report.career.familyYears,family,years);
