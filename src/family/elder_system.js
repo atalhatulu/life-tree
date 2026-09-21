@@ -47,6 +47,8 @@ function updateHouseholdAfterParentDeath(state,person){
  state.household.monthlyIncome=Math.max(0,state.household.monthlyIncome-(person.monthlyIncome??0));
  state.household.people=Math.max(1,(state.household.people??1)-1);
  state.household.economicClass=economicClass(state.household.monthlyIncome,state.household.people);
+ state.household.educationSupport=Math.max(10,Math.round((state.household.educationSupport??50)*.88));
+ state.household.hobbySupport=Math.max(10,Math.round((state.household.hobbySupport??50)*.90));
 }
 
 function routeInheritance(state,person,amount){
