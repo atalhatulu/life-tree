@@ -20,6 +20,11 @@ function ageMortalityBase(age){
  return Math.min(.82,.30+(age-100)*.035);
 }
 
+function conditionBurden(condition){
+ const treatmentFactor=condition.treatmentSuccessful===true?.25:condition.treated===true?.70:1;
+ return condition.severity*treatmentFactor;
+}
+
 function deathCause(state,rng){
  const severe=(state.healthProfile?.conditions??[])
   .filter(c=>c.severity>=2)
@@ -43,10 +48,20 @@ export function processHealthYear(state,rng){
  h.stress=clamp(h.stress+rng.int(-3,3)+(state.finance?.debt>500000?3:0)+(state.career?.satisfaction<35?2:0));
  h.fitness=clamp(h.fitness+rng.int(-2,2)+(lifestyle?.food==='healthy'?2:0)-(age>=40?1:0));
 
+ const activeBurden=h.conditions.reduce((sum,condition)=>sum+conditionBurden(condition),0);
  let delta=(state.player.health.constitution-60)*.02+(h.fitness-50)*.025-(h.stress-40)*.02;
  if(lifestyle?.food==='healthy')delta+=1.5;
  if(lifestyle?.food==='frugal')delta-=1;
- state.player.health.current=clamp(state.player.health.current+delta+rng.int(-2,2)-(age>=45?1:0));
+ delta-=activeBurden*.70;
+
+ // Chronic disease must constrain recovery. Without this ceiling a player with
+ // multiple serious diagnoses can repeatedly heal back to 100 while still
+ // carrying lethal conditions.
+ const healthCeiling=clamp(100-activeBurden*6,20,100);
+ state.player.health.current=Math.min(
+  healthCeiling,
+  clamp(state.player.health.current+delta+rng.int(-2,2)-(age>=45?1:0))
+ );
 
  for(const condition of CONDITIONS){
   if(age<condition.minAge||h.conditions.some(c=>c.id===condition.id)) continue;
@@ -59,8 +74,19 @@ export function processHealthYear(state,rng){
   }
  }
 
- const severe=h.conditions.reduce((s,c)=>s+c.severity*(c.treatmentSuccessful?.45:1),0);
- const mortality=age>=120?1:Math.min(.95,Math.max(0,ageMortalityBase(age)+(100-state.player.health.current)*.00030+severe*.0010));
+ // Mild conditions (severity 1) do not independently create a yearly death
+ // lottery in otherwise healthy young adults. Serious untreated disease still
+ // contributes risk, and successful treatment substantially reduces it.
+ const mortalityBurden=h.conditions.reduce((sum,condition)=>{
+  const serious=Math.max(0,condition.severity-1);
+  if(serious===0)return sum;
+  const treatmentFactor=condition.treatmentSuccessful===true?.30:condition.treated===true?.70:1;
+  return sum+serious*treatmentFactor;
+ },0);
+ const mortality=age>=120?1:Math.min(.95,Math.max(
+  0,
+  ageMortalityBase(age)+(100-state.player.health.current)*.00030+mortalityBurden*.0010
+ ));
  if(rng.chance(mortality)){
   state.player.alive=false;
   state.death={age,year:state.year,cause:deathCause(state,rng.fork('cause'))};
