@@ -1,5 +1,6 @@
 import {TURKEY_CITIES,cityById} from '../data/countries/turkey/cities.js';
 import {ensurePersonalFinance} from '../finance/personal_finance.js';
+import {archiveCareer} from '../career/career_profile.js';
 
 function cloneLocation(location){return location?structuredClone(location):null;}
 
@@ -102,6 +103,8 @@ export function returnHome(state){
  }:null;
 
  if(state.career?.employed){
+  archiveCareer(state,'return-home');
+  state.career.exitReason='return-home';
   state.career.previousJobs??=[];
   state.career.previousJobs.push(previousJob);
   state.career.employed=false;
