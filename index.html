@@ -2,23 +2,101 @@
 <html lang="tr">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Life Tree</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <main>
-    <header>
-      <div><h1>Life Tree</h1><p id="identity"></p><small id="seed"></small></div>
-      <div class="controls"><input id="seedInput" placeholder="Seed (isteğe bağlı)"/><button id="newLife">Yeni Hayat</button><button id="ageUp">+1 Yıl</button></div>
-    </header>
-    <section class="grid">
-      <article><h2>Aile</h2><div id="family"></div></article>
-      <article><h2>Karakter</h2><div id="traits"></div></article>
-      <article class="wide"><h2>Hayat</h2><div id="event"></div></article>
-      <article class="wide"><h2>Geçmiş</h2><ul id="log"></ul></article>
+  <main class="app-shell">
+    <section class="phone-frame" aria-label="Life Tree oyun ekranı">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">LIFE TREE</p>
+          <h1 id="identity">Yeni hayat</h1>
+          <p id="subtitle" class="subtitle"></p>
+        </div>
+        <button id="newLife" class="icon-button" aria-label="Yeni hayat">↻</button>
+      </header>
+
+      <section class="stats" aria-label="Temel durum">
+        <div class="stat">
+          <span>Sağlık</span>
+          <div class="bar"><i id="healthBar"></i></div>
+          <b id="healthValue">0</b>
+        </div>
+        <div class="stat">
+          <span>Mutluluk</span>
+          <div class="bar"><i id="happinessBar"></i></div>
+          <b id="happinessValue">0</b>
+        </div>
+        <div class="stat">
+          <span>Görünüş</span>
+          <div class="bar"><i id="looksBar"></i></div>
+          <b id="looksValue">0</b>
+        </div>
+      </section>
+
+      <section id="screen" class="screen">
+        <div id="lifeScreen" class="screen-panel active">
+          <div id="eventCard" class="event-card hidden"></div>
+
+          <div class="section-head">
+            <h2>Hayat</h2>
+            <span id="seed"></span>
+          </div>
+          <div id="timeline" class="timeline"></div>
+        </div>
+
+        <div id="relationshipsScreen" class="screen-panel">
+          <div class="section-head"><h2>İlişkiler</h2></div>
+          <div id="relationships"></div>
+        </div>
+
+        <div id="activitiesScreen" class="screen-panel">
+          <div class="section-head"><h2>Aktiviteler</h2></div>
+          <div class="empty-state">Aktiviteler Aşama 7'de açılacak.</div>
+        </div>
+
+        <div id="assetsScreen" class="screen-panel">
+          <div class="section-head"><h2>Varlıklar</h2></div>
+          <div id="assets"></div>
+        </div>
+
+        <div id="careerScreen" class="screen-panel">
+          <div class="section-head"><h2>Kariyer</h2></div>
+          <div class="empty-state">Eğitim ve kariyer sistemi sonraki aşamalarda gelecek.</div>
+        </div>
+
+        <div id="treeScreen" class="screen-panel">
+          <div class="section-head"><h2>Life Tree</h2></div>
+          <div class="empty-state">Önemli karar düğümleri burada dallanacak.</div>
+        </div>
+      </section>
+
+      <section class="age-zone">
+        <button id="ageUp" class="age-button">+1 YAŞ</button>
+      </section>
+
+      <nav class="bottom-nav" aria-label="Ana menü">
+        <button class="nav-item active" data-screen="lifeScreen"><span>◉</span><small>Hayat</small></button>
+        <button class="nav-item" data-screen="relationshipsScreen"><span>♡</span><small>İlişkiler</small></button>
+        <button class="nav-item" data-screen="activitiesScreen"><span>＋</span><small>Aktivite</small></button>
+        <button class="nav-item" data-screen="assetsScreen"><span>⌂</span><small>Varlıklar</small></button>
+        <button class="nav-item" data-screen="careerScreen"><span>▣</span><small>Kariyer</small></button>
+        <button class="nav-item" data-screen="treeScreen"><span>⑂</span><small>Life Tree</small></button>
+      </nav>
     </section>
+
+    <aside class="dev-panel">
+      <label for="seedInput">Seed</label>
+      <div class="seed-row">
+        <input id="seedInput" placeholder="isteğe bağlı seed" />
+        <button id="applySeed">Başlat</button>
+      </div>
+      <p>Bu panel sadece geliştirme sırasında var.</p>
+    </aside>
   </main>
+
   <script type="module" src="./src/ui/app.js"></script>
 </body>
 </html>
