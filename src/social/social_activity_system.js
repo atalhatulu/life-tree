@@ -85,7 +85,12 @@ export function performSocialActivity(state,targetId,activityId,rng){
  const raw=scored.expectedDelta+uncertainty;
  const delta=Math.round(Math.max(-6,Math.min(8,raw)));
  const relationship=setRelationshipValue(state,scored.target,scored.current+delta);
- recordRelationshipInteraction(state,targetId,{activityId,delta});
+ recordRelationshipInteraction(state,targetId,{
+  activityId,delta,
+  preferenceKind:scored.activity.preferenceKind,
+  preferenceKey:scored.activity.preferenceKey,
+  preference:scored.preference
+ });
 
  state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
  state.healthProfile.stress=Math.max(0,state.healthProfile.stress-scored.activity.stressRelief);
