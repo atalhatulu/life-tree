@@ -1,6 +1,6 @@
 import {familyCompatibility} from './career_taxonomy.js';
 
-function careerSequence(state){
+export function careerSequence(state){
  const archived=[...(state.careerProfile?.recentJobs??[])].reverse().map(x=>({
   jobId:x.jobId,title:x.title,reason:x.reason,leftAtAge:x.leftAtAge,
   enteredAtAge:null,transitionReason:null
@@ -60,3 +60,5 @@ export function auditCareerTransitions(state){
  }
  return issues;
 }
+
+export function careerTransitionCount(state){return Math.max(0,careerSequence(state).length-1);}
