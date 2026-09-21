@@ -26,10 +26,10 @@ function annualAgingWear(age){
  if(age<45)return {health:.15,fitness:.25};
  if(age<60)return {health:.45,fitness:.55};
  if(age<70)return {health:1.0,fitness:1.1};
- if(age<80)return {health:1.7,fitness:1.8};
- if(age<90)return {health:2.7,fitness:2.8};
- if(age<100)return {health:4.0,fitness:4.2};
- return {health:5.0,fitness:5.2};
+ if(age<80)return {health:2.2,fitness:2.3};
+ if(age<90)return {health:3.5,fitness:3.6};
+ if(age<100)return {health:5.0,fitness:5.2};
+ return {health:6.5,fitness:6.7};
 }
 
 function conditionBurden(condition){
