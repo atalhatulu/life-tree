@@ -1,6 +1,6 @@
+import {SCHOOL_PREFIXES} from '../data/countries/turkey/education.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
-const SCHOOL_PREFIXES=['Atatürk','Cumhuriyet','Mevlana','Yunus Emre','Barış','Güneş','Yenişehir','Şehitler'];
 
 function schoolQualityFromHousehold(state,rng){
  const classBase={düşük:42,orta:56,'üst-orta':68,yüksek:78}[state.household.economicClass]??52;
@@ -29,6 +29,8 @@ export function enrollPrimarySchool(state,rng,attitude='neutral'){
   enrolled:true,
   stage:'primary',
   schoolName:`${rng.pick(SCHOOL_PREFIXES)} İlkokulu`,
+  cityId:state.location?.cityId??state.origin?.cityId,
+  cityName:state.location?.cityName??state.origin?.cityName,
   quality,
   aptitude,
   performance,
