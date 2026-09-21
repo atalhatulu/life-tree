@@ -72,6 +72,7 @@ test('untreated chronic disease creates persistent health burden and recovery ce
  g.state.player.age=40;
  g.state.player.health.current=100;
  g.state.player.health.constitution=70;
+ ensurePersonalFinance(g.state);
  g.state.finance.lifestyle={food:'healthy'};
  g.state.healthProfile={
   conditions:[{id:'metabolic',label:'Metabolik sorun',severity:2,diagnosedAtAge:35}],
