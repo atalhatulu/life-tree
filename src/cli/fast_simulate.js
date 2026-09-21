@@ -194,7 +194,8 @@ const report={
  },
 
  finance:{
-  cash:[],debt:[],netWorth:[],wealthBuckets:{},
+  cash:[],savings:[],liquidReserves:[],debt:[],netWorth:[],wealthBuckets:{},
+  distressYears:[],distressEvents:[],restructured:0,discretionaryAnnual:[],
   monthlyIncome:[],monthlyExpenses:[],tax:[],familySupport:[],partnerContribution:[],
   childCosts:[],homeOwners:0,carOwners:0,homePurchaseAges:[],carPurchaseAges:[],
   homePrices:[],carPrices:[],estateNet:[],inheritanceReceived:[]
@@ -232,7 +233,7 @@ function recordSnapshot(state){
  if(age<10||age%5!==0)return;
  const key=String(age);
  const bucket=report.longitudinal.byAge[key]??={
-  n:0,alive:0,health:0,capacity:0,stress:0,fitness:0,cash:0,debt:0,income:0,
+  n:0,alive:0,health:0,capacity:0,stress:0,fitness:0,cash:0,savings:0,debt:0,income:0,
   employed:0,retired:0,married:0,children:0,conditions:0,friends:0,moves:0
  };
  bucket.n++;
@@ -242,6 +243,7 @@ function recordSnapshot(state){
  bucket.stress+=state.healthProfile?.stress??0;
  bucket.fitness+=state.healthProfile?.fitness??0;
  bucket.cash+=state.finance?.cash??0;
+ bucket.savings+=state.finance?.savings??0;
  bucket.debt+=state.finance?.debt??0;
  bucket.income+=state.finance?.monthlyIncome??state.player.monthlyIncome??0;
  bucket.employed+=state.career?.employed?1:0;
@@ -506,12 +508,19 @@ for(let i=0;i<lives;i++){
 
  // Finance / assets / estate
  const cash=state.finance?.cash??0;
+ const savings=state.finance?.savings??0;
  const debt=state.finance?.debt??0;
  const homeValue=state.assets?.home?.price??0;
  const carValue=state.assets?.car?.price??0;
- const netWorth=cash+homeValue+carValue-debt;
+ const netWorth=cash+savings+homeValue+carValue-debt;
  report.finance.cash.push(cash);
+ report.finance.savings.push(savings);
+ report.finance.liquidReserves.push(cash+savings);
  report.finance.debt.push(debt);
+ report.finance.distressYears.push(state.finance?.financialDistressYears??0);
+ report.finance.distressEvents.push(state.finance?.financialDistressEvents??0);
+ if(state.finance?.debtRestructured)report.finance.restructured++;
+ report.finance.discretionaryAnnual.push(state.finance?.discretionaryAnnual??0);
  report.finance.netWorth.push(netWorth);
  inc(report.finance.wealthBuckets,wealthBucket(netWorth));
  report.finance.monthlyIncome.push(state.finance?.monthlyIncome??state.player.monthlyIncome??0);
@@ -533,8 +542,8 @@ for(let i=0;i<lives;i++){
  if(state.estate?.net!=null)report.finance.estateNet.push(state.estate.net);
  report.finance.inheritanceReceived.push((state.inheritanceHistory??[]).reduce((s,x)=>s+(x.amount??0),0));
 
- if(debt>5000000&&report.samples.extremeDebt.length<10)report.samples.extremeDebt.push({seed:game.seedText,age,debt,cash});
- if(cash>50000000&&report.samples.extremeCash.length<10)report.samples.extremeCash.push({seed:game.seedText,age,cash,debt});
+ if(debt>5000000&&report.samples.extremeDebt.length<10)report.samples.extremeDebt.push({seed:game.seedText,age,debt,cash,savings});
+ if(cash>5000000&&report.samples.extremeCash.length<10)report.samples.extremeCash.push({seed:game.seedText,age,cash,savings,debt});
 
  // World
  const world=state.world?.economy;
@@ -598,6 +607,7 @@ for(let i=0;i<lives;i++){
   everMarried:everMarried?1:0,
   friends:state.social?.friends?.length??0,
   cash,
+  savings,
   debt,
   netWorth,
   migrations:moves.length,
@@ -625,6 +635,7 @@ function summarizeLongitudinal(){
    avgStress:avg(b.stress,n,1),
    avgFitness:avg(b.fitness,n,1),
    avgCash:Math.round(b.cash/n),
+   avgSavings:Math.round(b.savings/n),
    avgDebt:Math.round(b.debt/n),
    avgMonthlyIncome:Math.round(b.income/n),
    employedPct:pct(b.employed,b.n),
@@ -642,7 +653,7 @@ function correlationSummary(rows){
  const keys=[
   'age','health','physicalCapacity','conditions','constitution','discipline','sociability','ambition','attractiveness',
   'parenthoodDesire','partnershipDesire','educationLevel','graduated','employed','careerExperience',
-  'children','everMarried','friends','cash','debt','netWorth','migrations','childhoodClass'
+  'children','everMarried','friends','cash','savings','debt','netWorth','migrations','childhoodClass'
  ];
  const result={};
  const targets=['age','health','physicalCapacity','conditions','graduated','careerExperience','children','everMarried','netWorth'];
@@ -850,9 +861,15 @@ const summary={
 
  finance:{
   cash:distribution(report.finance.cash),
+  savings:distribution(report.finance.savings),
+  liquidReserves:distribution(report.finance.liquidReserves),
   debt:distribution(report.finance.debt),
   netWorth:distribution(report.finance.netWorth),
   wealthBuckets:report.finance.wealthBuckets,
+  distressYears:distribution(report.finance.distressYears),
+  distressEvents:distribution(report.finance.distressEvents),
+  restructuredPct:pct(report.finance.restructured,valid),
+  discretionaryAnnual:distribution(report.finance.discretionaryAnnual),
   monthlyIncome:distribution(report.finance.monthlyIncome),
   monthlyExpenses:distribution(report.finance.monthlyExpenses),
   monthlyTax:distribution(report.finance.tax),
