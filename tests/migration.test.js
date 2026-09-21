@@ -133,3 +133,28 @@ test('migration history remains chronological and city-valid',()=>{
  assert.ok(game.state.migrationHistory[0].year<game.state.migrationHistory[1].year);
  assert.equal(game.state.location.cityId,second);
 });
+
+
+test('hometown return is a one-time major life decision',async()=>{
+ const game=new Game('return-home-once');
+ game.state.player.age=40;
+ game.state.year=2066;
+ const home=game.state.origin;
+ const away=home.cityId==='istanbul'
+  ? {countryId:'TR',cityId:'ankara',cityName:'Ankara',sinceYear:2060}
+  : {countryId:'TR',cityId:'istanbul',cityName:'İstanbul',sinceYear:2060};
+ game.state.location=away;
+ ensurePersonalFinance(game.state);
+ game.state.finance.cash=500000;
+
+ returnHome(game.state);
+ assert.equal(game.state.hasReturnedHome,true);
+
+ const secondAway=home.cityId==='izmir'?'bursa':'izmir';
+ moveToCity(game.state,secondAway,'later-job');
+ game.state.player.age=45;
+ game.state.year=2071;
+
+ const {canConsiderReturnHome}=await import('../src/world/migration_system.js');
+ assert.equal(canConsiderReturnHome(game.state),false);
+});
