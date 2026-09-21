@@ -1,0 +1,32 @@
+const clamp = (v, min=0, max=100) => Math.max(min, Math.min(max, v));
+
+export function processChildhoodYear(state, rng) {
+  const entries = [];
+  const player = state.player;
+  if (player.age > 18) return entries;
+
+  const homeSupport = (state.household.educationSupport + state.household.hobbySupport) / 2;
+  const familyBond = ((player.relationships.mother ?? 60) + (player.relationships.father ?? 60)) / 2;
+
+  if (player.age <= 5) {
+    player.personality.curiosity = clamp(player.personality.curiosity + rng.int(-1, 3));
+    player.health.current = clamp(player.health.current + rng.int(-2, 2) + (player.health.constitution > 65 ? 1 : 0));
+
+    if (rng.chance(0.24)) {
+      const delta = homeSupport >= 60 ? 2 : 1;
+      player.personality.sociability = clamp(player.personality.sociability + delta);
+      entries.push({ age: player.age, kind: 'development', text: 'Ailenle geçirdiğin zaman sosyal gelişimini etkiledi.' });
+    }
+  }
+
+  if (state.education?.enrolled) {
+    const disciplineEffect = (player.personality.discipline - 50) * 0.025;
+    const supportEffect = (state.household.educationSupport - 50) * 0.018;
+    const healthEffect = (player.health.current - 60) * 0.01;
+    const yearlyNoise = rng.int(-3, 3);
+    state.education.performance = clamp(state.education.performance + disciplineEffect + supportEffect + healthEffect + yearlyNoise);
+    state.education.motivation = clamp(state.education.motivation + rng.int(-4, 4) + (familyBond > 70 ? 1 : 0));
+  }
+
+  return entries;
+}
