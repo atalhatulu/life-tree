@@ -1,6 +1,6 @@
 export function retirementEligibility(state){
  const age=state.player.age;
- const years=state.career?.years??0;
+ const years=state.career?.totalYears??state.career?.years??0;
  return age>=58&&Boolean(state.career?.employed)&&years>=5;
 }
 
