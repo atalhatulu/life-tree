@@ -55,3 +55,8 @@ export function recentlyLeftJob(state,jobId,years=4){
 export function dominantCareerFamily(state){
  return ensureCareerProfile(state).coreFamily;
 }
+
+
+export function recentJobRecord(state,jobId){
+ return ensureCareerProfile(state).recentJobs.find(x=>x.jobId===jobId)??null;
+}
