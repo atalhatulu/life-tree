@@ -1,3 +1,4 @@
+import {applyFitnessTraining} from '../health/physical_activity_system.js';
 import {SOCIAL_ACTIVITIES,socialActivityById} from './social_activity_catalog.js';
 import {preferenceFor} from './preference_profile.js';
 import {ensureRelationshipMemory,repetitionPenalty,recordRelationshipInteraction,clampRelationship} from './relationship_memory.js';
@@ -95,12 +96,7 @@ export function performSocialActivity(state,targetId,activityId,rng){
  state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
  state.healthProfile.stress=Math.max(0,state.healthProfile.stress-scored.activity.stressRelief);
 
- if(scored.activity.physical&&state.healthProfile){
-  const adaptation=Math.max(.20,1-(state.healthProfile.fitness??50)/120);
-  state.healthProfile.fitness=Math.min(100,state.healthProfile.fitness+adaptation);
-  state.healthProfile.lastExerciseAge=state.player.age;
-  state.healthProfile.exerciseSessions=(state.healthProfile.exerciseSessions??0)+1;
- }
+ if(scored.activity.physical&&state.healthProfile)applyFitnessTraining(state,1.2);
 
  state.actions.remaining-=1;
  return {
