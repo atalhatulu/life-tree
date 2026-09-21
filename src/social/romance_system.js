@@ -35,7 +35,6 @@ export function processRomanceYear(state,rng){
  // Yetişkinlikte ilişki kalitesi, uyumluluk, finansal baskı ve ölüm
  // partnership_system tarafından yönetilir.
  if(age<=18){
-  partner.relationship=clamp(partner.relationship+rng.int(-6,5));
   if(partner.relationship<25&&rng.chance(.28)){
    entries.push({age,kind:'relationship',text:partner.name+' ile ilişkin sona erdi.'});
    state.social.romance=null;
