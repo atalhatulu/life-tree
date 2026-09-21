@@ -9,6 +9,15 @@ const CONDITIONS=[
  {id:'cancer',label:'Kanser',minAge:52,base:.004,severity:3}
 ];
 
+function deathCause(state,rng){
+ const severe=(state.healthProfile?.conditions??[])
+  .filter(c=>c.severity>=2)
+  .sort((a,b)=>b.severity-a.severity);
+ if(severe.length&&rng.chance(.72))return severe[0].label;
+ if(state.player.age>=82)return 'Yaşa bağlı doğal nedenler';
+ return 'Genel sağlık komplikasyonları';
+}
+
 export function ensureHealthProfile(state){
  state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
  return state.healthProfile;
@@ -42,7 +51,7 @@ export function processHealthYear(state,rng){
  const mortality=age<45?0:Math.max(0,(age-44)*.0008+(100-state.player.health.current)*.00025+severe*.0008);
  if(rng.chance(mortality)){
   state.player.alive=false;
-  state.death={age,year:state.year,cause:'health'};
+  state.death={age,year:state.year,cause:deathCause(state,rng.fork('cause'))};
   entries.push({age,kind:'death',text:'Hayatın '+age+' yaşında sona erdi.'});
  }
  return entries;
