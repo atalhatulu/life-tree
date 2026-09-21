@@ -15,7 +15,7 @@ export function processRomanceYear(state,rng){
  if(state.social.romance===undefined) state.social.romance=null;
  const age=state.player.age;
  const entries=[];
- if(age<14||age>18) return entries;
+ if(age<14) return entries;
  if(state.social.romance){
   state.social.romance.age+=1;
   state.social.romance.relationship=clamp(state.social.romance.relationship+rng.int(-6,5));
