@@ -6,8 +6,47 @@ import {affordableCarOptions,buyCar,affordableHomeOptions,buyHome} from '../asse
 import {marryPartner,moveInTogether,ensurePartnershipState} from '../social/partnership_system.js';
 import {createRomanticInterest} from '../social/romance_system.js';
 import {addChild} from '../family/parenting_system.js';
+import {resolvePartnerMove,returnHome,canConsiderReturnHome,deferReturnHome} from '../world/migration_system.js';
 
 export const adultEvents=[
+ {
+  id:'partner-job-relocation',title:'Eşinin Kariyeri İçin Taşınma',minAge:23,maxAge:58,once:false,majorDecision:false,priority:84,
+  condition:s=>Boolean(s.pendingPartnerMove&&s.social?.romance&&['cohabiting','married'].includes(s.social.romance.status)),
+  choices:s=>[
+   {
+    id:'move-with-partner',
+    label:s.pendingPartnerMove.cityName+' şehrine birlikte taşın',
+    majorDecision:true,
+    result:s=>s.pendingPartnerMove?'Taşınma kararı işlendi.':s.location.cityName+' şehrine eşinin kariyeri için taşındınız.',
+    effect:s=>resolvePartnerMove(s,true)
+   },
+   {
+    id:'decline-partner-move',
+    label:'Mevcut şehirde kal',
+    result:'Eşinin iş fırsatına rağmen mevcut şehirde kalmayı seçtiniz.',
+    effect:s=>resolvePartnerMove(s,false)
+   }
+  ]
+ },
+ {
+  id:'return-to-hometown',title:'Memlekete Dönmek',minAge:28,maxAge:70,once:false,majorDecision:false,priority:32,
+  condition:s=>canConsiderReturnHome(s),
+  choices:s=>[
+   {
+    id:'return-home',
+    label:(s.origin?.cityName??'Memleket')+' şehrine geri dön',
+    majorDecision:true,
+    result:s=>(s.origin?.cityName??'Memleket')+' şehrine geri döndün.',
+    effect:s=>{returnHome(s);s.nextReturnHomeAge=s.player.age+8;}
+   },
+   {
+    id:'stay-city',
+    label:'Bulunduğum şehirde kal',
+    result:'Kurulu düzenini bozmayıp bulunduğun şehirde kalmaya karar verdin.',
+    effect:s=>deferReturnHome(s,5)
+   }
+  ]
+ },
  {
   id:'university-application',title:'Üniversite Başvuruları',minAge:19,maxAge:35,once:false,majorDecision:true,priority:120,
   condition:s=>Array.isArray(s.pendingUniversityApplications)&&s.pendingUniversityApplications.length>0,
