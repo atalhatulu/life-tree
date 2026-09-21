@@ -21,9 +21,20 @@ function familySupport(state){
  const isStudent=state.higherEducation?.enrolled;
  const isYoungGap=state.nextPath==='gap'&&state.player.age<=22;
  if(!isStudent&&!isYoungGap) return 0;
- const relationship=((state.player.relationships.mother??60)+(state.player.relationships.father??60))/2;
+
+ const livingParents=[
+  ['mother',state.parents?.mother],
+  ['father',state.parents?.father]
+ ].filter(([,person])=>person?.alive);
+
+ if(!livingParents.length)return 0;
+
+ const relationship=livingParents.reduce(
+  (sum,[id])=>sum+(state.player.relationships?.[id]??60),0
+ )/livingParents.length;
  const relationFactor=relationship>=70?1:relationship>=50?.8:.55;
- return Math.round((STUDENT_SUPPORT_BY_CLASS[state.household.economicClass]??4500)*relationFactor);
+ const survivingFactor=livingParents.length===2?1:.58;
+ return Math.round((STUDENT_SUPPORT_BY_CLASS[state.household.economicClass]??4500)*relationFactor*survivingFactor);
 }
 
 function effectiveTaxRate(monthly,retired=false){
