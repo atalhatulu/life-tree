@@ -6,9 +6,30 @@ const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 function ageTrainingFactor(age){
  if(age<45)return 1;
- if(age<65)return .88;
- if(age<80)return .72;
- return .58;
+ if(age<65)return .92;
+ if(age<80)return .82;
+ return .68;
+}
+
+export function fitnessTrainingCeiling(state){
+ const age=state.player.age;
+ const ageCeiling=age<40?96:age<55?93:age<65?89:age<75?84:age<85?76:66;
+ const healthCeiling=45+physicalCapacity(state)*.58;
+ return clamp(Math.min(ageCeiling,healthCeiling),35,96);
+}
+
+export function applyFitnessTraining(state,rawGain){
+ state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
+ const current=state.healthProfile.fitness??50;
+ const ceiling=fitnessTrainingCeiling(state);
+ if(current>=ceiling)return 0;
+ const room=ceiling-current;
+ const adaptation=clamp(.48+room/45,.48,1);
+ const gain=Math.min(room,Math.max(.2,rawGain*activityEfficiency(state)*ageTrainingFactor(state.player.age)*adaptation));
+ state.healthProfile.fitness=clamp(current+gain);
+ state.healthProfile.lastExerciseAge=state.player.age;
+ state.healthProfile.exerciseSessions=(state.healthProfile.exerciseSessions??0)+1;
+ return gain;
 }
 
 function costFor(state,activity){return Math.round(activity.cost*(economy(state).costOfLiving??1));}
@@ -33,13 +54,8 @@ export function performPhysicalActivity(state,id,rng){
 
  if(cost>0)state.finance.cash-=cost;
  state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
- const efficiency=activityEfficiency(state)*ageTrainingFactor(state.player.age);
  const variation=1+rng.int(-1,1)*.08;
- const adaptation=Math.max(.25,1-(state.healthProfile.fitness??50)/115);
- const gain=Math.max(.25,activity.fitnessGain*efficiency*variation*adaptation);
- state.healthProfile.fitness=clamp(state.healthProfile.fitness+gain);
- state.healthProfile.lastExerciseAge=state.player.age;
- state.healthProfile.exerciseSessions=(state.healthProfile.exerciseSessions??0)+1;
+ const gain=applyFitnessTraining(state,activity.fitnessGain*variation);
  state.healthProfile.stress=clamp(state.healthProfile.stress-activity.stressRelief);
 
  const currentBuild=state.player.appearance?.build??50;
