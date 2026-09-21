@@ -1,67 +1,50 @@
 # Life Tree
 
-Procedural life simulation prototype built with modular JavaScript.
+Modular, seeded life simulation in JavaScript.
 
-## Current milestone: v0.3
+## v0.4
 
-The simulation currently covers birth through early adulthood (tested to age 30):
+Current simulation covers birth through mature adulthood and is tested with large automated life batches.
 
-- Seeded deterministic RNG
-- Procedural parents, grandparents, siblings and later-born siblings
-- Parent-derived genetics, interests, education support and household class
-- Childhood development and primary/middle school progression
-- Yearly action economy: study, exercise, socialize, hobby
-- Procedural friends and early romance
-- Major Life Tree decisions
-  - High-school path
-  - Post-high-school direction
-  - University applications
-  - Gap-year direction
-  - First job
-- Dynamic event choices generated from current state
-- Procedural university program applications
-- Procedural job offers
-- Degree-to-career matching
-- Career performance and raises
-- Personal cash/debt state and student family support
-- CLI play mode
-- Batch simulation and invariant checks
+### Systems
+- Procedural family, siblings and genetics
+- Childhood development, school and hobbies
+- Friends and relationships
+- High-school, university and work paths
+- Procedural job market, promotions, job changes and unemployment
+- Personal cash, debt and annual expenses
+- Housing, food, clothing and transport standards
+- Cars and homes
+- Adult dating, cohabitation and marriage
+- Procedural children with inherited traits
+- Stress, fitness and health conditions
+- Major decisions recorded in Life Tree
+- Interactive terminal play
+- Batch simulation with invariant checks
 
-## Run tests
+## Play
+
+```bash
+npm run play -- --to-age 50
+```
+
+## Stress test
+
+```bash
+npm run simulate -- --lives 5000 --to-age 50 --policy random
+```
+
+Policies: `random`, `balanced`, `academic`, `social`, `vocational`.
+
+## Tests
 
 ```bash
 npm test
 ```
 
-## Play in terminal
-
-```bash
-npm run play
-```
-
-Default CLI milestone is age 30. To change it:
-
-```bash
-npm run play -- --to-age 25
-```
-
-## Run batch simulation
-
-```bash
-npm run simulate -- --lives 3000 --to-age 30 --policy random
-```
-
-Policies:
-
-- `random`
-- `balanced`
-- `academic`
-- `social`
-- `vocational`
+GitHub Actions runs the full test suite plus a separate age-50 batch simulation on every push.
 
 ## Architecture
-
-The game engine is independent from the UI.
 
 ```text
 src/
@@ -71,6 +54,9 @@ src/
 ├── education/
 ├── career/
 ├── finance/
+├── lifestyle/
+├── assets/
+├── health/
 ├── social/
 ├── life/
 ├── events/
@@ -79,4 +65,4 @@ src/
 └── ui/
 ```
 
-The web UI is intentionally secondary while the simulation model is being stabilized.
+Simulation rules are independent from presentation. The CLI and browser UI consume the same game state.
