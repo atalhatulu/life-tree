@@ -1,4 +1,5 @@
 import {lifestyleMonthlyCost} from '../lifestyle/lifestyle_system.js';
+import {economy} from '../world/world_state.js';
 
 const STARTING_CASH_BY_CLASS={düşük:2500,orta:7500,'üst-orta':18000,yüksek:50000};
 const STUDENT_SUPPORT_BY_CLASS={düşük:3500,orta:7500,'üst-orta':11000,yüksek:17000};
@@ -84,7 +85,8 @@ export function processPersonalFinanceYear(state){
  f.familySupportMonthly=familySupport(state);
  f.partnerContributionMonthly=partnerContribution(state);
  f.adultChildSupportMonthly=state.lateLife?.familySupportMonthly??0;
- f.monthlyExpenses=lifestyleMonthlyCost(state)+(f.childMonthlyCost??0)+lateLifeCareCosts(state);
+ const macro=economy(state);
+ f.monthlyExpenses=Math.round((lifestyleMonthlyCost(state)+(f.childMonthlyCost??0)+lateLifeCareCosts(state))*macro.costOfLiving);
  const taxRate=effectiveTaxRate(f.monthlyIncome,Boolean(state.retirement?.retired));
  f.monthlyTax=Math.round(f.monthlyIncome*taxRate);
  f.ownershipCostsMonthly=recurringOwnershipCosts(state);
