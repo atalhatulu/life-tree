@@ -1,0 +1,105 @@
+const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
+
+function stageFromScore(score){
+ if(score<25)return 'mild';
+ if(score<50)return 'moderate';
+ if(score<75)return 'severe';
+ return 'critical';
+}
+
+export function ensureConditionProgression(condition){
+ condition.progression??={
+  score:clamp((condition.severity??1)*20),
+  stage:stageFromScore(clamp((condition.severity??1)*20)),
+  status:'active',
+  stableYears:0,
+  complicationCount:0,
+  lastProgressionAge:condition.diagnosedAtAge??null
+ };
+ return condition.progression;
+}
+
+function treatmentModifier(condition){
+ if(condition.treatmentSuccessful===true)return -8;
+ if(condition.treated===true)return -3;
+ return 0;
+}
+
+function biologicalPressure(state,condition){
+ const health=state.player.health.current??50;
+ const fitness=state.healthProfile?.fitness??50;
+ const stress=state.healthProfile?.stress??40;
+ const severity=condition.severity??1;
+ return (
+  severity*2.2+
+  Math.max(0,50-health)*.08+
+  Math.max(0,45-fitness)*.05+
+  Math.max(0,stress-50)*.035
+ );
+}
+
+export function progressionBurden(condition){
+ const p=ensureConditionProgression(condition);
+ const stageWeight={mild:.55,moderate:1,severe:1.6,critical:2.4}[p.stage]??1;
+ const statusWeight=p.status==='remission'?.25:p.status==='stable'?.55:1;
+ return (condition.severity??1)*stageWeight*statusWeight;
+}
+
+export function processDiseaseProgressionYear(state,rng){
+ const entries=[];
+ const conditions=state.healthProfile?.conditions??[];
+ for(const condition of conditions){
+  const p=ensureConditionProgression(condition);
+  const beforeStage=p.stage;
+  const pressure=biologicalPressure(state,condition)+treatmentModifier(condition)+rng.int(-4,4);
+
+  p.score=clamp(p.score+pressure);
+  p.stage=stageFromScore(p.score);
+  p.lastProgressionAge=state.player.age;
+
+  if(condition.treatmentSuccessful===true&&p.score<=22){
+   p.status='remission';
+   p.stableYears+=1;
+  }else if(pressure<=0){
+   p.status='stable';
+   p.stableYears+=1;
+  }else{
+   p.status='active';
+   p.stableYears=0;
+  }
+
+  if(p.stage!==beforeStage){
+   entries.push({
+    age:state.player.age,
+    kind:'health',
+    paceBlock:p.stage==='severe'||p.stage==='critical',
+    text:condition.label+' durumu '+p.stage+' evreye geçti.'
+   });
+  }
+
+  const complicationChance=p.stage==='critical'
+   ?.18
+   :p.stage==='severe'
+    ?.07
+    :p.stage==='moderate'
+     ?.018
+     :.004;
+
+  const treatedFactor=condition.treatmentSuccessful===true?.35:condition.treated===true?.70:1;
+  if(rng.chance(complicationChance*treatedFactor)){
+   p.complicationCount+=1;
+   p.score=clamp(p.score+8);
+   p.stage=stageFromScore(p.score);
+   state.player.health.current=clamp(state.player.health.current-(p.stage==='critical'?8:4));
+   state.healthProfile.fitness=clamp((state.healthProfile.fitness??50)-(p.stage==='critical'?5:2));
+   state.healthProfile.stress=clamp((state.healthProfile.stress??40)+5);
+   entries.push({
+    age:state.player.age,
+    kind:'health',
+    paceBlock:true,
+    text:condition.label+' nedeniyle bir komplikasyon gelişti.'
+   });
+  }
+ }
+ return entries;
+}
