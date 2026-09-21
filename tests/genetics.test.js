@@ -113,3 +113,49 @@ test('full-life simulations remain deterministic with inherited genetics',()=>{
  assert.deepEqual(a.state.player.health.genetics,b.state.player.health.genetics);
  assert.deepEqual(a.state.parents.mother.health.genetics,b.state.parents.mother.health.genetics);
 });
+
+
+test('parents inherit alleles from their own parents',()=>{
+ const game=new Game('three-generation-proof');
+ const checks=[
+  {
+   person:game.state.parents.mother,
+   mother:game.state.grandparents.maternal.grandmother,
+   father:game.state.grandparents.maternal.grandfather
+  },
+  {
+   person:game.state.parents.father,
+   mother:game.state.grandparents.paternal.grandmother,
+   father:game.state.grandparents.paternal.grandfather
+  }
+ ];
+
+ for(const {person,mother,father} of checks){
+  for(const id of ['beta_thalassemia','fmf','familial_hypercholesterolemia']){
+   const alleles=person.health.genetics.monogenic[id].alleles;
+   assert.ok(mother.health.genetics.monogenic[id].alleles.includes(alleles[0]),person.id+' '+id+' maternal allele mismatch');
+   assert.ok(father.health.genetics.monogenic[id].alleles.includes(alleles[1]),person.id+' '+id+' paternal allele mismatch');
+  }
+ }
+});
+
+test('polygenic risk follows the same multigenerational lineage',()=>{
+ const game=new Game('polygenic-lineage-proof');
+ const mother=game.state.parents.mother;
+ const mgm=game.state.grandparents.maternal.grandmother;
+ const mgf=game.state.grandparents.maternal.grandfather;
+
+ for(const trait of ['hypertension','metabolic','cardiac']){
+  const midpoint=(mgm.health.genetics.polygenic[trait]+mgf.health.genetics.polygenic[trait])/2;
+  assert.ok(Math.abs(mother.health.genetics.polygenic[trait]-midpoint)<=10.5,trait+' drifted outside inheritance bounds');
+ }
+});
+
+test('genetic lineage is deterministic across three generations',()=>{
+ const a=new Game('deep-lineage-determinism');
+ const b=new Game('deep-lineage-determinism');
+ assert.deepEqual(a.state.grandparents,b.state.grandparents);
+ assert.deepEqual(a.state.parents.mother.health.genetics,b.state.parents.mother.health.genetics);
+ assert.deepEqual(a.state.parents.father.health.genetics,b.state.parents.father.health.genetics);
+ assert.deepEqual(a.state.player.health.genetics,b.state.player.health.genetics);
+});
