@@ -30,6 +30,7 @@ function processSiblingLosses(state,rng,entries){
     entries.push({
       age:state.player.age,
       kind:'family',
+      paceBlock:true,
       text:'Kardeşin '+sibling.name+' '+sibling.surname+' '+sibling.age+' yaşında hayatını kaybetti.'
     });
     if(state.healthProfile)state.healthProfile.stress=clamp(state.healthProfile.stress+5);
