@@ -9,7 +9,7 @@ function arg(name,fallback){
  return index>=0&&process.argv[index+1]!=null?process.argv[index+1]:fallback;
 }
 
-const targetAge=Math.max(1,Number(arg('to-age','30')));
+const targetAge=Math.max(1,Number(arg('to-age','50')));
 const rl=createInterface({input,output});
 const seed=(await rl.question('Seed (boş bırak = rastgele): ')).trim()||String(Date.now());
 const game=new Game(seed);
@@ -17,7 +17,7 @@ let historyIndex=0;
 
 console.log('\nLife Tree CLI başladı. Seed: '+seed+' | Hedef yaş: '+targetAge);
 
-while(game.state.player.age<targetAge){
+while(game.state.player.age<targetAge&&game.state.player.alive){
  printHeader(game);
  const answer=(await rl.question('\n+1 yaş için Enter, çıkmak için q: ')).trim().toLowerCase();
  if(answer==='q') break;
