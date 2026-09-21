@@ -1,5 +1,6 @@
 import {generateJobOffers} from './job_market.js';
 import {economy} from '../world/world_state.js';
+import {moveToCity} from '../world/migration_system.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export function deepenCareerState(state){
@@ -61,6 +62,8 @@ export function processCareerDynamics(state,rng){
 
 export function switchJob(state,job){
  const old=state.career;
+ let moveResult=null;
+ if(job.requiresMove)moveResult=moveToCity(state,job.cityId,'career-switch',{housing:'shared',stress:4});
  state.career={
   employed:true,
   jobId:job.id,
@@ -70,6 +73,8 @@ export function switchJob(state,job){
   totalYears:old?.totalYears??0,
   performance:50,
   degreeRelated:Boolean(job.related),
+  cityId:job.cityId??state.location?.cityId,
+  cityName:job.cityName??state.location?.cityName,
   level:1,
   satisfaction:55,
   stability:60,
@@ -79,4 +84,5 @@ export function switchJob(state,job){
  state.player.jobId=job.id;
  state.player.monthlyIncome=job.salary;
  state.pendingCareerOffers=null;
+ return {job:state.career,moveResult};
 }
