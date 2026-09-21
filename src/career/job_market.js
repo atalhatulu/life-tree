@@ -166,7 +166,10 @@ export function acceptJob(state,jobId){
  if(offer.requiresMove)moveResult=moveToCity(state,offer.cityId,'job',{housing:'shared',stress:4});
 
  const prior=state.career;
- if(prior?.jobId&&!prior.employed)archiveCareer(state,prior.exitReason??'reemployment');
+ if(prior?.jobId&&!prior.employed){
+  const recent=recentJobRecord(state,prior.jobId);
+  if(!recent||recent.leftAtAge!==state.player.age)archiveCareer(state,prior.exitReason??'reemployment');
+ }
 
  const previousJobs=[...(prior?.previousJobs??[])];
  state.career={
