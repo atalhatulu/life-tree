@@ -630,7 +630,7 @@ function summarizeLongitudinal(){
   const n=Math.max(1,b.n);
   out[age]={
    n:b.n,
-   survivalPct:pct(b.alive,b.n),
+   survivalPct:pct(report.lifespan.ages.filter(finalAge=>finalAge>=Number(age)).length,valid),
    avgHealth:avg(b.health,n,1),
    avgPhysicalCapacity:avg(b.capacity,n,1),
    avgStress:avg(b.stress,n,1),
