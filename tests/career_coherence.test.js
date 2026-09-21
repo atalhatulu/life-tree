@@ -33,13 +33,13 @@ test('developer career switch never offers unrelated mechanic or cleaner roles',
 
 test('mechanic cannot jump directly into regulated or professional degree careers',()=>{
  const g=new Game('mechanic-coherence');
- employed(g,{jobId:'mechanic',title:'Oto tamircisi',income:60000,years:10});
+ employed(g,{jobId:'mechanic',title:'Oto tamircisi',income:60000,years:10,satisfaction:20});
  const offers=generateJobOffers(g.state,new RNG('mechanic-switch'),20,{mode:'career-switch'});
  const ids=offers.map(x=>x.id);
  for(const forbidden of ['doctor','nurse','lawyer','teacher','developer','designer']){
   assert.equal(ids.includes(forbidden),false,forbidden+' should not be offered');
  }
- assert.ok(ids.includes('driver'));
+ assert.ok(ids.every(id=>['driver'].includes(id)));
 });
 
 test('regulated professions require matching completed degree',()=>{
