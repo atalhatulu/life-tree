@@ -9,7 +9,7 @@ function arg(name,fallback){
  return index>=0&&process.argv[index+1]!=null?process.argv[index+1]:fallback;
 }
 
-const targetAge=Math.max(1,Number(arg('to-age','50')));
+const targetAge=Math.max(1,Number(arg('to-age','80')));
 const rl=createInterface({input,output});
 const seed=(await rl.question('Seed (boş bırak = rastgele): ')).trim()||String(Date.now());
 const game=new Game(seed);
@@ -52,5 +52,13 @@ printHeader(game);
 console.log('\nLife Tree düğümleri:');
 for(const node of game.state.lifeTree.nodes){
  console.log('• '+node.age+' yaş — '+node.title+': '+node.label);
+}
+if(game.state.deathSummary){
+ const d=game.state.deathSummary;
+ console.log('\nÖlüm özeti:');
+ console.log(d.name+' — '+d.age+' yaş | '+d.birthYear+'-'+d.deathYear);
+ console.log('Kariyer: '+d.career+' | Çocuk: '+d.children+' | Torun: '+d.grandchildren+' | Büyük karar: '+d.majorDecisions);
+ console.log('Net tereke: ₺'+d.estateNet.toLocaleString('tr-TR'));
+ if(d.heirs?.length)console.log('Mirasçılar: '+d.heirs.map(h=>h.name+' ₺'+h.amount.toLocaleString('tr-TR')).join(' • '));
 }
 await rl.close();
