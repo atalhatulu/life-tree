@@ -119,3 +119,47 @@ test('500 random lives remain valid through age 80 or death',()=>{
  assert.equal(summaries,deaths);
  assert.ok(retirees>0);
 });
+
+
+test('retirement decision is offered for an eligible older worker',()=>{
+ const g=new Game('retirement-event');
+ g.state.player.age=58;
+ g.state.year=2084;
+ g.state.career={
+  employed:true,
+  title:'Muhasebeci',
+  monthlyIncome:90000,
+  years:12,
+  totalYears:30,
+  performance:70,
+  satisfaction:60,
+  stability:70,
+  level:3
+ };
+ g.state.player.job='Muhasebeci';
+ g.state.player.monthlyIncome=90000;
+ g.state.finance={cash:500000,debt:0,monthlyIncome:90000,monthlyExpenses:20000,familySupportMonthly:0,childMonthlyCost:0,lifestyle:{housing:'owned',food:'standard',clothing:'standard',transport:'public'}};
+ g.state.healthProfile={conditions:[],stress:30,fitness:55,lastCheckupAge:57};
+ g.state.preferences={riskTolerance:20,partnershipDesire:20,marriageDesire:20,parenthoodDesire:20,homeOwnershipDesire:20,carOwnershipDesire:20};
+ g.state.pendingCareerOffers=null;
+ g.state.pendingJobOffers=null;
+ const event=g.events.choose(g.state,new RNG('retirement-event-choice'));
+ assert.equal(event?.id,'retirement-decision');
+ g.makeChoice(event,'retire');
+ assert.equal(g.state.retirement?.retired,true);
+});
+
+test('serious untreated condition prioritizes treatment decision',()=>{
+ const g=new Game('treatment-event');
+ g.state.player.age=60;
+ g.state.year=2086;
+ g.state.career={employed:true,title:'Öğretmen',monthlyIncome:70000,years:20,totalYears:35,performance:65,satisfaction:55,stability:65,level:2};
+ g.state.player.job='Öğretmen';
+ g.state.player.monthlyIncome=70000;
+ g.state.finance={cash:300000,debt:0,monthlyIncome:70000,monthlyExpenses:22000,familySupportMonthly:0,childMonthlyCost:0,lifestyle:{housing:'owned',food:'standard',clothing:'standard',transport:'public'}};
+ g.state.healthProfile={conditions:[{id:'cardiac',label:'Kalp-damar hastalığı',severity:3,diagnosedAtAge:60}],stress:45,fitness:40,lastCheckupAge:59};
+ g.state.preferences={riskTolerance:20,partnershipDesire:20,marriageDesire:20,parenthoodDesire:20,homeOwnershipDesire:20,carOwnershipDesire:20};
+ const event=g.events.choose(g.state,new RNG('treatment-priority'));
+ assert.equal(event?.id,'health-treatment');
+ assert.ok(g.eventChoices(event).some(x=>x.id==='treat:cardiac'));
+});
