@@ -7,6 +7,7 @@ import {marryPartner,processPartnershipYear} from '../src/social/partnership_sys
 import {processElderFamilyYear} from '../src/family/elder_system.js';
 import {processInheritance} from '../src/finance/inheritance_system.js';
 import {ensurePersonalFinance} from '../src/finance/personal_finance.js';
+import {processHealthYear} from '../src/health/health_system.js';
 import {treatCondition} from '../src/health/treatment_system.js';
 
 test('older spouse can die and leave widowhood state',()=>{
@@ -66,6 +67,46 @@ test('treatment consumes money or creates debt and closes untreated state',()=>{
  assert.ok(typeof result.condition.treatmentSuccessful==='boolean');
 });
 
+test('untreated chronic disease creates persistent health burden and recovery ceiling',()=>{
+ const g=new Game('persistent-health-burden');
+ g.state.player.age=40;
+ g.state.player.health.current=100;
+ g.state.player.health.constitution=70;
+ g.state.finance.lifestyle={food:'healthy'};
+ g.state.healthProfile={
+  conditions:[{id:'metabolic',label:'Metabolik sorun',severity:2,diagnosedAtAge:35}],
+  stress:20,
+  fitness:70,
+  lastCheckupAge:null
+ };
+ const rng={
+  int:()=>0,
+  chance:()=>false,
+  fork:()=>({chance:()=>false})
+ };
+ processHealthYear(g.state,rng);
+ assert.ok(g.state.player.health.current<=88,'chronic disease should cap health below perfect');
+});
+
+test('mild condition alone cannot randomly kill a healthy young adult',()=>{
+ const g=new Game('young-mild-condition');
+ g.state.player.age=27;
+ g.state.player.health.current=100;
+ g.state.player.health.constitution=70;
+ g.state.healthProfile={
+  conditions:[{id:'anxiety',label:'Anksiyete',severity:1,diagnosedAtAge:20}],
+  stress:20,
+  fitness:60,
+  lastCheckupAge:null
+ };
+ const rng={
+  int:()=>0,
+  chance:(p)=>p>0,
+  fork:()=>({chance:()=>false})
+ };
+ processHealthYear(g.state,rng);
+ assert.equal(g.state.player.alive,true);
+});
 
 test('elderly sibling loss is recorded and dead sibling stops aging',async()=>{
  const g=new Game('sibling-loss-unit');
