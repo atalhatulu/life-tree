@@ -1,3 +1,4 @@
+import {changeTrait,growTrait} from '../character/personality_dynamics.js';
 const clamp = (v, min=0, max=100) => Math.max(min, Math.min(max, v));
 
 export function processChildhoodYear(state, rng) {
@@ -9,12 +10,12 @@ export function processChildhoodYear(state, rng) {
   const familyBond = ((player.relationships.mother ?? 60) + (player.relationships.father ?? 60)) / 2;
 
   if (player.age <= 5) {
-    player.personality.curiosity = clamp(player.personality.curiosity + rng.int(-1, 3));
+    player.personality.curiosity = changeTrait(player.personality.curiosity,rng.int(-1,3));
     player.health.current = clamp(player.health.current + rng.int(-2, 2) + (player.health.constitution > 65 ? 1 : 0));
 
     if (rng.chance(0.24)) {
       const delta = homeSupport >= 60 ? 2 : 1;
-      player.personality.sociability = clamp(player.personality.sociability + delta);
+      player.personality.sociability = growTrait(player.personality.sociability,delta);
       entries.push({ age: player.age, kind: 'development', text: 'Ailenle geçirdiğin zaman sosyal gelişimini etkiledi.' });
     }
   }
