@@ -54,8 +54,22 @@ export function validateState(state){
   if(!bounded(child.relationship??70))errors.push('child relationship out of range');
  }
 
+ if(state.business){
+  if(!Number.isFinite(state.business.capital)||state.business.capital<0)errors.push('invalid business capital');
+  if(!bounded(state.business.health))errors.push('invalid business health');
+  if(!Number.isFinite(state.business.monthlyProfit))errors.push('invalid business profit');
+ }
+ if(state.retirement?.retired){
+  if(state.career?.employed)errors.push('retired player still employed');
+  if(!Number.isFinite(state.retirement.pensionMonthly)||state.retirement.pensionMonthly<0)errors.push('invalid pension');
+ }
+ if(state.estate){
+  if(!Number.isFinite(state.estate.net)||state.estate.net<0)errors.push('invalid estate net');
+  if(!Array.isArray(state.estate.heirs))errors.push('invalid estate heirs');
+ }
  if(state.assets?.car&&state.finance?.lifestyle?.transport!=='car')errors.push('car asset without car transport lifestyle');
  if(!p.alive&&!state.death)errors.push('dead player missing death record');
+ if(!p.alive&&!state.deathSummary)errors.push('dead player missing death summary');
  return errors;
 }
 
