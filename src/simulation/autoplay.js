@@ -4,6 +4,8 @@ import {assertValidState} from './invariants.js';
 function chooseByPolicy(game,event,policy,rng){
  const choices=game.eventChoices(event);
  if(!choices.length) return null;
+ if(policy==='random') return rng.pick(choices);
+
  const preferred={
   academic:{'high-school-path':'academic','after-high-school':'university','first-romance':'leave'},
   social:{'high-school-path':'academic','after-high-school':'university','first-romance':'approach'},
@@ -14,10 +16,19 @@ function chooseByPolicy(game,event,policy,rng){
  return choices.find(c=>c.id===target)??rng.pick(choices);
 }
 
-function activityOrder(policy){
+function activityOrder(game,policy,rng){
  if(policy==='academic') return ['study','hobby','exercise'];
  if(policy==='social') return ['socialize','hobby','exercise'];
  if(policy==='vocational') return ['hobby','study','exercise'];
+ if(policy==='random'){
+  const ids=game.availableActivities().map(a=>a.id);
+  const shuffled=[];
+  while(ids.length){
+   const index=rng.int(0,ids.length-1);
+   shuffled.push(ids.splice(index,1)[0]);
+  }
+  return shuffled;
+ }
  return ['study','exercise','socialize'];
 }
 
@@ -30,7 +41,8 @@ export function autoplay(game,{toAge=18,policy='balanced'}={}){
    if(choice) game.makeChoice(event,choice.id);
   }
 
-  for(const id of activityOrder(policy)){
+  const order=activityOrder(game,policy,rng.fork('activities-'+game.state.year));
+  for(const id of order){
    if(game.state.actions.remaining<=0) break;
    if(game.availableActivities().some(a=>a.id===id)){
     try{game.performActivity(id);}catch{}
