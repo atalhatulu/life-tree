@@ -2,9 +2,34 @@
 
 Seeded, modular, state-driven life simulation written in JavaScript.
 
-## Current milestone: v0.9 — Life Pacing
+## Current milestone: v0.10 — Career Coherence + Genetic Inheritance
 
 The simulation supports a complete life arc from birth into advanced age and death.
+
+### Career Coherence
+
+- jobs belong to persistent career families
+- first graduate jobs prioritize matching degrees
+- regulated professions require the matching completed degree path
+- deliberate career changes are limited to same or adjacent sectors
+- prior job and sector experience persist across years
+- reemployment prioritizes previous occupation / career family
+- recent voluntary exits block immediate ping-pong return
+- unexplained large salary collapses are rejected for satisfied workers
+- entrepreneurship and hometown-return exits preserve career memory
+
+### Genetic Inheritance
+
+- every generated person carries a hidden genome state
+- children inherit one allele from each parent for monogenic traits
+- autosomal recessive carrier / affected states are distinct
+- autosomal dominant inheritance is supported
+- current inherited conditions include beta thalassemia, Familial Mediterranean Fever and familial hypercholesterolemia
+- polygenic hypertension, metabolic and cardiac risk is inherited as a bounded parental blend
+- inherited risk modifies adult disease probability rather than guaranteeing disease
+- affected monogenic conditions can manifest during childhood or adulthood
+- pediatric treatment is family-covered instead of creating personal debt
+- player, siblings and later children all use the same inheritance engine
 
 ### Life Pacing Governor
 
