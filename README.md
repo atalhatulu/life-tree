@@ -1,40 +1,60 @@
 # Life Tree
 
-Modular, seeded life simulation in JavaScript.
+Modular, deterministic life simulation in JavaScript.
 
-## v0.4
+## v0.5
 
-Current simulation covers birth through mature adulthood and is tested with large automated life batches.
+Life Tree simulates one person from birth through old age and death. The simulation core is independent from the web UI and is primarily tested through the CLI and large seeded batch runs.
 
-### Systems
-- Procedural family, siblings and genetics
-- Childhood development, school and hobbies
-- Friends and relationships
-- High-school, university and work paths
-- Procedural job market, promotions, job changes and unemployment
-- Personal cash, debt and annual expenses
-- Housing, food, clothing and transport standards
-- Cars and homes
-- Adult dating, cohabitation and marriage
-- Procedural children with inherited traits
-- Stress, fitness and health conditions
-- Major decisions recorded in Life Tree
-- Interactive terminal play
-- Batch simulation with invariant checks
+### Current systems
 
-## Play
+- Procedural parents, grandparents, siblings and later-born siblings
+- Genetics, health constitution, personality and interests
+- Childhood household class, parental support and family loss
+- Minor guardianship and inherited trust funds
+- Primary school, middle school and high-school paths
+- Friends, hobbies, relationships and yearly activities
+- University, work and gap-year branches
+- Procedural university applications and job offers
+- Career performance, raises, promotions, job switching and unemployment
+- Lifestyle, housing, food, clothing, transport, tax and debt
+- Cars and home ownership
+- Adult dating, cohabitation, marriage, divorce and widowhood
+- Children with inherited traits
+- Parenting styles and child education decisions
+- Adult children, careers and grandchildren
+- Chronic and serious health conditions
+- Treatment choices and treatment cost
+- Stress, fitness, mobility and social isolation
+- Entrepreneurship and business failure risk
+- Retirement and pension income
+- Elder-care modes
+- Parent and grandparent mortality
+- Inheritance and estate planning
+- Death causes, estate settlement and final life summary
+- Life Tree nodes for major life-changing decisions
+
+## Play in terminal
 
 ```bash
-npm run play -- --to-age 50
+npm run play -- --to-age 80
 ```
 
-## Stress test
+## Batch simulation
 
 ```bash
-npm run simulate -- --lives 5000 --to-age 50 --policy random
+npm run simulate -- --lives 5000 --to-age 80 --policy random
 ```
 
-Policies: `random`, `balanced`, `academic`, `social`, `vocational`.
+Policies:
+
+- `random`
+- `balanced`
+- `academic`
+- `social`
+- `vocational`
+
+The batch runner reports state validity, education, career, retirement, relationships, children, grandchildren, assets, health, mortality, inheritance, elder care, estate planning and Life Tree statistics.
 
 ## Tests
 
@@ -42,7 +62,7 @@ Policies: `random`, `balanced`, `academic`, `social`, `vocational`.
 npm test
 ```
 
-GitHub Actions runs the full test suite plus a separate age-50 batch simulation on every push.
+GitHub Actions runs the complete test suite and an additional age-80 batch simulation on each push.
 
 ## Architecture
 
@@ -65,4 +85,4 @@ src/
 └── ui/
 ```
 
-Simulation rules are independent from presentation. The CLI and browser UI consume the same game state.
+Simulation rules stay outside the presentation layers. The CLI and browser UI consume the same game state.
