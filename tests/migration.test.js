@@ -158,3 +158,24 @@ test('hometown return is a one-time major life decision',async()=>{
  const {canConsiderReturnHome}=await import('../src/world/migration_system.js');
  assert.equal(canConsiderReturnHome(game.state),false);
 });
+
+
+test('hometown return requires strong attachment',async()=>{
+ const game=new Game('hometown-attachment');
+ game.state.player.age=40;
+ game.state.year=2066;
+ const home=game.state.origin;
+ game.state.location=home.cityId==='istanbul'
+  ? {countryId:'TR',cityId:'ankara',cityName:'Ankara',sinceYear:2058}
+  : {countryId:'TR',cityId:'istanbul',cityName:'İstanbul',sinceYear:2058};
+ game.state.hasReturnedHome=false;
+ game.state.nextReturnHomeAge=28;
+
+ const {canConsiderReturnHome}=await import('../src/world/migration_system.js');
+
+ game.state.preferences={hometownAttachment:35};
+ assert.equal(canConsiderReturnHome(game.state),false);
+
+ game.state.preferences={hometownAttachment:80};
+ assert.equal(canConsiderReturnHome(game.state),true);
+});
