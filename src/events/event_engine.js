@@ -29,7 +29,7 @@ export class EventEngine{
   return {
    state:next,
    result:typeof choice.result==='function'?choice.result(next):choice.result,
-   decision:event.majorDecision?{eventId:event.id,title:event.title,choiceId,label:choice.label,age:next.player.age,alternatives}:null
+   decision:(choice.majorDecision??event.majorDecision)?{eventId:event.id,title:event.title,choiceId,label:choice.label,age:next.player.age,alternatives}:null
   };
  }
 }
