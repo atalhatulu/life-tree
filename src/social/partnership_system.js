@@ -1,5 +1,13 @@
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
+function partnerMortalityChance(partner){
+ const age=partner.age??30;
+ const health=partner.health?.current??75;
+ if(age<50)return .0005;
+ if(age<70)return .002+(age-50)*.0012+(100-health)*.00015;
+ return Math.min(.22,.026+(age-70)*.006+(100-health)*.00025);
+}
+
 export function ensurePartnershipState(state){
  if(state.social?.romance){
   const r=state.social.romance;
@@ -18,6 +26,25 @@ export function processPartnershipYear(state,rng){
  if(!r) return entries;
  ensurePartnershipState(state);
  r.yearsTogether+=1;
+
+ if(r.health){
+  const agePenalty=r.age>=65?2:r.age>=50?1:0;
+  r.health.current=clamp(r.health.current+rng.int(-2,1)-agePenalty);
+ }
+ if(rng.fork('partner-mortality').chance(partnerMortalityChance(r))){
+  const wasMarried=r.status==='married';
+  r.alive=false;
+  r.deathAge=r.age;
+  r.deathYear=state.year;
+  state.social.deceasedPartners??=[];
+  state.social.deceasedPartners.push({...r});
+  state.social.romance=null;
+  state.widowedAtAge=wasMarried?state.player.age:null;
+  state.nextDatingAge=state.player.age+2;
+  state.datingAttempts=Math.max(0,(state.datingAttempts??0)-2);
+  entries.push({age:state.player.age,kind:'relationship',text:r.name+' '+r.surname+' hayatını kaybetti.'});
+  return entries;
+ }
 
  const financeStress=(state.finance?.debt??0)>750000?3:0;
  const compatibility=(r.compatibility??60)-50;
