@@ -67,3 +67,32 @@ test('pacing summary exposes adult decision density',()=>{
  assert.ok(summary.adultMajorDecisions>=0);
  assert.ok(summary.shortestAdultMajorGap==null||summary.shortestAdultMajorGap>=1);
 });
+
+
+test('same-year automatic milestone blocks discretionary major decisions',()=>{
+ const state={
+  player:{age:40},
+  history:[{age:40,kind:'career',paceBlock:true,text:'Terfi aldın.'}],
+  lifeTree:{nodes:[{age:36,eventId:'career-switch',pacingCategory:'career'}]}
+ };
+ assert.equal(canPresentPacedEvent(state,{id:'buy-home'}),false);
+ assert.equal(canPresentPacedEvent(state,{id:'career-switch'}),false);
+ assert.equal(canPresentPacedEvent(state,{id:'health-treatment'}),true);
+});
+
+test('paced major decisions never share a year with automatic pace blockers',()=>{
+ for(let i=0;i<100;i++){
+  const g=new Game('paceblock-life-'+i);
+  autoplay(g,{toAge:75,policy:'random'});
+  const blockedAges=new Set(
+   g.state.history.filter(item=>item.paceBlock).map(item=>item.age)
+  );
+  for(const node of g.state.lifeTree.nodes.filter(node=>node.pacingCategory)){
+   assert.equal(
+    blockedAges.has(node.age),
+    false,
+    g.seedText+' paced decision '+node.eventId+' shared age '+node.age+' with auto milestone'
+   );
+  }
+ }
+});
