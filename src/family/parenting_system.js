@@ -24,5 +24,13 @@ export function processChildrenYear(state,rng){
   if(child.age===6) entries.push({age:state.player.age,kind:'family',text:child.name+' okula başladı.'});
   if(child.age===18) entries.push({age:state.player.age,kind:'family',text:child.name+' yetişkinliğe adım attı.'});
  }
+ if(state.finance){
+  state.finance.childMonthlyCost=ensureChildren(state).reduce((sum,child)=>{
+   if(child.age>=22)return sum;
+   if(child.age>=18)return sum+2500;
+   if(child.age>=13)return sum+7500;
+   return sum+6500;
+  },0);
+ }
  return entries;
 }
