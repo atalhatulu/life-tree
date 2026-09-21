@@ -80,7 +80,7 @@ export function performSocialActivity(state,targetId,activityId,rng){
  if(!scored)throw new Error('Geçersiz sosyal etkinlik.');
  if(scored.cost>(state.finance?.cash??0))throw new Error('Bu etkinliği karşılayacak nakdin yok.');
 
- state.finance.cash-=scored.cost;
+ if(scored.cost>0)state.finance.cash-=scored.cost;
  const uncertainty=rng.int(-1,1);
  const raw=scored.expectedDelta+uncertainty;
  const delta=Math.round(Math.max(-6,Math.min(8,raw)));
