@@ -24,12 +24,12 @@ function annualAgingWear(age){
  if(age<18)return {health:0,fitness:0};
  if(age<30)return {health:.05,fitness:.10};
  if(age<45)return {health:.15,fitness:.25};
- if(age<60)return {health:.45,fitness:.55};
- if(age<70)return {health:1.0,fitness:1.1};
- if(age<80)return {health:2.2,fitness:2.3};
- if(age<90)return {health:3.5,fitness:3.6};
- if(age<100)return {health:5.0,fitness:5.2};
- return {health:6.5,fitness:6.7};
+ if(age<60)return {health:.55,fitness:.65};
+ if(age<70)return {health:2.0,fitness:2.1};
+ if(age<80)return {health:3.5,fitness:3.6};
+ if(age<90)return {health:5.2,fitness:5.3};
+ if(age<100)return {health:6.5,fitness:6.7};
+ return {health:8.0,fitness:8.2};
 }
 
 function conditionBurden(condition){
@@ -67,7 +67,13 @@ export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
  const entries=[];
  const age=state.player.age;
  const lifestyle=state.finance?.lifestyle;
- const wear=annualAgingWear(age);
+ const baseWear=annualAgingWear(age);
+ const constitution=state.player.health.constitution??60;
+ const agingMultiplier=clamp(1+(60-constitution)*.0075,.70,1.25);
+ const wear={
+  health:baseWear.health*agingMultiplier,
+  fitness:baseWear.fitness*agingMultiplier
+ };
 
  h.stress=clamp(h.stress+rng.int(-3,3)+(state.finance?.debt>500000?3:0)+(state.career?.satisfaction<35?2:0));
 
