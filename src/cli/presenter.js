@@ -4,6 +4,7 @@ export function printHeader(game){
  const s=game.state;
  console.log('\n'+LINE);
  console.log(s.player.name+' '+s.player.surname+' — '+s.player.age+' yaş — '+s.year+(s.player.alive?'':' — HAYAT SONA ERDİ'));
+ console.log('Konum: '+(s.location?.cityName??s.origin?.cityName??'Türkiye')+' | Doğum: '+(s.origin?.cityName??'—'));
  console.log('Sağlık '+Math.round(s.player.health.current)+'/100 | Görünüş '+s.player.appearance.attractiveness+'/100 | Köken: '+s.household.economicClass);
 
  if(s.education){
