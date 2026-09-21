@@ -90,3 +90,72 @@ export function moveToCity(state,toCityId,reason='personal',options={}){
 export function returnHome(state){
  return moveToCity(state,state.origin.cityId,'return-home',{housing:state.assets?.home?.cityId===state.origin.cityId?'owned':'family',stress:1});
 }
+
+
+export function generatePartnerMoveOpportunity(state,rng){
+ const partner=state.social?.romance;
+ if(!partner||!['cohabiting','married'].includes(partner.status))return null;
+ if(state.pendingPartnerMove)return state.pendingPartnerMove;
+ if(state.player.age<23||state.player.age>58)return null;
+ if(state.player.age<(state.nextPartnerMoveAge??23))return null;
+ if(!rng.chance(.065))return null;
+
+ const current=cityById(state.location?.cityId??state.origin?.cityId);
+ const candidates=TURKEY_CITIES.filter(city=>city.id!==current.id);
+ const city=rng.weighted(candidates.map(value=>({
+  value,
+  weight:Math.max(.2,value.weight*value.jobs*value.wage/Math.max(.75,value.cost))
+ })));
+
+ const currentIncome=partner.monthlyIncome??30000;
+ const targetIncome=Math.max(
+  currentIncome,
+  Math.round(currentIncome*(city.wage/current.wage)*(rng.int(102,126)/100))
+ );
+
+ state.pendingPartnerMove={
+  cityId:city.id,
+  cityName:city.name,
+  previousCityId:current.id,
+  previousCityName:current.name,
+  partnerJob:partner.job,
+  oldIncome:currentIncome,
+  newIncome:targetIncome
+ };
+ return state.pendingPartnerMove;
+}
+
+export function resolvePartnerMove(state,accept){
+ const opportunity=state.pendingPartnerMove;
+ const partner=state.social?.romance;
+ if(!opportunity||!partner)throw new Error('Aktif eş taşınma fırsatı yok.');
+
+ if(!accept){
+  partner.relationship=Math.max(0,(partner.relationship??60)-2);
+  state.nextPartnerMoveAge=state.player.age+4;
+  state.pendingPartnerMove=null;
+  return {moved:false};
+ }
+
+ const move=moveToCity(state,opportunity.cityId,'partner-job',{housing:'shared',stress:4});
+ partner.monthlyIncome=opportunity.newIncome;
+ partner.cityId=opportunity.cityId;
+ partner.cityName=opportunity.cityName;
+ partner.relationship=Math.min(100,(partner.relationship??60)+2);
+ state.nextPartnerMoveAge=state.player.age+5;
+ state.pendingPartnerMove=null;
+ return move;
+}
+
+export function canConsiderReturnHome(state){
+ if(!state.origin?.cityId||!state.location?.cityId)return false;
+ if(state.origin.cityId===state.location.cityId)return false;
+ if(state.player.age<28||state.player.age>70)return false;
+ if(state.player.age<(state.nextReturnHomeAge??28))return false;
+ const yearsAway=state.year-(state.location.sinceYear??state.year);
+ return yearsAway>=3;
+}
+
+export function deferReturnHome(state,years=5){
+ state.nextReturnHomeAge=state.player.age+years;
+}
