@@ -79,7 +79,8 @@ export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
 
  const previousFitness=h.fitness;
  const exercisedRecently=(h.lastExerciseAge??-999)>=age-1;
- const inactivityPenalty=age>=18&&!exercisedRecently?.75:age>=45&&!exercisedRecently?.35:0;
+ let inactivityPenalty=0;
+ if(!exercisedRecently)inactivityPenalty=age>=45?0.75:age>=18?0.35:0;
  h.fitness=clamp(previousFitness-wear.fitness-inactivityPenalty);
 
  const activeBurden=h.conditions.reduce((sum,condition)=>sum+conditionBurden(condition),0);
