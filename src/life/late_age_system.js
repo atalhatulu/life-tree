@@ -12,6 +12,14 @@ export function ensureLateLifeState(state){
  return state.lateLife;
 }
 
+function mobilityWear(age){
+ if(age<65)return 0;
+ if(age<75)return .4;
+ if(age<85)return .8;
+ if(age<95)return 1.4;
+ return 2.2;
+}
+
 function adultChildSupport(state){
  const adult=(state.children??[]).filter(c=>c.age>=22);
  if(!adult.length)return 0;
@@ -28,7 +36,9 @@ export function processLateLifeYear(state,rng){
  const fitness=state.healthProfile?.fitness??50;
 
  if(age>=65){
-  late.mobility=clamp(late.mobility+rng.int(-3,1)+(fitness-50)*.02-(age>=75?1:0));
+  const previousMobility=late.mobility;
+  const simulatedMobility=clamp(late.mobility+rng.int(-3,1)+(fitness-50)*.02);
+  late.mobility=Math.min(simulatedMobility,clamp(previousMobility-mobilityWear(age)));
   const socialBuffer=(state.social?.romance?8:0)+Math.min(12,(state.social?.friends?.length??0)*2)+(state.children?.length??0)*2;
   late.isolation=clamp(late.isolation+rng.int(-2,3)+(age>=75?1:0)-socialBuffer*.08);
  }

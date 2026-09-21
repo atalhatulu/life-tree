@@ -51,6 +51,7 @@ export function processAdultYear(state,rng){
  entries.push(...processBusinessYear(state,rng.fork('business')));
  entries.push(...processLateLifeYear(state,rng.fork('late-life')));
 
+ const healthBeforeLifestyle=state.player.health.current;
  const effects=lifestyleEffects(state);
  state.healthProfile.stress=Math.max(0,Math.min(100,(state.healthProfile.stress??20)+effects.stress));
  state.player.health.current=Math.max(0,Math.min(100,state.player.health.current+effects.health));
@@ -60,7 +61,7 @@ export function processAdultYear(state,rng){
   if(!transitionPending||age>=20) entries.push(...processPersonalFinanceYear(state));
  }
 
- entries.push(...processHealthYear(state,rng.fork('health')));
+ entries.push(...processHealthYear(state,rng.fork('health'),{healthBeforeYear:healthBeforeLifestyle}));
  if(!state.player.alive)finalizeDeath(state);
  return entries;
 }
