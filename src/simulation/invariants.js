@@ -8,6 +8,18 @@ export function validateState(state){
  if(state.country?.id==='TR'){
   if(!validCityIds.has(state.origin?.cityId))errors.push('invalid origin city: '+state.origin?.cityId);
   if(!validCityIds.has(state.location?.cityId))errors.push('invalid current city: '+state.location?.cityId);
+  let lastMigrationYear=-Infinity;
+  for(const move of state.migrationHistory??[]){
+   if(!validCityIds.has(move.fromCityId))errors.push('invalid migration origin city: '+move.fromCityId);
+   if(!validCityIds.has(move.toCityId))errors.push('invalid migration target city: '+move.toCityId);
+   if(!Number.isFinite(move.cost)||move.cost<0)errors.push('invalid migration cost');
+   if(move.year<lastMigrationYear)errors.push('migration history year order invalid');
+   lastMigrationYear=move.year;
+  }
+  if((state.migrationHistory?.length??0)>0){
+   const last=state.migrationHistory.at(-1);
+   if(last.toCityId!==state.location?.cityId)errors.push('current city does not match last migration');
+  }
  }
  const checks=[
   ['health.current',p.health.current],['health.constitution',p.health.constitution],
