@@ -122,7 +122,7 @@ export class Game{
  performActivity(id){
   const used=this.state.actions.max-this.state.actions.remaining;
   const result=performActivity(this.state,id,this.rng.fork('activity-'+this.state.year+'-'+used+'-'+id));
-  this.state.history.push({age:this.state.player.age,kind:'activity',result});
+  this.state.history.push({age:this.state.player.age,kind:'activity',activityId:id,result});
   return result;
  }
 

@@ -52,7 +52,7 @@ function activityOrder(game,policy,rng){
  return ['study','exercise','socialize'];
 }
 
-export function autoplay(game,{toAge=18,policy='balanced'}={}){
+export function autoplay(game,{toAge=18,policy='balanced',onYear=null}={}){
  const rng=new RNG(game.seedText+':autoplay:'+policy);
  while(game.state.player.age<toAge&&game.state.player.alive){
   const event=game.ageOneYear();
@@ -70,6 +70,7 @@ export function autoplay(game,{toAge=18,policy='balanced'}={}){
    }
   }
   assertValidState(game.state);
+  if(typeof onYear==='function')onYear(game.state,{event});
  }
  return game.state;
 }
