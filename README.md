@@ -1,60 +1,144 @@
 # Life Tree
 
-Modular, deterministic life simulation in JavaScript.
+Seeded, modular, state-driven life simulation written in JavaScript.
 
-## v0.5
+## Current milestone: v0.6
 
-Life Tree simulates one person from birth through old age and death. The simulation core is independent from the web UI and is primarily tested through the CLI and large seeded batch runs.
+The simulation now supports a complete life arc from birth into advanced age and death.
 
-### Current systems
+The core is UI-independent. The CLI and browser interface consume the same simulation state.
 
-- Procedural parents, grandparents, siblings and later-born siblings
-- Genetics, health constitution, personality and interests
-- Childhood household class, parental support and family loss
-- Minor guardianship and inherited trust funds
-- Primary school, middle school and high-school paths
-- Friends, hobbies, relationships and yearly activities
-- University, work and gap-year branches
-- Procedural university applications and job offers
-- Career performance, raises, promotions, job switching and unemployment
-- Lifestyle, housing, food, clothing, transport, tax and debt
-- Cars and home ownership
-- Adult dating, cohabitation, marriage, divorce and widowhood
-- Children with inherited traits
-- Parenting styles and child education decisions
-- Adult children, careers and grandchildren
-- Chronic and serious health conditions
-- Treatment choices and treatment cost
-- Stress, fitness, mobility and social isolation
-- Entrepreneurship and business failure risk
-- Retirement and pension income
-- Elder-care modes
-- Parent and grandparent mortality
-- Inheritance and estate planning
-- Death causes, estate settlement and final life summary
-- Life Tree nodes for major life-changing decisions
+## Main systems
 
-## Play in terminal
+### Family and childhood
+- Procedural parents, grandparents and siblings
+- Genetics
+- Household economic background
+- Parent jobs, education and interests
+- Childhood development
+- Guardianship after parental loss
+- Minor inheritance trust funds
+
+### Education
+- Primary and middle school
+- School quality
+- Academic performance
+- High-school branches
+- University applications
+- Program-to-career matching
+
+### Career and economy
+- Procedural job offers
+- Labor-market conditions
+- Promotions and raises
+- Firing and unemployment
+- Career switching
+- Entrepreneurship
+- Side businesses and full-time businesses
+- Business closure
+- Career and entrepreneur retirement
+- Personal cash and debt
+- Taxes and ownership costs
+- Housing, food, clothing and transport standards
+- Cars and homes
+- Inheritance
+
+All money is expressed in **real 2026 TRY**. The world model changes real living costs, wages, labor-market conditions and healthcare costs without requiring nominal inflation simulation.
+
+### Relationships and generations
+- Friends
+- Adult relationships
+- Cohabitation
+- Marriage and divorce
+- Partner mortality and widowhood
+- Children
+- Parenting decisions
+- Child education choices
+- Adult child careers
+- Grandchildren
+- Friend and sibling loss
+
+### Health and late life
+- Fitness and stress
+- Lifestyle effects
+- Health conditions
+- Treatment decisions
+- Age-based mortality
+- Retirement lifestyle
+- Elder-care needs
+- Estate planning
+- Death summary
+- Structured whole-life recap
+- Natural lifespan cap
+
+### Life Tree
+Important choices are stored as explicit Life Tree nodes.
+
+Major decisions store compact pre-choice snapshots, so a previous decision can be replayed as an alternate branch without mutating the original life.
+
+### World
+A lightweight background world simulation tracks:
+- labor market
+- real cost of living
+- real wages
+- healthcare costs
+- economic confidence
+- occasional recessions and strong economic periods
+
+The world is intentionally lighter than the personal-life simulation.
+
+## CLI
+
+Play a life:
 
 ```bash
-npm run play -- --to-age 80
+npm run play
+```
+
+Play toward a specific age:
+
+```bash
+npm run play -- --to-age 100
+```
+
+Autosave:
+
+```bash
+npm run play -- --save save.json
+```
+
+Load a save:
+
+```bash
+npm run play -- --load save.json --save save.json
+```
+
+Inspect one deterministic life:
+
+```bash
+npm run trace -- --seed test-life --policy random --to-age 100
+```
+
+JSON trace:
+
+```bash
+npm run trace -- --seed test-life --policy balanced --to-age 100 --json
 ```
 
 ## Batch simulation
 
 ```bash
-npm run simulate -- --lives 5000 --to-age 80 --policy random
+npm run simulate -- --lives 5000 --to-age 100 --policy random
 ```
 
 Policies:
-
 - `random`
 - `balanced`
 - `academic`
 - `social`
 - `vocational`
 
-The batch runner reports state validity, education, career, retirement, relationships, children, grandchildren, assets, health, mortality, inheritance, elder care, estate planning and Life Tree statistics.
+The batch runner reports state integrity plus education, career, retirement, business, relationships, generations, assets, health, mortality, estates, Life Tree and macro-world statistics.
 
 ## Tests
 
@@ -62,7 +146,7 @@ The batch runner reports state validity, education, career, retirement, relation
 npm test
 ```
 
-GitHub Actions runs the complete test suite and an additional age-80 batch simulation on each push.
+GitHub Actions runs the complete test suite and a separate full-life batch simulation on every push.
 
 ## Architecture
 
@@ -78,11 +162,24 @@ src/
 ├── assets/
 ├── health/
 ├── social/
+├── world/
 ├── life/
+├── timeline/
 ├── events/
 ├── simulation/
 ├── cli/
 └── ui/
 ```
 
-Simulation rules stay outside the presentation layers. The CLI and browser UI consume the same game state.
+Simulation rules remain separate from presentation.
+
+## Next milestones
+
+- More event/content variety
+- Deeper child and sibling lives
+- More career specializations
+- Relationship conflict history
+- Richer illness and recovery paths
+- Life Tree branch explorer UI
+- Modern 2026 internet/social systems
+- Final browser/mobile interface
