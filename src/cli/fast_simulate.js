@@ -212,6 +212,7 @@ const report={
 
  events:{
   historyKinds:{},eventIds:{},choiceIds:{},eventChoicePairs:{},activities:{},
+  socialActivities:{},physicalActivities:{},hobbies:{},relationshipInteractions:[],
   ageByEvent:{},ageByActivity:{},historyRows:[]
  },
 
@@ -583,8 +584,21 @@ for(let i=0;i<lives;i++){
    inc(report.events.activities,item.activityId);
    push(report.events.ageByActivity,item.activityId,item.age);
   }
+  if(item.kind==='social-activity'&&item.activityId){
+   inc(report.events.socialActivities,item.activityId);
+   push(report.events.ageByActivity,'social:'+item.activityId,item.age);
+  }
+  if(item.kind==='physical-activity'&&item.activityId){
+   inc(report.events.physicalActivities,item.activityId);
+   push(report.events.ageByActivity,'physical:'+item.activityId,item.age);
+  }
+  if(item.kind==='hobby'&&item.hobbyId){
+   inc(report.events.hobbies,item.hobbyId);
+   push(report.events.ageByActivity,'hobby:'+item.hobbyId,item.age);
+  }
  }
  report.events.historyRows.push(state.history?.length??0);
+ report.events.relationshipInteractions.push(Object.values(state.relationshipMemories??{}).reduce((sum,m)=>sum+(m.interactions??0),0));
 
  // Correlation row: one row per valid life
  report.correlations.rows.push({
@@ -910,6 +924,10 @@ const summary={
   choiceIds:report.events.choiceIds,
   eventChoicePairs:report.events.eventChoicePairs,
   activities:report.events.activities,
+  socialActivities:report.events.socialActivities,
+  physicalActivities:report.events.physicalActivities,
+  hobbies:report.events.hobbies,
+  relationshipInteractions:distribution(report.events.relationshipInteractions),
   eventAgeDistributions:averageAgeMap(report.events.ageByEvent),
   activityAgeDistributions:averageAgeMap(report.events.ageByActivity),
   historyRowsPerLife:distribution(report.events.historyRows)
