@@ -1,7 +1,7 @@
 const EVENT_PACING={
  'career-switch':{category:'career',globalGap:2,categoryGap:4},
  'start-business':{category:'career',globalGap:2,categoryGap:5},
- 'retirement-decision':{category:'career',globalGap:1,categoryGap:3},
+ 'retirement-decision':{category:'career',globalGap:2,categoryGap:3},
 
  'relationship-commitment':{category:'relationship',globalGap:2,categoryGap:4},
  'marriage-after-cohabiting':{category:'relationship',globalGap:2,categoryGap:4},
