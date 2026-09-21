@@ -43,6 +43,8 @@ export function generateFamily(seed){
  const motherAge=root.int(21,39); const fatherAge=Math.max(20,motherAge+root.int(-3,7));
  const mother=makeAdult({rng:root.fork('mother'),sex:'female',surname,id:'mother',age:motherAge});
  const father=makeAdult({rng:root.fork('father'),sex:'male',surname,id:'father',age:fatherAge});
+ mother.monthlyIncome=Math.round(mother.monthlyIncome*birthCity.wage);
+ father.monthlyIncome=Math.round(father.monthlyIncome*birthCity.wage);
  const sex=root.chance(0.5)?'female':'male'; const child=createPersonBase({id:'player',name:nameFor(root.fork('child-name'),sex),surname,sex,age:0,rng:root.fork('child')});
  const inherited=inheritFromParents(root.fork('genetics'),mother,father,sex); child.appearance=inherited.appearance; child.health.constitution=inherited.health.constitution; child.interests=deriveChildInterests(root.fork('interests'),mother,father);
  const olderSiblingCount=root.weighted([{value:0,weight:4.5},{value:1,weight:3.4},{value:2,weight:1.5},{value:3,weight:0.6}]);
@@ -50,7 +52,7 @@ export function generateFamily(seed){
  const siblings=[];
  for(let i=0;i<olderSiblingCount&&maxOlderAge>0;i+=1){ const srng=root.fork(`sibling-${i}`); const ssex=srng.chance(.5)?'female':'male'; const age=srng.int(1,maxOlderAge); const s=createPersonBase({id:`sibling-${i}`,name:nameFor(srng,ssex),surname,sex:ssex,age,rng:srng}); const inheritedSibling=inheritFromParents(srng.fork('genetics'),mother,father,ssex); s.appearance=inheritedSibling.appearance; s.health.constitution=inheritedSibling.health.constitution; siblings.push(s); }
  siblings.sort((a,b)=>b.age-a.age);
- const people=2+siblings.length+1; const monthlyIncome=mother.monthlyIncome+father.monthlyIncome; const cls=economicClass(monthlyIncome,people);
+ const people=2+siblings.length+1; const monthlyIncome=mother.monthlyIncome+father.monthlyIncome; const cls=economicClass(monthlyIncome/Math.max(.75,birthCity.cost),people);
  child.background.childhoodClass=cls;
  child.relationships.mother=relationshipSeed(root.fork('rel-mother'),child,mother,76); child.relationships.father=relationshipSeed(root.fork('rel-father'),child,father,73);
  for(const s of siblings) child.relationships[s.id]=relationshipSeed(root.fork(`rel-${s.id}`),child,s,66);
