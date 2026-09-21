@@ -67,7 +67,7 @@ test('treatment consumes money or creates debt and closes untreated state',()=>{
 });
 
 
-test('elderly sibling loss is recorded and dead sibling stops aging',()=>{
+test('elderly sibling loss is recorded and dead sibling stops aging',async()=>{
  const g=new Game('sibling-loss-unit');
  g.state.player.age=78;
  g.state.year=2104;
