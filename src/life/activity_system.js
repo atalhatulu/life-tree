@@ -1,7 +1,8 @@
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export const ACTIVITY_DEFS=[
- {id:'study',label:'Ders çalış',minAge:6,condition:s=>s.education?.enrolled||s.higherEducation?.enrolled},
+ {id:'study',label:'Ders çalış',minAge:6,condition:s=>(s.player.age<=18&&s.education?.enrolled)||s.higherEducation?.enrolled},
+ {id:'course',label:'Kurs / eğitim al',minAge:19,condition:s=>!s.higherEducation?.enrolled},
  {id:'exercise',label:'Egzersiz yap',minAge:6},
  {id:'socialize',label:'Sosyalleş',minAge:7},
  {id:'hobby',label:'Hobiyle ilgilen',minAge:5},
@@ -32,6 +33,14 @@ export function performActivity(state,id,rng){
    state.player.personality.discipline=clamp(state.player.personality.discipline+1);
    result='Ders çalıştın. Bu yılki çalışma düzenin güçlendi.';
   }
+ }
+ if(id==='course'){
+  state.player.personality.curiosity=clamp(state.player.personality.curiosity+rng.int(1,3));
+  state.player.personality.discipline=clamp(state.player.personality.discipline+rng.int(0,2));
+  if(state.career?.employed){
+   state.career.performance=clamp(state.career.performance+rng.int(1,3));
+   result='Mesleki bir kursa katılıp kendini geliştirdin.';
+  }else result='Yeni bir beceri öğrenmek için kursa katıldın.';
  }
  if(id==='exercise'){
   state.player.health.current=clamp(state.player.health.current+rng.int(1,3));
