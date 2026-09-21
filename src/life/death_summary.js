@@ -1,7 +1,9 @@
 import {settleEstate} from '../finance/estate_system.js';
+import {buildLifeRecap} from './life_recap.js';
 
 export function buildDeathSummary(state){
  const estate=settleEstate(state);
+ const recap=buildLifeRecap(state);
  const tree=state.lifeTree?.nodes??[];
  const children=state.children??[];
  const exSpouses=state.social?.exSpouses?.length??0;
@@ -21,15 +23,20 @@ export function buildDeathSummary(state){
   grandchildren:state.grandchildren??0,
   marriages:(state.social?.romance?.status==='married'?1:0)+exSpouses+deceasedSpouses,
   widowed:deceasedSpouses>0||state.widowedAtAge!=null,
-  familyLosses:[state.parents.mother,state.parents.father,state.grandparents.maternal.grandmother,state.grandparents.maternal.grandfather,state.grandparents.paternal.grandmother,state.grandparents.paternal.grandfather].filter(p=>!p.alive).length,
+  familyLosses:recap.family.losses.length,
+  siblingLosses:recap.family.losses.filter(x=>x.relation==='sibling').length,
+  friendLosses:recap.family.deceasedFriends.length,
   homeOwned:Boolean(state.assets?.home),
   carOwned:Boolean(state.assets?.car),
   finalCash:Math.round(state.finance?.cash??0),
   finalDebt:Math.round(state.finance?.debt??0),
+  inheritanceReceived:recap.finances.inheritanceReceived,
   estateNet:estate.net,
   heirs:estate.heirs,
+  estatePlan:estate.plan,
   majorDecisions:tree.length,
-  healthConditions:state.healthProfile?.conditions?.map(c=>c.label)??[]
+  healthConditions:state.healthProfile?.conditions?.map(c=>c.label)??[],
+  recap
  };
 }
 
