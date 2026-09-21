@@ -29,6 +29,7 @@ export function buildDeathSummary(state){
   homeOwned:Boolean(state.assets?.home),
   carOwned:Boolean(state.assets?.car),
   finalCash:Math.round(state.finance?.cash??0),
+  finalSavings:Math.round(state.finance?.savings??0),
   finalDebt:Math.round(state.finance?.debt??0),
   inheritanceReceived:recap.finances.inheritanceReceived,
   estateNet:estate.net,
