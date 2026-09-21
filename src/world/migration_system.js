@@ -114,6 +114,7 @@ export function returnHome(state){
  }
 
  const result=moveToCity(state,state.origin.cityId,'return-home',{housing:useOwned?'owned':'family',stress:1});
+ state.hasReturnedHome=true;
  if(state.finance?.lifestyle)state.finance.lifestyle.housing=useOwned?'owned':'family';
  return {...result,leftJob:Boolean(previousJob),previousJob};
 }
@@ -177,6 +178,7 @@ export function resolvePartnerMove(state,accept){
 export function canConsiderReturnHome(state){
  if(!state.origin?.cityId||!state.location?.cityId)return false;
  if(state.origin.cityId===state.location.cityId)return false;
+ if(state.hasReturnedHome)return false;
  if(state.player.age<28||state.player.age>70)return false;
  if(state.player.age<(state.nextReturnHomeAge??28))return false;
  const yearsAway=state.year-(state.location.sinceYear??state.year);
