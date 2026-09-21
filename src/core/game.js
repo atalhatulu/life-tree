@@ -20,6 +20,7 @@ import {lateLifeEvents} from '../events/late_life_events.js';
 import {parentingEvents} from '../events/parenting_events.js';
 import {lateAgeEvents} from '../events/late_age_events.js';
 import {createWorldState,processWorldYear} from '../world/world_state.js';
+import {processGeneticHealthYear} from '../health/genetic_system.js';
 
 export class Game{
  constructor(seed=String(Date.now())){
@@ -75,6 +76,7 @@ export class Game{
    ...processElderFamilyYear(this.state,yearRng.fork('family-loss')),
    ...releaseTrustFund(this.state),
    ...processChildhoodYear(this.state,yearRng.fork('childhood')),
+   ...processGeneticHealthYear(this.state,yearRng.fork('genetic-health')),
    ...processSocialYear(this.state,yearRng.fork('social')),
    ...processAdolescenceYear(this.state,yearRng.fork('adolescence')),
    ...processRomanceYear(this.state,yearRng.fork('romance')),
