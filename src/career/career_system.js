@@ -1,6 +1,7 @@
 import {generateJobOffers} from './job_market.js';
 import {economy} from '../world/world_state.js';
 import {moveToCity} from '../world/migration_system.js';
+import {archiveCareer} from './career_profile.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export function deepenCareerState(state){
@@ -35,6 +36,8 @@ export function processCareerDynamics(state,rng){
  const firingChance=Math.min(.22,(c.performance<35?.10:c.stability<30?.06:.008)+marketRisk);
  if(!promotedThisYear&&rng.chance(firingChance)){
   entries.push({age:state.player.age,kind:'career',paceBlock:true,text:c.title+' işinden çıkarıldın.'});
+  archiveCareer(state,'fired');
+  c.exitReason='fired';
   c.employed=false;
   state.player.job=null;
   state.player.jobId=null;
@@ -55,13 +58,14 @@ export function processCareerDynamics(state,rng){
  }
 
  if(c.years>=3&&c.years%3===0&&(c.satisfaction<55||state.player.personality.ambition>70)){
-  state.pendingCareerOffers=generateJobOffers(state,rng.fork('career-switch-'+state.player.age));
+  state.pendingCareerOffers=generateJobOffers(state,rng.fork('career-switch-'+state.player.age),3,{mode:'career-switch'});
  }
  return entries;
 }
 
 export function switchJob(state,job){
  const old=state.career;
+ archiveCareer(state,'career-switch');
  let moveResult=null;
  if(job.requiresMove)moveResult=moveToCity(state,job.cityId,'career-switch',{housing:'shared',stress:4});
  state.career={
