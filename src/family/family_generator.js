@@ -25,6 +25,17 @@ function deriveChildInterests(rng,mother,father){
 function relationshipSeed(rng,personA,personB,base=65){ const compatibility=100-Math.abs(personA.personality.sociability-personB.personality.sociability); return Math.max(25,Math.min(95,Math.round(base*0.7+compatibility*0.2+rng.int(-8,8)))); }
 function economicClass(income,people){ const perCapita=income/Math.max(1,people); if(perCapita<18000)return 'düşük'; if(perCapita<38000)return 'orta'; if(perCapita<65000)return 'üst-orta'; return 'yüksek'; }
 
+export function generateNewbornSibling(rng, family, id) {
+ const { mother, father } = family.parents;
+ const sex = rng.chance(0.5) ? 'female' : 'male';
+ const sibling = createPersonBase({ id, name: nameFor(rng.fork('name'), sex), surname: father.surname, sex, age: 0, rng });
+ const inherited = inheritFromParents(rng.fork('genetics'), mother, father, sex);
+ sibling.appearance = inherited.appearance;
+ sibling.health.constitution = inherited.health.constitution;
+ sibling.interests = deriveChildInterests(rng.fork('interests'), mother, father);
+ return sibling;
+}
+
 export function generateFamily(seed){
  const root=seed.fork('family'); const surname=root.pick(SURNAMES);
  const motherAge=root.int(21,39); const fatherAge=Math.max(20,motherAge+root.int(-3,7));
