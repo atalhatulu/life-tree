@@ -12,6 +12,7 @@ export const lateLifeEvents=[
    ...treatmentOptions(s).map(option=>({
     id:'treat:'+option.id,
     label:option.label+' için tedavi ol — ₺'+option.cost.toLocaleString('tr-TR'),
+    majorDecision:option.severity>=3,
     result:next=>{
      const condition=next.healthProfile.conditions.find(c=>c.id===option.id);
      return condition?.treatmentSuccessful
@@ -37,21 +38,21 @@ export const lateLifeEvents=[
  {
   id:'start-business',
   title:'Kendi İşini Kurmak',
-  minAge:25,maxAge:58,once:true,majorDecision:false,priority:44,
-  condition:s=>canStartBusiness(s)&&(s.preferences?.riskTolerance??50)>=55,
+  minAge:25,maxAge:58,once:false,majorDecision:false,priority:44,
+  condition:s=>canStartBusiness(s)&&(s.preferences?.riskTolerance??50)>=55&&s.player.age>=(s.nextBusinessAge??25),
   choices:[
    {
     id:'launch-business',
     label:'Sermayenin bir kısmıyla şirket kur',
     majorDecision:true,
     result:'Kendi işletmeni kurdun.',
-    effect:(s,rng)=>startBusiness(s,rng.fork('launch'))
+    effect:(s,rng)=>{startBusiness(s,rng.fork('launch'));s.nextBusinessAge=99;}
    },
    {
     id:'keep-career',
     label:'Mevcut düzenimi koru',
     result:'Şimdilik girişimcilik riskini almadın.',
-    effect:s=>{s.preferences.riskTolerance=Math.max(0,s.preferences.riskTolerance-5);}
+    effect:s=>{s.preferences.riskTolerance=Math.max(0,s.preferences.riskTolerance-5);s.nextBusinessAge=s.player.age+4;}
    }
   ]
  },
