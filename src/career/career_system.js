@@ -19,17 +19,20 @@ export function processCareerDynamics(state,rng){
  c.satisfaction=clamp(c.satisfaction+rng.int(-5,4)+(c.degreeRelated?1:0));
  c.stability=clamp(c.stability+rng.int(-4,4)+(c.performance>65?2:-1));
 
+ let promotedThisYear=false;
  if(c.performance>78&&c.years>=2&&rng.chance(.20)){
   c.level+=1;
   c.monthlyIncome=Math.round(c.monthlyIncome*1.12);
   state.player.monthlyIncome=c.monthlyIncome;
+  c.stability=clamp(c.stability+8);
+  promotedThisYear=true;
   entries.push({age:state.player.age,kind:'career',text:'Terfi aldın. Kariyer seviyen '+c.level+' oldu.'});
  }
 
  const macro=economy(state);
  const marketRisk=Math.max(0,(1-macro.laborMarket)*.08);
  const firingChance=Math.min(.22,(c.performance<35?.10:c.stability<30?.06:.008)+marketRisk);
- if(rng.chance(firingChance)){
+ if(!promotedThisYear&&rng.chance(firingChance)){
   entries.push({age:state.player.age,kind:'career',text:c.title+' işinden çıkarıldın.'});
   c.employed=false;
   state.player.job=null;
