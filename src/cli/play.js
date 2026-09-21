@@ -4,14 +4,20 @@ import {Game} from '../core/game.js';
 import {printHeader,printNewHistory,printEvent,printActivities} from './presenter.js';
 import {assertValidState} from '../simulation/invariants.js';
 
+function arg(name,fallback){
+ const index=process.argv.indexOf('--'+name);
+ return index>=0&&process.argv[index+1]!=null?process.argv[index+1]:fallback;
+}
+
+const targetAge=Math.max(1,Number(arg('to-age','30')));
 const rl=createInterface({input,output});
 const seed=(await rl.question('Seed (boş bırak = rastgele): ')).trim()||String(Date.now());
 const game=new Game(seed);
 let historyIndex=0;
 
-console.log('\nLife Tree CLI başladı. Seed: '+seed);
+console.log('\nLife Tree CLI başladı. Seed: '+seed+' | Hedef yaş: '+targetAge);
 
-while(game.state.player.age<18){
+while(game.state.player.age<targetAge){
  printHeader(game);
  const answer=(await rl.question('\n+1 yaş için Enter, çıkmak için q: ')).trim().toLowerCase();
  if(answer==='q') break;
@@ -38,6 +44,7 @@ while(game.state.player.age<18){
    catch(error){console.log('! '+error.message);}
   }
  }
+
  assertValidState(game.state);
 }
 
