@@ -1,3 +1,6 @@
+import {TURKEY_2026_ECONOMY} from '../data/countries/turkey/economy.js';
+import {locationProfile} from '../data/countries/turkey/profile.js';
+
 export function ensureAssets(state){
  state.assets??={home:null,car:null};
  return state.assets;
@@ -5,11 +8,9 @@ export function ensureAssets(state){
 
 export function affordableCarOptions(state){
  const cash=state.finance?.cash??0;
- return [
-  {id:'used',label:'İkinci el otomobil',price:180000,runningCost:6500,status:2},
-  {id:'standard',label:'Standart otomobil',price:420000,runningCost:9000,status:4},
-  {id:'premium',label:'Premium otomobil',price:950000,runningCost:16000,status:8}
- ].filter(x=>cash>=x.price*.35);
+ return TURKEY_2026_ECONOMY.assets.cars
+  .map(car=>({...car}))
+  .filter(car=>cash>=car.price*.35);
 }
 
 export function buyCar(state,id){
@@ -25,11 +26,11 @@ export function buyCar(state,id){
 
 export function affordableHomeOptions(state){
  const cash=state.finance?.cash??0;
- const income=state.career?.monthlyIncome??0;
- return [
-  {id:'small-flat',label:'Küçük daire',price:1800000,housing:'owned'},
-  {id:'family-flat',label:'Standart daire',price:3200000,housing:'owned'}
- ].filter(x=>cash>=x.price*.2&&income>=35000);
+ const income=state.career?.monthlyIncome??state.retirement?.pensionMonthly??0;
+ const city=locationProfile(state);
+ return TURKEY_2026_ECONOMY.assets.homes
+  .map(home=>({...home,price:Math.round(home.price*city.housing),cityId:city.id,cityName:city.name}))
+  .filter(home=>cash>=home.price*.2&&income>=35000*city.wage);
 }
 
 export function buyHome(state,id){
