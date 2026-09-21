@@ -1,12 +1,13 @@
 {
   "name": "life-tree",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test",
     "test:core": "node --test tests/core.test.js",
     "test:simulation": "node --test tests/simulation.test.js",
+    "test:adult": "node --test tests/adult.test.js",
     "play": "node src/cli/play.js",
     "simulate": "node src/cli/simulate.js",
     "start": "python3 -m http.server 8080"
