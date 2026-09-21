@@ -1,4 +1,5 @@
 import {economy} from '../world/world_state.js';
+import {ensurePersonalFinance} from '../finance/personal_finance.js';
 const COSTS={1:18000,2:45000,3:110000};
 
 export function untreatedConditions(state){
@@ -19,7 +20,7 @@ export function treatCondition(state,id,rng){
  const condition=(state.healthProfile?.conditions??[]).find(c=>c.id===id&&!c.treated);
  if(!condition)throw new Error('Tedavi edilebilir aktif durum bulunamadı.');
  const cost=Math.round((COSTS[condition.severity]??30000)*economy(state).healthcareCost);
- state.finance??={cash:0,debt:0,lifestyle:{housing:'family',food:'standard',clothing:'basic',transport:'public'}};
+ ensurePersonalFinance(state);
  const used=Math.min(state.finance.cash,cost);
  state.finance.cash-=used;
  state.finance.debt+=(cost-used);
