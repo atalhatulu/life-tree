@@ -6,7 +6,7 @@ export const lateLifeEvents=[
  {
   id:'health-treatment',
   title:'Tedavi Kararı',
-  minAge:1,maxAge:100,once:false,majorDecision:false,priority:80,
+  minAge:1,maxAge:100,once:false,majorDecision:false,priority:140,
   condition:s=>treatmentOptions(s).length>0&&s.player.age>=(s.nextTreatmentDecisionAge??18),
   choices:s=>[
    ...treatmentOptions(s).map(option=>({
