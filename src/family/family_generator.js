@@ -1,6 +1,7 @@
 import {FIRST_NAMES,SURNAMES,JOBS,HOBBIES,PARENTING_STYLES} from '../data/catalog.js';
 import {createPersonBase} from '../character/person.js';
 import {inheritFromParents} from '../character/genetics.js';
+import {pickBirthCity} from '../data/countries/turkey/profile.js';
 
 function nameFor(rng,sex){return rng.pick(FIRST_NAMES[sex]);}
 function assignAdultLife(person,rng){
@@ -38,6 +39,7 @@ export function generateNewbornSibling(rng, family, id) {
 
 export function generateFamily(seed){
  const root=seed.fork('family'); const surname=root.pick(SURNAMES);
+ const birthCity=pickBirthCity(root.fork('birth-city'));
  const motherAge=root.int(21,39); const fatherAge=Math.max(20,motherAge+root.int(-3,7));
  const mother=makeAdult({rng:root.fork('mother'),sex:'female',surname,id:'mother',age:motherAge});
  const father=makeAdult({rng:root.fork('father'),sex:'male',surname,id:'father',age:fatherAge});
@@ -55,6 +57,9 @@ export function generateFamily(seed){
  const educationSupport=Math.round((mother.education.level+father.education.level)*8+(mother.personality.discipline+father.personality.discipline)*0.18);
  const hobbySupport=Math.round((Object.keys(mother.interests).length+Object.keys(father.interests).length)*10+(mother.personality.curiosity+father.personality.curiosity)*0.12);
  return {player:child,parents:{mother,father},grandparents:{maternal:makeGrandparents(root,mother,'maternal'),paternal:makeGrandparents(root,father,'paternal')},siblings,
+  country:{id:'TR',name:'Türkiye'},
+  origin:{countryId:'TR',cityId:birthCity.id,cityName:birthCity.name},
+  location:{countryId:'TR',cityId:birthCity.id,cityName:birthCity.name,sinceYear:2026},
   household:{monthlyIncome,economicClass:cls,people,educationSupport:Math.min(100,educationSupport),hobbySupport:Math.min(100,hobbySupport),parenting:{mother:mother.background.parentingStyle,father:father.background.parentingStyle}}
  };
 }
