@@ -20,7 +20,6 @@ export function processChildrenYear(state,rng){
  for(const child of ensureChildren(state)){
   child.age+=1;
   child.health.current=clamp(child.health.current+rng.int(-2,2));
-  child.relationship=clamp((child.relationship??70)+rng.int(-3,3));
   if(child.age===6) entries.push({age:state.player.age,kind:'family',text:child.name+' okula başladı.'});
   if(child.age===18) entries.push({age:state.player.age,kind:'family',text:child.name+' yetişkinliğe adım attı.'});
  }
