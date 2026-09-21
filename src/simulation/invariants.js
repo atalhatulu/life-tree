@@ -24,6 +24,12 @@ export function validateState(state){
   if(Math.abs(friend.age-p.age)>1) errors.push('friend age gap too high: '+friend.age+' vs '+p.age);
  }
  if(state.social?.romance&&!bounded(state.social.romance.relationship)) errors.push('romance relationship out of range');
+ if(state.higherEducation?.performance!=null&&!bounded(state.higherEducation.performance)) errors.push('university performance out of range');
+ if(state.career?.performance!=null&&!bounded(state.career.performance)) errors.push('career performance out of range');
+ if(state.finance){
+  if(!Number.isFinite(state.finance.cash)||state.finance.cash<0) errors.push('invalid cash');
+  if(!Number.isFinite(state.finance.debt)||state.finance.debt<0) errors.push('invalid debt');
+ }
  return errors;
 }
 
