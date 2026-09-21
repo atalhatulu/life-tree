@@ -5,10 +5,12 @@ import {processChildhoodYear} from '../life/childhood_simulation.js';
 import {processAdolescenceYear} from '../life/adolescence_simulation.js';
 import {processSocialYear} from '../social/social_simulation.js';
 import {processRomanceYear} from '../social/romance_system.js';
+import {processAdultYear} from '../life/adult_simulation.js';
 import {performActivity,availableActivities} from '../life/activity_system.js';
 import {EventEngine} from '../events/event_engine.js';
 import {childhoodEvents} from '../events/childhood_events.js';
 import {adolescenceEvents} from '../events/adolescence_events.js';
+import {adultEvents} from '../events/adult_events.js';
 
 export class Game{
  constructor(seed=String(Date.now())){
@@ -21,7 +23,7 @@ export class Game{
   this.state.lifeTree={nodes:[]};
   this.state.social={friends:[],romance:null};
   this.state.actions={remaining:0,max:3};
-  this.events=new EventEngine([...childhoodEvents,...adolescenceEvents]);
+  this.events=new EventEngine([...childhoodEvents,...adolescenceEvents,...adultEvents]);
  }
 
  ageOneYear(){
@@ -42,7 +44,8 @@ export class Game{
    ...processChildhoodYear(this.state,yearRng.fork('childhood')),
    ...processSocialYear(this.state,yearRng.fork('social')),
    ...processAdolescenceYear(this.state,yearRng.fork('adolescence')),
-   ...processRomanceYear(this.state,yearRng.fork('romance'))
+   ...processRomanceYear(this.state,yearRng.fork('romance')),
+   ...processAdultYear(this.state,yearRng.fork('adult'))
   ];
   this.state.history.push(...auto);
   return this.events.choose(this.state,yearRng.fork('event'));
