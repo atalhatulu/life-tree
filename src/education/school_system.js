@@ -10,15 +10,30 @@ function schoolQualityFromHousehold(state,rng){
 
 export function enrollPrimarySchool(state,rng,attitude='neutral'){
  const quality=schoolQualityFromHousehold(state,rng);
- const attitudeBonus=attitude==='embrace'?8:-4;
- const performance=clamp(Math.round(35+state.player.personality.curiosity*0.22+state.player.personality.discipline*0.12+state.household.educationSupport*0.18+quality*0.12+attitudeBonus));
+ const aptitude=clamp(Math.round(
+  state.player.personality.curiosity*.48+
+  state.player.personality.discipline*.18+
+  state.player.health.constitution*.14+
+  rng.int(8,28)
+ ));
+ const motivation=attitude==='embrace'?72:48;
+ const performance=clamp(Math.round(
+  aptitude*.32+
+  state.player.personality.discipline*.16+
+  state.household.educationSupport*.18+
+  quality*.14+
+  motivation*.12+
+  state.player.health.current*.08
+ ));
  state.education={
   enrolled:true,
   stage:'primary',
   schoolName:`${rng.pick(SCHOOL_PREFIXES)} İlkokulu`,
   quality,
+  aptitude,
   performance,
-  motivation:attitude==='embrace'?72:48,
-  attendance:95
+  motivation,
+  attendance:95,
+  studyEffort:0
  };
 }
