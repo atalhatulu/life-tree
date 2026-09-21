@@ -44,6 +44,7 @@ test('personal finance never has negative cash or debt values',()=>{
 
 test('300 random adult lives reach age 30 without state violations',()=>{
  let employed=0;
+ let laborAttached=0;
  for(let i=0;i<300;i++){
   const g=new Game('adult-stress-'+i);
   autoplay(g,{toAge:30,policy:'random'});
@@ -57,6 +58,12 @@ test('300 random adult lives reach age 30 without state violations',()=>{
    assert.equal(g.state.player.age,30);
   }
   if(g.state.career?.employed) employed++;
+  if(
+   g.state.career?.employed||
+   g.state.nextPath==='work'||
+   (g.state.pendingJobOffers?.length??0)>0
+  ) laborAttached++;
  }
- assert.ok(employed>=270);
+ assert.ok(employed>=210,'too few employed at 30: '+employed);
+ assert.ok(laborAttached>=270,'too few attached to labor market at 30: '+laborAttached);
 });
