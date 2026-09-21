@@ -1,4 +1,5 @@
 import {generateJobOffers} from './job_market.js';
+import {economy} from '../world/world_state.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export function deepenCareerState(state){
@@ -25,7 +26,9 @@ export function processCareerDynamics(state,rng){
   entries.push({age:state.player.age,kind:'career',text:'Terfi aldın. Kariyer seviyen '+c.level+' oldu.'});
  }
 
- const firingChance=c.performance<35?.10:c.stability<30?.06:.008;
+ const macro=economy(state);
+ const marketRisk=Math.max(0,(1-macro.laborMarket)*.08);
+ const firingChance=Math.min(.22,(c.performance<35?.10:c.stability<30?.06:.008)+marketRisk);
  if(rng.chance(firingChance)){
   entries.push({age:state.player.age,kind:'career',text:c.title+' işinden çıkarıldın.'});
   c.employed=false;
