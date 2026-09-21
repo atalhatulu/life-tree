@@ -91,7 +91,8 @@ export function performSocialActivity(state,targetId,activityId,rng){
  state.healthProfile.stress=Math.max(0,state.healthProfile.stress-scored.activity.stressRelief);
 
  if(scored.activity.physical&&state.healthProfile){
-  state.healthProfile.fitness=Math.min(100,state.healthProfile.fitness+1);
+  const adaptation=Math.max(.20,1-(state.healthProfile.fitness??50)/120);
+  state.healthProfile.fitness=Math.min(100,state.healthProfile.fitness+adaptation);
   state.healthProfile.lastExerciseAge=state.player.age;
   state.healthProfile.exerciseSessions=(state.healthProfile.exerciseSessions??0)+1;
  }
