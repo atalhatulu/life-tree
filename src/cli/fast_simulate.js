@@ -12,6 +12,58 @@ function arg(name,fallback){
 function pct(n,d){return d?Number((n/d*100).toFixed(1)):0;}
 function avg(n,d,digits=2){return d?Number((n/d).toFixed(digits)):0;}
 function inc(obj,key,by=1){obj[key]=(obj[key]??0)+by;}
+function push(obj,key,value){obj[key]??=[];obj[key].push(value);}
+function sum(values){return values.reduce((a,b)=>a+b,0);}
+function quantile(values,q){
+ if(!values.length)return 0;
+ const sorted=[...values].sort((a,b)=>a-b);
+ const pos=(sorted.length-1)*q;
+ const base=Math.floor(pos);
+ const rest=pos-base;
+ return Number((sorted[base]+(sorted[base+1]!=null?rest*(sorted[base+1]-sorted[base]):0)).toFixed(1));
+}
+function distribution(values){
+ return {
+  n:values.length,
+  min:values.length?Math.min(...values):0,
+  p10:quantile(values,.10),
+  p25:quantile(values,.25),
+  median:quantile(values,.50),
+  p75:quantile(values,.75),
+  p90:quantile(values,.90),
+  max:values.length?Math.max(...values):0,
+  mean:values.length?Number((sum(values)/values.length).toFixed(1)):0
+ };
+}
+function correlation(xs,ys){
+ const n=Math.min(xs.length,ys.length);
+ if(n<3)return 0;
+ const x=xs.slice(0,n),y=ys.slice(0,n);
+ const mx=sum(x)/n,my=sum(y)/n;
+ let num=0,dx=0,dy=0;
+ for(let i=0;i<n;i++){
+  const a=x[i]-mx,b=y[i]-my;
+  num+=a*b;dx+=a*a;dy+=b*b;
+ }
+ if(dx===0||dy===0)return 0;
+ return Number((num/Math.sqrt(dx*dy)).toFixed(3));
+}
+function ageBucket(age){
+ if(age<20)return '<20';
+ if(age<40)return '20-39';
+ if(age<60)return '40-59';
+ if(age<75)return '60-74';
+ if(age<90)return '75-89';
+ return '90+';
+}
+function wealthBucket(value){
+ if(value<0)return 'negative';
+ if(value<250000)return '<250k';
+ if(value<1000000)return '250k-1m';
+ if(value<5000000)return '1m-5m';
+ if(value<20000000)return '5m-20m';
+ return '20m+';
+}
 function careerSequence(state){
  const archived=[...(state.careerProfile?.recentJobs??[])].reverse().map(x=>({
   jobId:x.jobId,title:x.title,reason:x.reason,leftAtAge:x.leftAtAge
@@ -24,25 +76,18 @@ function careerSequence(state){
 function transitionAudit(state){
  const seq=careerSequence(state);
  const issues=[];
+ const degreeTags=state.higherEducation?.completed?(state.higherEducation.careerTags??[]):[];
+
  for(let i=1;i<seq.length;i++){
   const from=seq[i-1],to=seq[i];
   if(!from.jobId||!to.jobId)continue;
 
   if(from.jobId===to.jobId){
-   issues.push({
-    type:'same-occupation-return',
-    job:to.title,
-    after:from.reason
-   });
+   issues.push({type:'same-occupation-return',job:to.title,after:from.reason});
    continue;
   }
 
-  const compatibility=familyCompatibility(from.jobId,to.jobId);
-  if(compatibility!==0)continue;
-
-  // A salaried job followed by full-time entrepreneurship is not a direct
-  // profession-to-profession jump even if the next salaried job is distant.
-  const degreeTags=state.higherEducation?.completed?(state.higherEducation.careerTags??[]):[];
+  if(familyCompatibility(from.jobId,to.jobId)!==0)continue;
   const degreeBacked=degreeTags.includes(to.jobId);
 
   if(from.reason==='entrepreneurship'){
@@ -57,12 +102,36 @@ function transitionAudit(state){
  }
  return issues;
 }
-function ageBucket(age){
- if(age<40)return '<40';
- if(age<60)return '40-59';
- if(age<75)return '60-74';
- if(age<90)return '75-89';
- return '90+';
+function historyCount(state,predicate){
+ return (state.history??[]).filter(predicate).length;
+}
+function historyAgeList(state,predicate){
+ return (state.history??[]).filter(predicate).map(x=>x.age).filter(Number.isFinite);
+}
+function firstAge(state,predicate){
+ const ages=historyAgeList(state,predicate);
+ return ages.length?Math.min(...ages):null;
+}
+function eventChoiceKey(item){
+ return item.eventId+'::'+item.choiceId;
+}
+function childOutcome(child){
+ return child.adultLife?.jobTitle??child.educationPlan??'minor/unknown';
+}
+function closeFamily(state){
+ return [
+  state.parents?.mother,state.parents?.father,
+  state.grandparents?.maternal?.grandmother,state.grandparents?.maternal?.grandfather,
+  state.grandparents?.paternal?.grandmother,state.grandparents?.paternal?.grandfather,
+  ...(state.siblings??[])
+ ].filter(Boolean);
+}
+function activeOrHistoricalPartners(state){
+ return [
+  ...(state.social?.exSpouses??[]),
+  ...(state.social?.deceasedPartners??[]),
+  ...(state.social?.romance?[state.social.romance]:[])
+ ];
 }
 
 const lives=Math.max(1,Number(arg('lives','100')));
@@ -72,64 +141,266 @@ const seedPrefix=arg('seed-prefix','fast-audit');
 
 const report={
  config:{lives,toAge,policy,seedPrefix},
- runtimeMs:0,
- valid:0,invalid:0,deaths:0,
- age:{sum:0,min:null,max:null,buckets:{}},
- education:{graduates:0,programs:{}},
- career:{employedAtEnd:0,retired:0,transitions:0,voluntaryUnrelated:0,forcedUnrelated:0,degreeBackedReturns:0,postBusinessDistant:0,sameOccupationReturns:0,finalJobs:{},issues:[]},
- relationships:{marriedAtEnd:0,activeAtEnd:0,everMarried:0,everWidowed:0,children:0,childless:0,marriedChildless:0,grandchildren:0},
- migration:{moves:0,returnHomeLives:0,reasons:{}},
- health:{sumFinalHealth:0,sumConditions:0,conditions:{},deathsByCause:{},lowHealthDeaths:0,highHealthDeaths:0,deathHealthSum:0},
- genetics:{affectedPeople:0,carrierPeople:0,affectedConditions:{},carrierConditions:{},polygenic:{hypertension:0,metabolic:0,cardiac:0}},
- pacing:{adultMajorDecisions:0,adjacentMajorDecisionLives:0},
- finance:{cash:0,debt:0,homeOwners:0,carOwners:0},
- samples:{invalid:[],careerIssues:[]}
+ runtimeMs:0,valid:0,invalid:0,deaths:0,
+
+ population:{
+  sex:{},birthCities:{},finalCities:{},childhoodClasses:{},siblingCounts:{},
+  guardianTypes:{},orphaned:0
+ },
+
+ traits:{
+  personality:{discipline:[],sociability:[],curiosity:[],ambition:[],patience:[]},
+  appearance:{attractiveness:[],build:[],heightCm:[]},
+  constitution:[],
+  preferences:{
+   partnershipDesire:[],marriageDesire:[],parenthoodDesire:[],
+   homeOwnershipDesire:[],carOwnershipDesire:[],riskTolerance:[],hometownAttachment:[]
+  }
+ },
+
+ lifespan:{
+  ages:[],ageBuckets:{},causes:{},healthAtDeath:[],conditionsAtDeath:[],
+  deathsUnder40:0,deathsUnder60:0,deaths90Plus:0
+ },
+
+ family:{
+  motherDeathAges:[],fatherDeathAges:[],grandparentLosses:0,siblingLosses:0,
+  friendLosses:0,trustFunds:0,trustFundAmounts:[],inheritanceEvents:0,
+  inheritanceAmounts:[],guardianshipHistories:0
+ },
+
+ education:{
+  highSchoolPaths:{},schoolNames:{},performance:[],readiness:[],aptitude:[],
+  universityAttempts:0,admissions:0,graduates:0,programs:{},universities:{},
+  graduationAges:[],universityMoves:0,gapYears:[],degreeRelatedCareer:0
+ },
+
+ career:{
+  employedAtEnd:0,retired:0,finalJobs:{},finalFamilies:{},
+  transitions:[],totalExperience:[],jobYears:{},familyYears:{},
+  promotions:0,firings:0,unemploymentStarts:0,firstJobAges:[],
+  retirementAges:[],retirementSources:{},pensions:[],
+  voluntaryUnrelated:0,forcedUnrelated:0,degreeBackedReturns:0,
+  postBusinessDistant:0,sameOccupationReturns:0,
+  exitReasons:{},issues:[]
+ },
+
+ business:{
+  founded:0,activeAtEnd:0,fullTime:0,side:0,closed:0,retired:0,
+  startAges:[],years:[],finalHealth:[],capital:[],profit:[],employees:[],saleValues:[]
+ },
+
+ relationships:{
+  everRomance:0,activeAtEnd:0,marriedAtEnd:0,everMarried:0,everCohabited:0,
+  divorced:0,everWidowed:0,partnerDeaths:0,relationshipCounts:[],
+  firstDatingAges:[],marriageAges:[],yearsTogether:[],compatibility:[],relationshipScore:[],
+  children:[],childless:0,marriedChildless:0,grandchildren:[],
+  childOutcomes:{},childEducationPlans:{}
+ },
+
+ social:{
+  finalFriends:[],friendsCreated:0,deceasedFriends:[],firstFriendAges:[]
+ },
+
+ migration:{
+  moves:[],returnHomeLives:0,reasons:{},routes:{},moveAges:[],costs:[],
+  universityMoves:0,partnerMoves:0,careerMoves:0
+ },
+
+ health:{
+  finalHealth:[],stress:[],fitness:[],conditionCounts:[],conditions:{},
+  diagnosisAges:{},treated:0,untreated:0,treatmentSuccess:0,treatmentFailure:0,
+  treatmentAges:[],geneticDiagnoses:0,deathHealthHigh70:0,deathHealthLow25:0,
+  checkups:0
+ },
+
+ genetics:{
+  affectedPeople:0,carrierPeople:0,affectedConditions:{},carrierConditions:{},
+  polygenic:{hypertension:[],metabolic:[],cardiac:[]}
+ },
+
+ finance:{
+  cash:[],debt:[],netWorth:[],wealthBuckets:{},
+  monthlyIncome:[],monthlyExpenses:[],tax:[],familySupport:[],partnerContribution:[],
+  childCosts:[],homeOwners:0,carOwners:0,homePurchaseAges:[],carPurchaseAges:[],
+  homePrices:[],carPrices:[],estateNet:[],inheritanceReceived:[]
+ },
+
+ world:{
+  recessions:0,booms:0,healthCostShocks:0,
+  finalLaborMarket:[],finalCostOfLiving:[],finalWageIndex:[],finalHealthcareCost:[],finalConfidence:[]
+ },
+
+ pacing:{
+  adultMajorDecisions:[],adjacentMajorDecisionLives:0,categories:{},eventIds:{}
+ },
+
+ events:{
+  historyKinds:{},eventIds:{},choiceIds:{},eventChoicePairs:{},activities:{},
+  ageByEvent:{},ageByActivity:{},historyRows:[]
+ },
+
+ longitudinal:{
+  byAge:{}
+ },
+
+ correlations:{
+  rows:[]
+ },
+
+ samples:{
+  invalid:[],careerIssues:[],extremeDebt:[],extremeCash:[],youngDeaths:[],highHealthDeaths:[]
+ }
 };
 
+function recordSnapshot(state){
+ const age=state.player.age;
+ if(age<10||age%5!==0)return;
+ const key=String(age);
+ const bucket=report.longitudinal.byAge[key]??={
+  n:0,alive:0,health:0,stress:0,fitness:0,cash:0,debt:0,income:0,
+  employed:0,retired:0,married:0,children:0,conditions:0,friends:0,moves:0
+ };
+ bucket.n++;
+ bucket.alive+=state.player.alive?1:0;
+ bucket.health+=state.player.health.current??0;
+ bucket.stress+=state.healthProfile?.stress??0;
+ bucket.fitness+=state.healthProfile?.fitness??0;
+ bucket.cash+=state.finance?.cash??0;
+ bucket.debt+=state.finance?.debt??0;
+ bucket.income+=state.finance?.monthlyIncome??state.player.monthlyIncome??0;
+ bucket.employed+=state.career?.employed?1:0;
+ bucket.retired+=state.retirement?.retired?1:0;
+ bucket.married+=state.social?.romance?.status==='married'?1:0;
+ bucket.children+=state.children?.length??0;
+ bucket.conditions+=state.healthProfile?.conditions?.length??0;
+ bucket.friends+=state.social?.friends?.length??0;
+ bucket.moves+=state.migrationHistory?.length??0;
+}
+
 const started=performance.now();
+
 for(let i=0;i<lives;i++){
  const game=new Game(seedPrefix+'-'+policy+'-'+i);
+
  try{
-  autoplay(game,{toAge,policy});
+  autoplay(game,{toAge,policy,onYear:recordSnapshot});
  }catch(error){
   report.invalid++;
-  if(report.samples.invalid.length<8)report.samples.invalid.push({seed:game.seedText,error:error.message});
+  if(report.samples.invalid.length<12)report.samples.invalid.push({seed:game.seedText,error:error.message});
   continue;
  }
+
  const state=game.state;
  const violations=validateState(state);
  if(violations.length){
   report.invalid++;
-  if(report.samples.invalid.length<8)report.samples.invalid.push({seed:game.seedText,error:violations.join('; ')});
+  if(report.samples.invalid.length<12)report.samples.invalid.push({seed:game.seedText,error:violations.join('; ')});
   continue;
  }
  report.valid++;
 
- const age=state.player.age;
- report.age.sum+=age;
- report.age.min=report.age.min==null?age:Math.min(report.age.min,age);
- report.age.max=report.age.max==null?age:Math.max(report.age.max,age);
- inc(report.age.buckets,ageBucket(age));
+ // Population / origin
+ inc(report.population.sex,state.player.sex??'unknown');
+ inc(report.population.birthCities,state.origin?.cityName??'unknown');
+ inc(report.population.finalCities,state.location?.cityName??state.origin?.cityName??'unknown');
+ inc(report.population.childhoodClasses,state.player.background?.childhoodClass??state.household?.economicClass??'unknown');
+ inc(report.population.siblingCounts,String(state.siblings?.length??0));
+ if(state.guardianship){
+  report.population.orphaned++;
+  inc(report.population.guardianTypes,state.guardianship.type??'unknown');
+ }
+ report.family.guardianshipHistories+=state.guardianshipHistory?.length??0;
 
- if(!state.player.alive){
-  report.deaths++;
-  inc(report.health.deathsByCause,state.death?.cause??'unknown');
-  report.health.deathHealthSum+=state.player.health.current;
-  if(state.player.health.current<25)report.health.lowHealthDeaths++;
-  if(state.player.health.current>=70)report.health.highHealthDeaths++;
+ // Traits
+ for(const key of Object.keys(report.traits.personality))report.traits.personality[key].push(state.player.personality?.[key]??0);
+ for(const key of Object.keys(report.traits.appearance))report.traits.appearance[key].push(state.player.appearance?.[key]??0);
+ report.traits.constitution.push(state.player.health?.constitution??0);
+ for(const key of Object.keys(report.traits.preferences)){
+  if(state.preferences?.[key]!=null)report.traits.preferences[key].push(state.preferences[key]);
  }
 
+ // Lifespan / death
+ const age=state.player.age;
+ report.lifespan.ages.push(age);
+ inc(report.lifespan.ageBuckets,ageBucket(age));
+ if(!state.player.alive){
+  report.deaths++;
+  const cause=state.death?.cause??'unknown';
+  inc(report.lifespan.causes,cause);
+  report.lifespan.healthAtDeath.push(state.player.health.current??0);
+  report.lifespan.conditionsAtDeath.push(state.healthProfile?.conditions?.length??0);
+  if(age<40)report.lifespan.deathsUnder40++;
+  if(age<60)report.lifespan.deathsUnder60++;
+  if(age>=90)report.lifespan.deaths90Plus++;
+  if((state.player.health.current??0)>=70){
+   report.health.deathHealthHigh70++;
+   if(report.samples.highHealthDeaths.length<12)report.samples.highHealthDeaths.push({seed:game.seedText,age,cause,health:state.player.health.current});
+  }
+  if((state.player.health.current??0)<25)report.health.deathHealthLow25++;
+  if(age<45&&report.samples.youngDeaths.length<12)report.samples.youngDeaths.push({seed:game.seedText,age,cause,health:state.player.health.current});
+ }
+
+ // Family / loss / inheritance
+ if(state.parents?.mother&&!state.parents.mother.alive&&state.parents.mother.deathAge!=null)report.family.motherDeathAges.push(state.parents.mother.deathAge);
+ if(state.parents?.father&&!state.parents.father.alive&&state.parents.father.deathAge!=null)report.family.fatherDeathAges.push(state.parents.father.deathAge);
+ report.family.grandparentLosses+=[
+  state.grandparents?.maternal?.grandmother,state.grandparents?.maternal?.grandfather,
+  state.grandparents?.paternal?.grandmother,state.grandparents?.paternal?.grandfather
+ ].filter(p=>p&&!p.alive).length;
+ report.family.siblingLosses+=(state.siblings??[]).filter(p=>!p.alive).length;
+ report.family.friendLosses+=state.social?.deceasedFriends?.length??0;
+ if(state.trustFund?.released){
+  report.family.trustFunds++;
+  report.family.trustFundAmounts.push(state.trustFund.balance??0);
+ }
+ const inheritanceHistory=state.inheritanceHistory??[];
+ report.family.inheritanceEvents+=inheritanceHistory.length;
+ for(const item of inheritanceHistory)report.family.inheritanceAmounts.push(item.amount??0);
+
+ // Education
+ inc(report.education.highSchoolPaths,state.education?.pathLabel??state.education?.path??'unknown');
+ if(state.education?.schoolName)inc(report.education.schoolNames,state.education.schoolName);
+ report.education.performance.push(state.education?.performance??0);
+ report.education.readiness.push(state.education?.graduationReadiness??0);
+ report.education.aptitude.push(state.education?.aptitude??0);
+ report.education.universityAttempts+=historyCount(state,x=>x.kind==='choice'&&x.eventId==='university-application');
+ report.education.admissions+=state.education?.admissionSucceeded?1:0;
+ report.education.gapYears.push(state.gapYears??0);
+ if(state.higherEducation?.movedForUniversity){
+  report.education.universityMoves++;
+  report.migration.universityMoves++;
+ }
  if(state.higherEducation?.completed){
   report.education.graduates++;
   inc(report.education.programs,state.higherEducation.programTitle??'unknown');
+  inc(report.education.universities,state.higherEducation.universityName??'unknown');
+  const gradAge=firstAge(state,x=>x.kind==='education'&&String(x.text??'').includes('mezun oldun'));
+  if(gradAge!=null)report.education.graduationAges.push(gradAge);
  }
+ if(state.career?.degreeRelated)report.education.degreeRelatedCareer++;
 
+ // Career
  if(state.career?.employed)report.career.employedAtEnd++;
- if(state.retirement?.retired)report.career.retired++;
+ if(state.retirement?.retired){
+  report.career.retired++;
+  if(state.retirement.retiredAtAge!=null)report.career.retirementAges.push(state.retirement.retiredAtAge);
+  inc(report.career.retirementSources,state.retirement.source??'unknown');
+  report.career.pensions.push(state.retirement.pensionMonthly??0);
+ }
  if(state.career?.title)inc(report.career.finalJobs,state.career.title);
+ if(state.career?.family)inc(report.career.finalFamilies,state.career.family);
+ report.career.transitions.push(Math.max(0,careerSequence(state).length-1));
+ report.career.totalExperience.push(state.careerProfile?.totalExperience??state.career?.totalYears??0);
+ for(const [jobId,years] of Object.entries(state.careerProfile?.experienceByJob??{}))inc(report.career.jobYears,jobId,years);
+ for(const [family,years] of Object.entries(state.careerProfile?.experienceByFamily??{}))inc(report.career.familyYears,family,years);
+ report.career.promotions+=historyCount(state,x=>x.kind==='career'&&String(x.text??'').startsWith('Terfi aldın'));
+ report.career.firings+=historyCount(state,x=>x.kind==='career'&&String(x.text??'').includes('işinden çıkarıldın'));
+ report.career.unemploymentStarts+=historyCount(state,x=>x.kind==='career'&&String(x.text??'').includes('işinden çıkarıldın'));
+ const firstJobAge=firstAge(state,x=>x.kind==='choice'&&x.eventId==='first-job');
+ if(firstJobAge!=null)report.career.firstJobAges.push(firstJobAge);
+ for(const item of state.careerProfile?.recentJobs??[])inc(report.career.exitReasons,item.reason??'unknown');
 
- const seq=careerSequence(state);
- report.career.transitions+=Math.max(0,seq.length-1);
  const careerIssues=transitionAudit(state);
  for(const issue of careerIssues){
   if(issue.type==='voluntary-unrelated-switch')report.career.voluntaryUnrelated++;
@@ -137,142 +408,492 @@ for(let i=0;i<lives;i++){
   if(issue.type==='degree-backed-return')report.career.degreeBackedReturns++;
   if(issue.type==='post-business-distant-reentry')report.career.postBusinessDistant++;
   if(issue.type==='same-occupation-return')report.career.sameOccupationReturns++;
-  if(report.samples.careerIssues.length<16)report.samples.careerIssues.push({seed:game.seedText,...issue});
+  if(report.samples.careerIssues.length<20)report.samples.careerIssues.push({seed:game.seedText,...issue});
  }
  report.career.issues.push(...careerIssues.map(x=>x.type));
 
+ // Business
+ if(state.business){
+  report.business.founded++;
+  if(state.business.active)report.business.activeAtEnd++;
+  inc(report.business,state.business.mode==='full-time'?'fullTime':'side');
+  if(state.business.exitType==='closure')report.business.closed++;
+  if(state.business.exitType==='retirement-sale')report.business.retired++;
+  report.business.startAges.push(state.business.startedAtAge??0);
+  report.business.years.push(state.business.years??0);
+  report.business.finalHealth.push(state.business.health??0);
+  report.business.capital.push(state.business.capital??0);
+  report.business.profit.push(state.business.monthlyProfit??0);
+  report.business.employees.push(state.business.employees??0);
+  if(state.business.saleValue!=null)report.business.saleValues.push(state.business.saleValue);
+ }
+
+ // Relationships / children
+ const partners=activeOrHistoricalPartners(state);
+ if(partners.length)report.relationships.everRomance++;
+ report.relationships.relationshipCounts.push(partners.length);
  const romance=state.social?.romance;
  if(romance)report.relationships.activeAtEnd++;
  if(romance?.status==='married')report.relationships.marriedAtEnd++;
- const everMarried=Boolean(
-  romance?.status==='married'||
-  (state.social?.exSpouses?.length??0)>0||
-  (state.social?.deceasedPartners??[]).some(p=>p.status==='married')||
-  state.widowedAtAge!=null
- );
+ if(partners.some(p=>p.status==='cohabiting'||p.status==='married'))report.relationships.everCohabited++;
+ const everMarried=partners.some(p=>p.status==='married')||state.widowedAtAge!=null;
  if(everMarried)report.relationships.everMarried++;
+ if((state.social?.exSpouses?.length??0)>0)report.relationships.divorced++;
  if(state.widowedAtAge!=null)report.relationships.everWidowed++;
- const children=state.children?.length??0;
- report.relationships.children+=children;
- if(children===0){
+ report.relationships.partnerDeaths+=state.social?.deceasedPartners?.length??0;
+ const datingAge=firstAge(state,x=>x.kind==='choice'&&x.eventId==='adult-dating'&&x.choiceId==='meet');
+ if(datingAge!=null)report.relationships.firstDatingAges.push(datingAge);
+ for(const p of partners){
+  if(p.marriedAtAge!=null)report.relationships.marriageAges.push(p.marriedAtAge);
+  if(p.yearsTogether!=null)report.relationships.yearsTogether.push(p.yearsTogether);
+  if(p.compatibility!=null)report.relationships.compatibility.push(p.compatibility);
+  if(p.relationship!=null)report.relationships.relationshipScore.push(p.relationship);
+ }
+ const children=state.children??[];
+ report.relationships.children.push(children.length);
+ if(children.length===0){
   report.relationships.childless++;
   if(everMarried)report.relationships.marriedChildless++;
  }
- report.relationships.grandchildren+=state.grandchildren??0;
+ report.relationships.grandchildren.push(state.grandchildren??0);
+ for(const child of children){
+  inc(report.relationships.childOutcomes,childOutcome(child));
+  if(child.educationPlan)inc(report.relationships.childEducationPlans,child.educationPlan);
+ }
 
+ // Social
+ report.social.finalFriends.push(state.social?.friends?.length??0);
+ report.social.deceasedFriends.push(state.social?.deceasedFriends?.length??0);
+ report.social.friendsCreated+=historyCount(state,x=>x.kind==='social'&&String(x.text??'').includes('ile arkadaş oldun'));
+ const firstFriend=firstAge(state,x=>x.kind==='social'&&String(x.text??'').includes('ile arkadaş oldun'));
+ if(firstFriend!=null)report.social.firstFriendAges.push(firstFriend);
+
+ // Migration
  const moves=state.migrationHistory??[];
- report.migration.moves+=moves.length;
+ report.migration.moves.push(moves.length);
  let returned=false;
  for(const move of moves){
-  inc(report.migration.reasons,move.reason);
+  inc(report.migration.reasons,move.reason??'unknown');
+  inc(report.migration.routes,(move.fromCityName??'?')+' -> '+(move.toCityName??'?'));
+  report.migration.moveAges.push(move.age??0);
+  report.migration.costs.push(move.cost??0);
   if(move.reason==='return-home')returned=true;
+  if(move.reason==='partner-job')report.migration.partnerMoves++;
+  if(move.reason==='career-switch')report.migration.careerMoves++;
  }
  if(returned)report.migration.returnHomeLives++;
 
- report.health.sumFinalHealth+=state.player.health.current;
+ // Health
+ report.health.finalHealth.push(state.player.health.current??0);
+ report.health.stress.push(state.healthProfile?.stress??0);
+ report.health.fitness.push(state.healthProfile?.fitness??0);
  const conditions=state.healthProfile?.conditions??[];
- report.health.sumConditions+=conditions.length;
- for(const condition of conditions)inc(report.health.conditions,condition.label);
+ report.health.conditionCounts.push(conditions.length);
+ for(const condition of conditions){
+  inc(report.health.conditions,condition.label??condition.id);
+  push(report.health.diagnosisAges,condition.label??condition.id,condition.diagnosedAtAge??state.player.age);
+  if(condition.genetic)report.health.geneticDiagnoses++;
+  if(condition.treated){
+   report.health.treated++;
+   if(condition.treatmentAge!=null)report.health.treatmentAges.push(condition.treatmentAge);
+   if(condition.treatmentSuccessful)report.health.treatmentSuccess++;
+   else report.health.treatmentFailure++;
+  }else report.health.untreated++;
+ }
+ report.health.checkups+=historyCount(state,x=>x.kind==='activity'&&x.activityId==='checkup');
 
+ // Genetics
  const genetics=geneticSummary(state.player);
  if(genetics.affected.length)report.genetics.affectedPeople++;
  if(genetics.carriers.length)report.genetics.carrierPeople++;
  for(const label of genetics.affected)inc(report.genetics.affectedConditions,label);
  for(const label of genetics.carriers)inc(report.genetics.carrierConditions,label);
- for(const trait of ['hypertension','metabolic','cardiac']){
-  report.genetics.polygenic[trait]+=genetics.polygenic?.[trait]??50;
+ for(const trait of Object.keys(report.genetics.polygenic)){
+  report.genetics.polygenic[trait].push(genetics.polygenic?.[trait]??50);
  }
 
- const adultNodes=(state.lifeTree?.nodes??[]).filter(n=>n.age>=21&&n.pacingCategory);
- report.pacing.adultMajorDecisions+=adultNodes.length;
+ // Finance / assets / estate
+ const cash=state.finance?.cash??0;
+ const debt=state.finance?.debt??0;
+ const homeValue=state.assets?.home?.price??0;
+ const carValue=state.assets?.car?.price??0;
+ const netWorth=cash+homeValue+carValue-debt;
+ report.finance.cash.push(cash);
+ report.finance.debt.push(debt);
+ report.finance.netWorth.push(netWorth);
+ inc(report.finance.wealthBuckets,wealthBucket(netWorth));
+ report.finance.monthlyIncome.push(state.finance?.monthlyIncome??state.player.monthlyIncome??0);
+ report.finance.monthlyExpenses.push(state.finance?.monthlyExpenses??0);
+ report.finance.tax.push(state.finance?.monthlyTax??0);
+ report.finance.familySupport.push(state.finance?.familySupportMonthly??0);
+ report.finance.partnerContribution.push(state.finance?.partnerContributionMonthly??0);
+ report.finance.childCosts.push(state.finance?.childMonthlyCost??0);
+ if(state.assets?.home){
+  report.finance.homeOwners++;
+  if(state.assets.home.purchasedAtAge!=null)report.finance.homePurchaseAges.push(state.assets.home.purchasedAtAge);
+  report.finance.homePrices.push(state.assets.home.price??0);
+ }
+ if(state.assets?.car){
+  report.finance.carOwners++;
+  if(state.assets.car.purchasedAtAge!=null)report.finance.carPurchaseAges.push(state.assets.car.purchasedAtAge);
+  report.finance.carPrices.push(state.assets.car.price??0);
+ }
+ if(state.estate?.net!=null)report.finance.estateNet.push(state.estate.net);
+ report.finance.inheritanceReceived.push((state.inheritanceHistory??[]).reduce((s,x)=>s+(x.amount??0),0));
+
+ if(debt>5000000&&report.samples.extremeDebt.length<10)report.samples.extremeDebt.push({seed:game.seedText,age,debt,cash});
+ if(cash>50000000&&report.samples.extremeCash.length<10)report.samples.extremeCash.push({seed:game.seedText,age,cash,debt});
+
+ // World
+ const world=state.world?.economy;
+ if(world){
+  report.world.finalLaborMarket.push(world.laborMarket);
+  report.world.finalCostOfLiving.push(world.costOfLiving);
+  report.world.finalWageIndex.push(world.wageIndex);
+  report.world.finalHealthcareCost.push(world.healthcareCost);
+  report.world.finalConfidence.push(world.confidence);
+ }
+ report.world.recessions+=historyCount(state,x=>x.kind==='world'&&String(x.text??'').includes('Ekonomik durgunluk'));
+ report.world.booms+=historyCount(state,x=>x.kind==='world'&&String(x.text??'').includes('Güçlü ekonomik dönem'));
+ report.world.healthCostShocks+=historyCount(state,x=>x.kind==='world'&&String(x.text??'').includes('Sağlık hizmetlerinin'));
+
+ // Pacing / event telemetry
+ const pacedNodes=(state.lifeTree?.nodes??[]).filter(n=>n.age>=21&&n.pacingCategory);
+ report.pacing.adultMajorDecisions.push(pacedNodes.length);
  let adjacent=false;
- for(let n=1;n<adultNodes.length;n++){
-  if(adultNodes[n].age-adultNodes[n-1].age<2){adjacent=true;break;}
+ for(let n=1;n<pacedNodes.length;n++){
+  if(pacedNodes[n].age-pacedNodes[n-1].age<2){adjacent=true;break;}
  }
  if(adjacent)report.pacing.adjacentMajorDecisionLives++;
+ for(const node of pacedNodes){
+  inc(report.pacing.categories,node.pacingCategory??'unknown');
+  inc(report.pacing.eventIds,node.eventId??'unknown');
+ }
 
- report.finance.cash+=state.finance?.cash??0;
- report.finance.debt+=state.finance?.debt??0;
- if(state.assets?.home)report.finance.homeOwners++;
- if(state.assets?.car)report.finance.carOwners++;
+ for(const item of state.history??[]){
+  inc(report.events.historyKinds,item.kind??'unknown');
+  if(item.eventId){
+   inc(report.events.eventIds,item.eventId);
+   push(report.events.ageByEvent,item.eventId,item.age);
+  }
+  if(item.choiceId)inc(report.events.choiceIds,item.choiceId);
+  if(item.eventId&&item.choiceId)inc(report.events.eventChoicePairs,eventChoiceKey(item));
+  if(item.kind==='activity'&&item.activityId){
+   inc(report.events.activities,item.activityId);
+   push(report.events.ageByActivity,item.activityId,item.age);
+  }
+ }
+ report.events.historyRows.push(state.history?.length??0);
+
+ // Correlation row: one row per valid life
+ report.correlations.rows.push({
+  age,
+  health:state.player.health.current??0,
+  conditions:conditions.length,
+  constitution:state.player.health.constitution??0,
+  discipline:state.player.personality?.discipline??0,
+  sociability:state.player.personality?.sociability??0,
+  ambition:state.player.personality?.ambition??0,
+  attractiveness:state.player.appearance?.attractiveness??0,
+  parenthoodDesire:state.preferences?.parenthoodDesire??0,
+  partnershipDesire:state.preferences?.partnershipDesire??0,
+  educationLevel:state.player.education?.level??0,
+  graduated:state.higherEducation?.completed?1:0,
+  employed:state.career?.employed?1:0,
+  careerExperience:state.careerProfile?.totalExperience??0,
+  children:children.length,
+  everMarried:everMarried?1:0,
+  friends:state.social?.friends?.length??0,
+  cash,
+  debt,
+  netWorth,
+  migrations:moves.length,
+  childhoodClass:['düşük','orta','üst-orta','yüksek'].indexOf(state.player.background?.childhoodClass??state.household?.economicClass)+1
+ });
 }
-report.runtimeMs=Math.round(performance.now()-started);
 
+report.runtimeMs=Math.round(performance.now()-started);
 const valid=Math.max(1,report.valid);
+
+function averageAgeMap(map){
+ const result={};
+ for(const [key,values] of Object.entries(map))result[key]=distribution(values);
+ return result;
+}
+function summarizeLongitudinal(){
+ const out={};
+ for(const [age,b] of Object.entries(report.longitudinal.byAge)){
+  const n=Math.max(1,b.n);
+  out[age]={
+   n:b.n,
+   survivalPct:pct(b.alive,b.n),
+   avgHealth:avg(b.health,n,1),
+   avgStress:avg(b.stress,n,1),
+   avgFitness:avg(b.fitness,n,1),
+   avgCash:Math.round(b.cash/n),
+   avgDebt:Math.round(b.debt/n),
+   avgMonthlyIncome:Math.round(b.income/n),
+   employedPct:pct(b.employed,b.n),
+   retiredPct:pct(b.retired,b.n),
+   marriedPct:pct(b.married,b.n),
+   avgChildren:avg(b.children,n),
+   avgConditions:avg(b.conditions,n),
+   avgFriends:avg(b.friends,n),
+   avgMoves:avg(b.moves,n)
+  };
+ }
+ return out;
+}
+function correlationSummary(rows){
+ const keys=[
+  'age','health','conditions','constitution','discipline','sociability','ambition','attractiveness',
+  'parenthoodDesire','partnershipDesire','educationLevel','graduated','employed','careerExperience',
+  'children','everMarried','friends','cash','debt','netWorth','migrations','childhoodClass'
+ ];
+ const result={};
+ const targets=['age','health','conditions','graduated','careerExperience','children','everMarried','netWorth'];
+ for(const target of targets){
+  result[target]={};
+  for(const key of keys){
+   if(key===target)continue;
+   result[target][key]=correlation(rows.map(r=>r[target]),rows.map(r=>r[key]));
+  }
+ }
+ return result;
+}
+
 const summary={
  config:report.config,
- runtimeMs:report.runtimeMs,
- throughputLivesPerSecond:Number((report.valid/(report.runtimeMs/1000)).toFixed(1)),
+ runtime:{
+  ms:report.runtimeMs,
+  seconds:Number((report.runtimeMs/1000).toFixed(2)),
+  livesPerSecond:Number((report.valid/(report.runtimeMs/1000)).toFixed(1))
+ },
  validity:{valid:report.valid,invalid:report.invalid,invalidRatePct:pct(report.invalid,lives)},
+
+ population:{
+  sex:report.population.sex,
+  birthCities:report.population.birthCities,
+  finalCities:report.population.finalCities,
+  childhoodClasses:report.population.childhoodClasses,
+  siblingCounts:report.population.siblingCounts,
+  orphanedPct:pct(report.population.orphaned,valid),
+  guardianTypes:report.population.guardianTypes
+ },
+
+ traits:{
+  personality:Object.fromEntries(Object.entries(report.traits.personality).map(([k,v])=>[k,distribution(v)])),
+  appearance:Object.fromEntries(Object.entries(report.traits.appearance).map(([k,v])=>[k,distribution(v)])),
+  constitution:distribution(report.traits.constitution),
+  preferences:Object.fromEntries(Object.entries(report.traits.preferences).map(([k,v])=>[k,distribution(v)]))
+ },
+
  lifespan:{
-  averageAge:avg(report.age.sum,valid,1),
-  minAge:report.age.min,maxAge:report.age.max,
+  ages:distribution(report.lifespan.ages),
+  ageBuckets:report.lifespan.ageBuckets,
   deathsBeforeTargetPct:pct(report.deaths,lives),
-  ageBuckets:report.age.buckets
+  causes:report.lifespan.causes,
+  healthAtDeath:distribution(report.lifespan.healthAtDeath),
+  conditionsAtDeath:distribution(report.lifespan.conditionsAtDeath),
+  deathUnder40Pct:pct(report.lifespan.deathsUnder40,valid),
+  deathUnder60Pct:pct(report.lifespan.deathsUnder60,valid),
+  death90PlusPct:pct(report.lifespan.deaths90Plus,valid)
  },
+
+ family:{
+  motherDeathAges:distribution(report.family.motherDeathAges),
+  fatherDeathAges:distribution(report.family.fatherDeathAges),
+  averageGrandparentLosses:avg(report.family.grandparentLosses,valid),
+  averageSiblingLosses:avg(report.family.siblingLosses,valid),
+  averageFriendLosses:avg(report.family.friendLosses,valid),
+  trustFundPct:pct(report.family.trustFunds,valid),
+  trustFundAmounts:distribution(report.family.trustFundAmounts),
+  inheritanceEvents:report.family.inheritanceEvents,
+  inheritanceAmounts:distribution(report.family.inheritanceAmounts),
+  guardianshipHistoryCount:report.family.guardianshipHistories
+ },
+
  education:{
+  highSchoolPaths:report.education.highSchoolPaths,
+  schools:report.education.schoolNames,
+  performance:distribution(report.education.performance),
+  readiness:distribution(report.education.readiness),
+  aptitude:distribution(report.education.aptitude),
+  universityAttemptsPerLife:avg(report.education.universityAttempts,valid),
+  admissionPct:pct(report.education.admissions,valid),
   graduatePct:pct(report.education.graduates,valid),
-  programs:report.education.programs
+  programs:report.education.programs,
+  universities:report.education.universities,
+  graduationAges:distribution(report.education.graduationAges),
+  universityMovePct:pct(report.education.universityMoves,valid),
+  gapYears:distribution(report.education.gapYears),
+  finalCareerDegreeRelatedPct:pct(report.education.degreeRelatedCareer,valid)
  },
+
  career:{
   employedAtEndPct:pct(report.career.employedAtEnd,valid),
   retiredPct:pct(report.career.retired,valid),
-  averageTransitions:avg(report.career.transitions,valid),
-  voluntaryUnrelatedSwitchCount:report.career.voluntaryUnrelated,
-  forcedUnrelatedReemploymentCount:report.career.forcedUnrelated,
-  degreeBackedReturnCount:report.career.degreeBackedReturns,
-  postBusinessDistantReentryCount:report.career.postBusinessDistant,
-  sameOccupationReturnCount:report.career.sameOccupationReturns,
-  finalJobs:report.career.finalJobs
+  finalJobs:report.career.finalJobs,
+  finalFamilies:report.career.finalFamilies,
+  transitions:distribution(report.career.transitions),
+  totalExperience:distribution(report.career.totalExperience),
+  aggregateYearsByJob:report.career.jobYears,
+  aggregateYearsByFamily:report.career.familyYears,
+  promotionsPerLife:avg(report.career.promotions,valid),
+  firingsPerLife:avg(report.career.firings,valid),
+  firstJobAges:distribution(report.career.firstJobAges),
+  retirementAges:distribution(report.career.retirementAges),
+  retirementSources:report.career.retirementSources,
+  pensions:distribution(report.career.pensions),
+  exitReasons:report.career.exitReasons,
+  anomalyAudit:{
+   voluntaryUnrelatedSwitchCount:report.career.voluntaryUnrelated,
+   forcedUnrelatedReemploymentCount:report.career.forcedUnrelated,
+   degreeBackedReturnCount:report.career.degreeBackedReturns,
+   postBusinessDistantReentryCount:report.career.postBusinessDistant,
+   sameOccupationReturnCount:report.career.sameOccupationReturns
+  }
  },
+
+ business:{
+  foundedPct:pct(report.business.founded,valid),
+  activeAtEndPct:pct(report.business.activeAtEnd,valid),
+  fullTimeCount:report.business.fullTime,
+  sideCount:report.business.side,
+  closedCount:report.business.closed,
+  retiredCount:report.business.retired,
+  startAges:distribution(report.business.startAges),
+  years:distribution(report.business.years),
+  finalHealth:distribution(report.business.finalHealth),
+  capital:distribution(report.business.capital),
+  monthlyProfit:distribution(report.business.profit),
+  employees:distribution(report.business.employees),
+  saleValues:distribution(report.business.saleValues)
+ },
+
  relationships:{
+  everRomancePct:pct(report.relationships.everRomance,valid),
   activeAtEndPct:pct(report.relationships.activeAtEnd,valid),
   marriedAtEndPct:pct(report.relationships.marriedAtEnd,valid),
   everMarriedPct:pct(report.relationships.everMarried,valid),
+  everCohabitedPct:pct(report.relationships.everCohabited,valid),
+  divorcedPct:pct(report.relationships.divorced,valid),
   everWidowedPct:pct(report.relationships.everWidowed,valid),
-  averageChildren:avg(report.relationships.children,valid),
+  partnerDeathsPerLife:avg(report.relationships.partnerDeaths,valid),
+  relationshipCounts:distribution(report.relationships.relationshipCounts),
+  firstDatingAges:distribution(report.relationships.firstDatingAges),
+  marriageAges:distribution(report.relationships.marriageAges),
+  yearsTogether:distribution(report.relationships.yearsTogether),
+  compatibility:distribution(report.relationships.compatibility),
+  relationshipScore:distribution(report.relationships.relationshipScore),
+  children:distribution(report.relationships.children),
   childlessPct:pct(report.relationships.childless,valid),
   childlessAmongEverMarriedPct:pct(report.relationships.marriedChildless,Math.max(1,report.relationships.everMarried)),
-  averageGrandchildren:avg(report.relationships.grandchildren,valid)
+  grandchildren:distribution(report.relationships.grandchildren),
+  childOutcomes:report.relationships.childOutcomes,
+  childEducationPlans:report.relationships.childEducationPlans
  },
+
+ social:{
+  finalFriends:distribution(report.social.finalFriends),
+  friendsCreatedPerLife:avg(report.social.friendsCreated,valid),
+  deceasedFriends:distribution(report.social.deceasedFriends),
+  firstFriendAges:distribution(report.social.firstFriendAges)
+ },
+
  migration:{
-  averageMoves:avg(report.migration.moves,valid),
+  moves:distribution(report.migration.moves),
   returnHomePct:pct(report.migration.returnHomeLives,valid),
-  reasons:report.migration.reasons
+  reasons:report.migration.reasons,
+  routes:report.migration.routes,
+  moveAges:distribution(report.migration.moveAges),
+  costs:distribution(report.migration.costs),
+  universityMoves:report.migration.universityMoves,
+  partnerMoves:report.migration.partnerMoves,
+  careerMoves:report.migration.careerMoves
  },
+
  health:{
-  averageFinalHealth:avg(report.health.sumFinalHealth,valid,1),
-  averageConditions:avg(report.health.sumConditions,valid),
+  finalHealth:distribution(report.health.finalHealth),
+  stress:distribution(report.health.stress),
+  fitness:distribution(report.health.fitness),
+  conditionCounts:distribution(report.health.conditionCounts),
   conditions:report.health.conditions,
-  deathCauses:report.health.deathsByCause,
-  averageHealthAtDeath:avg(report.health.deathHealthSum,Math.max(1,report.deaths),1),
-  lowHealthAmongDeathsPct:pct(report.health.lowHealthDeaths,Math.max(1,report.deaths)),
-  highHealthAmongDeathsPct:pct(report.health.highHealthDeaths,Math.max(1,report.deaths))
+  diagnosisAges:averageAgeMap(report.health.diagnosisAges),
+  treatedCount:report.health.treated,
+  untreatedCount:report.health.untreated,
+  treatmentSuccessRatePct:pct(report.health.treatmentSuccess,report.health.treated),
+  treatmentFailureRatePct:pct(report.health.treatmentFailure,report.health.treated),
+  treatmentAges:distribution(report.health.treatmentAges),
+  geneticDiagnosisCount:report.health.geneticDiagnoses,
+  health70PlusAmongDeathsPct:pct(report.health.deathHealthHigh70,Math.max(1,report.deaths)),
+  healthUnder25AmongDeathsPct:pct(report.health.deathHealthLow25,Math.max(1,report.deaths)),
+  checkupsPerLife:avg(report.health.checkups,valid)
  },
+
  genetics:{
   affectedPct:pct(report.genetics.affectedPeople,valid),
   carrierPct:pct(report.genetics.carrierPeople,valid),
   affectedConditions:report.genetics.affectedConditions,
   carrierConditions:report.genetics.carrierConditions,
-  averagePolygenicRisk:{
-   hypertension:avg(report.genetics.polygenic.hypertension,valid,1),
-   metabolic:avg(report.genetics.polygenic.metabolic,valid,1),
-   cardiac:avg(report.genetics.polygenic.cardiac,valid,1)
-  }
+  polygenic:Object.fromEntries(Object.entries(report.genetics.polygenic).map(([k,v])=>[k,distribution(v)]))
  },
- pacing:{
-  averageAdultMajorDecisions:avg(report.pacing.adultMajorDecisions,valid),
-  adjacentMajorDecisionLivesPct:pct(report.pacing.adjacentMajorDecisionLives,valid)
- },
+
  finance:{
-  averageCash:Math.round(report.finance.cash/valid),
-  averageDebt:Math.round(report.finance.debt/valid),
+  cash:distribution(report.finance.cash),
+  debt:distribution(report.finance.debt),
+  netWorth:distribution(report.finance.netWorth),
+  wealthBuckets:report.finance.wealthBuckets,
+  monthlyIncome:distribution(report.finance.monthlyIncome),
+  monthlyExpenses:distribution(report.finance.monthlyExpenses),
+  monthlyTax:distribution(report.finance.tax),
+  familySupport:distribution(report.finance.familySupport),
+  partnerContribution:distribution(report.finance.partnerContribution),
+  childCosts:distribution(report.finance.childCosts),
   homeOwnershipPct:pct(report.finance.homeOwners,valid),
-  carOwnershipPct:pct(report.finance.carOwners,valid)
+  carOwnershipPct:pct(report.finance.carOwners,valid),
+  homePurchaseAges:distribution(report.finance.homePurchaseAges),
+  carPurchaseAges:distribution(report.finance.carPurchaseAges),
+  homePrices:distribution(report.finance.homePrices),
+  carPrices:distribution(report.finance.carPrices),
+  estateNet:distribution(report.finance.estateNet),
+  inheritanceReceived:distribution(report.finance.inheritanceReceived)
  },
+
+ world:{
+  recessionsPerLife:avg(report.world.recessions,valid),
+  boomsPerLife:avg(report.world.booms,valid),
+  healthCostShocksPerLife:avg(report.world.healthCostShocks,valid),
+  finalLaborMarket:distribution(report.world.finalLaborMarket),
+  finalCostOfLiving:distribution(report.world.finalCostOfLiving),
+  finalWageIndex:distribution(report.world.finalWageIndex),
+  finalHealthcareCost:distribution(report.world.finalHealthcareCost),
+  finalConfidence:distribution(report.world.finalConfidence)
+ },
+
+ pacing:{
+  adultMajorDecisions:distribution(report.pacing.adultMajorDecisions),
+  adjacentMajorDecisionLivesPct:pct(report.pacing.adjacentMajorDecisionLives,valid),
+  categories:report.pacing.categories,
+  eventIds:report.pacing.eventIds
+ },
+
+ events:{
+  historyKinds:report.events.historyKinds,
+  eventIds:report.events.eventIds,
+  choiceIds:report.events.choiceIds,
+  eventChoicePairs:report.events.eventChoicePairs,
+  activities:report.events.activities,
+  eventAgeDistributions:averageAgeMap(report.events.ageByEvent),
+  activityAgeDistributions:averageAgeMap(report.events.ageByActivity),
+  historyRowsPerLife:distribution(report.events.historyRows)
+ },
+
+ longitudinal:summarizeLongitudinal(),
+ correlations:correlationSummary(report.correlations.rows),
  samples:report.samples
 };
 
-console.log('FAST SIMULATION AUDIT');
+console.log('FAST SIMULATION FULL TELEMETRY');
 console.log(JSON.stringify(summary,null,2));
 if(report.invalid>0)process.exitCode=1;
