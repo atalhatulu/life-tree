@@ -58,7 +58,7 @@ export const lateLifeEvents=[
  {
   id:'retirement-decision',
   title:'Emeklilik Zamanı',
-  minAge:58,maxAge:72,once:false,majorDecision:false,priority:70,
+  minAge:58,maxAge:72,once:false,majorDecision:false,priority:130,
   condition:s=>retirementEligibility(s)&&s.player.age>=(s.nextRetirementAge??58),
   choices:[
    {
