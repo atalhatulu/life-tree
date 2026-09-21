@@ -88,5 +88,5 @@ test('procedural player spends real action slots through public action APIs',()=
  const results=performProceduralYearActions(g,'balanced',new RNG('procedural-player-actions'));
  assert.ok(results.length>0);
  assert.ok(g.state.actions.remaining<before);
- assert.ok(g.state.history.length===0,'direct procedural helper should not fake history rows itself');
+ assert.ok(g.state.history.length>0,'procedural player must use public Game actions so history matches real play');
 });
