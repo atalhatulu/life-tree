@@ -1,6 +1,8 @@
 import {RNG} from './rng.js';
 import {generateFamily} from '../family/family_generator.js';
 import {processFamilyYear} from '../family/family_simulation.js';
+import {processElderFamilyYear} from '../family/elder_system.js';
+import {releaseTrustFund} from '../finance/trust_fund.js';
 import {processChildhoodYear} from '../life/childhood_simulation.js';
 import {processAdolescenceYear} from '../life/adolescence_simulation.js';
 import {processSocialYear} from '../social/social_simulation.js';
@@ -44,6 +46,8 @@ export class Game{
   const yearRng=this.rng.fork('year-'+this.state.year);
   const auto=[
    ...processFamilyYear(this.state,yearRng.fork('family')),
+   ...processElderFamilyYear(this.state,yearRng.fork('family-loss')),
+   ...releaseTrustFund(this.state),
    ...processChildhoodYear(this.state,yearRng.fork('childhood')),
    ...processSocialYear(this.state,yearRng.fork('social')),
    ...processAdolescenceYear(this.state,yearRng.fork('adolescence')),
