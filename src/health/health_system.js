@@ -9,6 +9,16 @@ const CONDITIONS=[
  {id:'cancer',label:'Kanser',minAge:52,base:.004,severity:3}
 ];
 
+function ageMortalityBase(age){
+ if(age<45)return 0;
+ if(age<60)return .001+(age-45)*.00045;
+ if(age<70)return .008+(age-60)*.0011;
+ if(age<80)return .020+(age-70)*.0026;
+ if(age<90)return .050+(age-80)*.0060;
+ if(age<100)return .120+(age-90)*.015;
+ return Math.min(.82,.30+(age-100)*.035);
+}
+
 function deathCause(state,rng){
  const severe=(state.healthProfile?.conditions??[])
   .filter(c=>c.severity>=2)
@@ -48,7 +58,7 @@ export function processHealthYear(state,rng){
  }
 
  const severe=h.conditions.reduce((s,c)=>s+c.severity*(c.treatmentSuccessful?.45:1),0);
- const mortality=age<45?0:Math.max(0,(age-44)*.0008+(100-state.player.health.current)*.00025+severe*.0008);
+ const mortality=Math.min(.95,Math.max(0,ageMortalityBase(age)+(100-state.player.health.current)*.00030+severe*.0010));
  if(rng.chance(mortality)){
   state.player.alive=false;
   state.death={age,year:state.year,cause:deathCause(state,rng.fork('cause'))};
