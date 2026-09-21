@@ -27,7 +27,7 @@ export function processChildrenYear(state,rng){
  if(state.finance){
   state.finance.childMonthlyCost=ensureChildren(state).reduce((sum,child)=>{
    if(child.age>=22)return sum;
-   if(child.age>=18)return sum+2500;
+   if(child.age>=18)return sum+(child.educationPlan==='university'?8500:child.educationPlan==='vocational'?4000:2500);
    if(child.age>=13)return sum+7500;
    return sum+6500;
   },0);
