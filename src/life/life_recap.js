@@ -5,18 +5,27 @@ function sumInheritance(state){
 
 function careerHistory(state){
  const previous=state.career?.previousJobs??[];
- const history=previous.map(job=>({
+ const raw=previous.map(job=>({
   title:job.title,
   years:job.years??0
  }));
  if(state.career?.title){
-  history.push({
+  raw.push({
    title:state.career.title,
-   years:state.career.totalYears??state.career.years??0,
+   years:state.career.years??0,
    current:Boolean(state.career.employed)
   });
  }
- return history;
+
+ const merged=[];
+ for(const job of raw){
+  const last=merged.at(-1);
+  if(last?.title===job.title){
+   last.years+=(job.years??0);
+   last.current=Boolean(job.current);
+  }else merged.push({...job});
+ }
+ return merged;
 }
 
 function relationshipHistory(state){
