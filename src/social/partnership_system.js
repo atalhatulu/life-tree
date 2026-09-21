@@ -46,10 +46,8 @@ export function processPartnershipYear(state,rng){
   return entries;
  }
 
- const financeStress=(state.finance?.debt??0)>750000?3:0;
- const compatibility=(r.compatibility??60)-50;
- const delta=Math.round(compatibility*.03)-financeStress+rng.int(-4,4);
- r.relationship=clamp((r.relationship??55)+delta);
+ const financeStress=(state.finance?.debt??0)>3000000?2:(state.finance?.debt??0)>750000?1:0;
+ if(financeStress>0)r.relationship=clamp((r.relationship??55)-financeStress);
 
  if(r.status!=='married'&&r.yearsTogether>=2&&r.relationship<40&&rng.chance(.18)){
   entries.push({age:state.player.age,kind:'relationship',text:r.name+' ile ilişkin sona erdi.'});
