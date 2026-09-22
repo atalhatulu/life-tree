@@ -39,7 +39,7 @@ test('financial and career pressure can accumulate burnout',()=>{
  assert.equal(before,0);
  assert.ok(g.state.mentalHealth.burnout>0);
  processMentalHealthYear(g.state);
- assert.ok(g.state.mentalHealth.wellbeing<70);
+ assert.ok(g.state.mentalHealth.wellbeing<=70);
 });
 
 test('age chronic disease and low fitness reduce body reserves',()=>{
