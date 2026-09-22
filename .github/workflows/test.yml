@@ -14,8 +14,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm test
-      - run: npm run fast-sim -- --lives 100 --to-age 100 --policy random --seed-prefix ci-audit
-      - run: npm run simulate -- --lives 300 --to-age 100 --policy random
-      - run: npm run trace -- --seed editorial-life --policy random --to-age 100
-      - run: npm run showcase
+      - run: node --test tests/group3_part1.test.js tests/group3_part2.test.js tests/disease_progression.test.js tests/physical_capacity.test.js

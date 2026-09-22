@@ -83,8 +83,77 @@ function markDeath(state,person,relation,rng){
  return entry;
 }
 
+export function ensureParentCareState(state){
+ state.parentCare??={active:false,parentId:null,mode:null,monthlyCost:0,startedAtAge:null,siblingShare:0};
+ return state.parentCare;
+}
+
+function parentCareCandidate(state){
+ return [state.parents?.mother,state.parents?.father]
+  .filter(p=>p?.alive&&p.age>=68)
+  .sort((a,b)=>(a.health?.current??70)-(b.health?.current??70))[0]??null;
+}
+
+export function evaluateParentCareNeed(state){
+ const care=ensureParentCareState(state);
+ if(state.player.age<28||care.active)return null;
+ const parent=parentCareCandidate(state);
+ if(!parent)return null;
+ const health=parent.health?.current??70;
+ if(parent.age<76&&health>=48)return null;
+ care.pendingParentId=parent.id;
+ care.pendingParentName=parent.name;
+ return parent;
+}
+
+export function setParentCareMode(state,mode){
+ const care=ensureParentCareState(state);
+ const parent=[state.parents?.mother,state.parents?.father].find(p=>p?.id===(care.pendingParentId??care.parentId));
+ if(!parent)throw new Error('Bakım gerektiren ebeveyn bulunamadı.');
+ const adultSiblings=(state.siblings??[]).filter(s=>s.alive&&s.age>=22);
+ const siblingShare=mode==='sibling-share'?Math.min(.65,adultSiblings.length*.18):0;
+ const base={family:4500,'home-care':18000,facility:30000,'sibling-share':15000}[mode];
+ if(base==null)throw new Error('Geçersiz ebeveyn bakım modu.');
+ care.active=true;
+ care.parentId=parent.id;
+ care.parentName=parent.name;
+ care.mode=mode;
+ care.startedAtAge=state.player.age;
+ care.siblingShare=siblingShare;
+ care.monthlyCost=Math.round(base*(1-siblingShare));
+ care.pendingParentId=null;
+ care.pendingParentName=null;
+ parent.careMode=mode;
+ parent.careStartedAtYear=state.year;
+ if(state.healthProfile){
+  const stressDelta=mode==='family'?7:mode==='home-care'?3:mode==='facility'?2:4;
+  state.healthProfile.stress=clamp((state.healthProfile.stress??20)+stressDelta);
+ }
+ state.player.relationships??={};
+ state.player.relationships[parent.id]=clamp((state.player.relationships[parent.id]??60)+(mode==='family'?7:mode==='sibling-share'?4:2));
+ return care;
+}
+
+function processParentCareYear(state){
+ const care=state.parentCare;
+ if(!care?.active)return [];
+ const parent=[state.parents?.mother,state.parents?.father].find(p=>p?.id===care.parentId);
+ if(!parent?.alive){
+  care.active=false;
+  care.monthlyCost=0;
+  care.endedAtAge=state.player.age;
+  return [{age:state.player.age,kind:'family',text:'Ebeveyn bakım sorumluluğun sona erdi.'}];
+ }
+ if(state.healthProfile){
+  const stress=care.mode==='family'?2:care.mode==='sibling-share'?1:0;
+  state.healthProfile.stress=clamp((state.healthProfile.stress??20)+stress);
+ }
+ return [];
+}
+
 export function processElderFamilyYear(state,rng){
  const entries=[];
+ evaluateParentCareNeed(state);
  const members=[
   [state.parents.mother,'Annen'],
   [state.parents.father,'Baban'],
@@ -101,6 +170,8 @@ export function processElderFamilyYear(state,rng){
    entries.push(markDeath(state,person,relation,rng.fork('inheritance-'+person.id)));
   }
  }
+
+ entries.push(...processParentCareYear(state));
 
  if(state.player.age<18&&!state.parents.mother.alive&&!state.parents.father.alive){
   const before=state.guardianship;

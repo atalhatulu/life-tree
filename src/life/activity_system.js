@@ -1,6 +1,7 @@
 import {activityEfficiency,capacityBand} from '../health/physical_capacity.js';
 import {growTrait} from '../character/personality_dynamics.js';
 import {payDownDebt} from '../finance/personal_finance.js';
+import {applyMentalHealthActivity} from '../health/mental_health_system.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export const ACTIVITY_DEFS=[
@@ -12,7 +13,8 @@ export const ACTIVITY_DEFS=[
  {id:'work-hard',label:'İşe odaklan',minAge:19,condition:s=>s.career?.employed},
  {id:'date',label:'Partnerinle vakit geçir',minAge:18,condition:s=>Boolean(s.social?.romance)},
  {id:'checkup',label:'Sağlık kontrolü yaptır',minAge:18},
- {id:'budget',label:'Bütçeni gözden geçir',minAge:20,condition:s=>Boolean(s.finance)}
+ {id:'budget',label:'Bütçeni gözden geçir',minAge:20,condition:s=>Boolean(s.finance)},
+ {id:'therapy',label:'Terapi / psikolojik destek',minAge:16,condition:s=>(s.mentalHealth?.strain??0)>=42}
 ];
 
 function activityMemory(state,id){
@@ -125,6 +127,11 @@ export function performActivity(state,id,rng){
   state.healthProfile.stress=clamp(state.healthProfile.stress-4);
   result='Sağlık kontrolünden geçtin.';
  }
+ if(id==='therapy'){
+  state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
+  state.healthProfile.stress=clamp(state.healthProfile.stress-7);
+  result='Profesyonel psikolojik destek aldın.';
+ }
  if(id==='budget'){
   state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
   state.healthProfile.stress=clamp(state.healthProfile.stress-2);
@@ -137,6 +144,7 @@ export function performActivity(state,id,rng){
  }
 
  recordUse(state,id);
+ applyMentalHealthActivity(state,id);
  state.actions.remaining-=1;
  return result;
 }

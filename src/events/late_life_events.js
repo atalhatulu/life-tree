@@ -1,8 +1,24 @@
 import {retirementEligibility,retire} from '../career/retirement_system.js';
 import {canStartBusiness,startBusiness} from '../career/entrepreneurship_system.js';
 import {treatmentOptions,treatCondition} from '../health/treatment_system.js';
+import {setParentCareMode} from '../family/elder_system.js';
 
 export const lateLifeEvents=[
+ {
+  id:'parent-elder-care',
+  title:'Ebeveyn Bakımı',
+  minAge:28,maxAge:80,once:false,majorDecision:false,priority:118,
+  condition:s=>Boolean(
+   s.parentCare?.pendingParentId&&!s.parentCare?.active&&
+   [s.parents?.mother,s.parents?.father].some(p=>p?.alive&&p.id===s.parentCare.pendingParentId)
+  ),
+  choices:s=>[
+   {id:'family-parent-care',label:'Bakımı büyük ölçüde ben üstleneyim',majorDecision:true,result:'Ebeveyninin bakımını ağırlıklı olarak sen üstlendin.',effect:next=>setParentCareMode(next,'family')},
+   ...((s.siblings??[]).some(x=>x.alive&&x.age>=22)?[{id:'shared-parent-care',label:'Kardeşlerle bakım yükünü paylaş',majorDecision:true,result:'Bakım sorumluluğunu kardeşlerinle paylaştın.',effect:next=>setParentCareMode(next,'sibling-share')}]:[]),
+   {id:'professional-parent-care',label:'Evde profesyonel bakım ayarla',majorDecision:true,result:'Ebeveynin için profesyonel evde bakım düzenledin.',effect:next=>setParentCareMode(next,'home-care')},
+   {id:'facility-parent-care',label:'Bakım merkezine geçişi düzenle',majorDecision:true,result:'Ebeveynin için profesyonel bakım merkezi düzeni kurdun.',effect:next=>setParentCareMode(next,'facility')}
+  ]
+ },
  {
   id:'health-treatment',
   title:'Tedavi Kararı',

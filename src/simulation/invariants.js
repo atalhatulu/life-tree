@@ -73,6 +73,14 @@ export function validateState(state){
  if(state.healthProfile){
   if(!bounded(state.healthProfile.stress))errors.push('health stress out of range');
   if(!bounded(state.healthProfile.fitness))errors.push('fitness out of range');
+  for(const [id,value] of Object.entries(state.healthProfile.riskExposure??{})){
+   if(!bounded(value))errors.push('health risk exposure out of range: '+id);
+  }
+ }
+ if(state.mentalHealth){
+  if(!bounded(state.mentalHealth.resilience))errors.push('mental resilience out of range');
+  if(!bounded(state.mentalHealth.strain))errors.push('mental strain out of range');
+  if(!['stable','strained','distressed','crisis'].includes(state.mentalHealth.status))errors.push('invalid mental health status');
  }
 
  for(const child of state.children??[]){

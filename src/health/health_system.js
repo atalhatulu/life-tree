@@ -3,12 +3,11 @@ import {geneticRiskMultiplier,geneticDiseaseModifiers} from './genetic_system.js
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 const CONDITIONS=[
- {id:'hypertension',label:'Yüksek tansiyon',minAge:32,base:.012,severity:2},
- {id:'back-pain',label:'Kronik bel ağrısı',minAge:28,base:.018,severity:1},
- {id:'metabolic',label:'Metabolik sorun',minAge:35,base:.010,severity:2},
- {id:'anxiety',label:'Anksiyete',minAge:18,base:.012,severity:1},
- {id:'cardiac',label:'Kalp-damar hastalığı',minAge:48,base:.007,severity:3},
- {id:'cancer',label:'Kanser',minAge:52,base:.004,severity:3}
+ {id:'hypertension',label:'Yüksek tansiyon',minAge:35,base:.0065,severity:2,threshold:42},
+ {id:'back-pain',label:'Kronik bel ağrısı',minAge:30,base:.008,severity:1,threshold:46},
+ {id:'metabolic',label:'Metabolik sorun',minAge:38,base:.0055,severity:2,threshold:48},
+ {id:'cardiac',label:'Kalp-damar hastalığı',minAge:52,base:.0035,severity:3,threshold:58},
+ {id:'cancer',label:'Kanser',minAge:55,base:.0026,severity:3,threshold:62}
 ];
 
 function ageMortalityBase(age){
@@ -59,7 +58,26 @@ function normalDeathEligible(state){
 
 export function ensureHealthProfile(state){
  state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
+ state.healthProfile.riskExposure??={};
  return state.healthProfile;
+}
+
+function exposureGain(state,condition,geneticMultiplier){
+ const age=state.player.age;
+ const h=state.healthProfile;
+ const health=state.player.health.current??70;
+ const fitness=h.fitness??50;
+ let gain=condition.base*100;
+ if(age>=condition.minAge+15)gain+=.35;
+ if(age>=condition.minAge+30)gain+=.45;
+ if(fitness<40)gain+=.35;
+ if(health<55)gain+=.30;
+ if(h.stress>65)gain+=.20;
+ if(state.finance?.debt>1000000)gain+=.08;
+ if(condition.id==='metabolic'&&fitness<35)gain+=.45;
+ if(condition.id==='cardiac'&&h.conditions.some(c=>c.id==='hypertension'||c.id==='metabolic'))gain+=.65;
+ if(condition.id==='back-pain'&&state.career?.employed)gain+=.10;
+ return gain*geneticMultiplier;
 }
 
 export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
@@ -102,14 +120,22 @@ export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
   const effectiveMinAge=Math.max(0,condition.minAge+geneticCourse.onsetAgeOffset);
   if(age<effectiveMinAge||h.conditions.some(c=>c.id===condition.id)) continue;
   const geneticMultiplier=geneticRiskMultiplier(state,condition.id);
-  const chance=condition.base*geneticMultiplier+(100-state.player.health.current)*.00025+h.stress*.00012;
+  const currentExposure=h.riskExposure[condition.id]??0;
+  const nextExposure=clamp(currentExposure+exposureGain(state,condition,geneticMultiplier),0,100);
+  h.riskExposure[condition.id]=nextExposure;
+  if(nextExposure<condition.threshold)continue;
+
+  const excess=Math.max(0,nextExposure-condition.threshold);
+  const chance=Math.min(.11,condition.base*geneticMultiplier+excess*.0012+(100-state.player.health.current)*.00012);
   if(rng.chance(chance)){
    h.conditions.push({
     id:condition.id,label:condition.label,severity:condition.severity,diagnosedAtAge:age,
-    geneticCourse:{...geneticCourse}
+    geneticCourse:{...geneticCourse},
+    riskExposureAtDiagnosis:nextExposure
    });
-   state.player.health.current=clamp(state.player.health.current-condition.severity*4);
-   entries.push({age,kind:'health',paceBlock:true,text:condition.label+' yaşamını etkilemeye başladı.'});
+   h.riskExposure[condition.id]=Math.max(0,nextExposure-18);
+   state.player.health.current=clamp(state.player.health.current-condition.severity*3);
+   entries.push({age,kind:'health',paceBlock:condition.severity>=2,text:condition.label+' yaşamını etkilemeye başladı.'});
   }
  }
 
