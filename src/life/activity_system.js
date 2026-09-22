@@ -1,6 +1,7 @@
 import {activityEfficiency,capacityBand} from '../health/physical_capacity.js';
 import {growTrait} from '../character/personality_dynamics.js';
 import {payDownDebt} from '../finance/personal_finance.js';
+import {payDownDebt} from '../finance/personal_finance.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export const ACTIVITY_DEFS=[
