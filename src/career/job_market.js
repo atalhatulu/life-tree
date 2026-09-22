@@ -6,6 +6,7 @@ import {metaFor,familyCompatibility} from './career_taxonomy.js';
 import {
  ensureCareerProfile,yearsInJob,yearsInFamily,recentJobRecord,dominantCareerFamily,archiveCareer
 } from './career_profile.js';
+import {humanCapitalFor} from './human_capital.js';
 
 const ENTRY_JOB_IDS=['cleaner','mechanic','cook','shopkeeper','driver'];
 
@@ -82,7 +83,8 @@ function buildOffer(state,rng,job,mode){
  const low=job.income[0],high=job.income[1];
  const experienceYears=yearsInJob(state,job.id)+yearsInFamily(state,meta.family)*.35;
  const degreeBoost=q.exactDegree?1.10:1;
- const experienceBoost=Math.min(1.22,1+experienceYears*.018);
+ const capital=humanCapitalFor(state,job.id);
+ const experienceBoost=Math.min(1.28,1+experienceYears*.018+capital.score*.0006);
  const macro=economy(state);
  const city=chooseJobOfferCity(state,rng.fork('city-'+job.id));
  const salary=Math.round(
@@ -94,7 +96,7 @@ function buildOffer(state,rng,job,mode){
  const transitionPenalty=mode==='career-switch'&&salaryDrop<.72?18:0;
  const chance=Math.min(95,Math.max(5,Math.round(
   38+fit*.18+state.player.personality.discipline*.14+state.player.personality.sociability*.08+
-  Math.min(18,experienceYears*2)+(q.exactDegree?16:0)+(macro.laborMarket-1)*25+(city.jobs-1)*16-transitionPenalty
+  Math.min(18,experienceYears*2)+capital.score*.10+(q.exactDegree?16:0)+(macro.laborMarket-1)*25+(city.jobs-1)*16-transitionPenalty
  )));
  const currentCityId=state.location?.cityId??state.origin?.cityId;
  const requiresMove=city.id!==currentCityId;
@@ -108,7 +110,7 @@ function buildOffer(state,rng,job,mode){
   transitionReason:q.reason,
   fit,salary,offerChance:chance,
   related:q.exactDegree||q.reason==='adjacent-degree'||q.reason==='adjacent-family',
-  experienceYears,
+  experienceYears,humanCapital:capital.score,
   cityId:city.id,cityName:city.name,
   requiresMove,moveCost,
   score:fit+chance*.55+Math.min(25,experienceYears*3)+(q.exactDegree?25:0)-transitionPenalty-pingPongPenalty+(city.id===currentCityId?4:0)
