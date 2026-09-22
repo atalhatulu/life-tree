@@ -75,3 +75,13 @@ test('prolonged insolvency without assets is capped to sustainable debt capacity
  assert.ok(g.state.finance.debt<3000000,'debt should be resolved toward sustainable capacity');
  assert.equal(g.state.finance.insolvencyResolved,true);
 });
+
+
+test('minimum wage baseline is 30000 TRY and entry salary floor respects it',async()=>{
+ const {TURKEY_2026_ECONOMY}=await import('../src/data/countries/turkey/economy.js');
+ const {JOBS}=await import('../src/data/countries/turkey/jobs.js');
+ assert.equal(TURKEY_2026_ECONOMY.netMinimumWage,30000);
+ const paid=JOBS.filter(job=>job.id!=='unemployed');
+ assert.ok(paid.every(job=>job.income[0]>=30000));
+ assert.equal(JOBS.find(job=>job.id==='cleaner').income[0],30000);
+});
