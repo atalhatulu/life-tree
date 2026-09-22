@@ -196,7 +196,7 @@ export const adultEvents=[
  },
  {
   id:'buy-home',title:'Ev Satın Almak',minAge:27,maxAge:65,once:false,majorDecision:false,priority:42,
-  condition:s=>!s.assets?.home&&s.career?.employed&&s.player.age>=(s.nextHomeAge??27)&&(s.preferences?.homeOwnershipDesire??50)>=55&&affordableHomeOptions(s).length>0,
+  condition:s=>!s.assets?.home&&s.career?.employed&&s.player.age>=(s.nextHomeAge??27)&&(s.preferences?.homeOwnershipDesire??50)>=48&&affordableHomeOptions(s).length>0,
   choices:s=>[
    ...affordableHomeOptions(s).map(home=>({id:'home:'+home.id,label:home.label+' — ₺'+home.price.toLocaleString('tr-TR'),majorDecision:true,result:home.label+' satın aldın.',effect:next=>buyHome(next,home.id)})),
    {id:'skip-home',label:'Kirada / mevcut düzende kal',result:'Şimdilik ev satın almamayı seçtin.',effect:s=>{s.nextHomeAge=s.player.age+4;}}
