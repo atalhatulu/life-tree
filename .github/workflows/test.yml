@@ -15,7 +15,7 @@ jobs:
         with:
           node-version: 22
       - run: npm test
-      - run: npm run fast-sim -- --lives 100 --to-age 100 --policy random --seed-prefix ci-audit
+      - run: npm run fast-sim -- --lives 1000 --to-age 100 --policy random --seed-prefix group2-final
       - run: npm run simulate -- --lives 300 --to-age 100 --policy random
       - run: npm run trace -- --seed editorial-life --policy random --to-age 100
       - run: npm run showcase
