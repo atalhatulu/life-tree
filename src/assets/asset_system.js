@@ -1,3 +1,4 @@
+import {liquidFunds,spendLiquidFunds} from '../finance/liquidity.js';
 import {TURKEY_2026_ECONOMY} from '../data/countries/turkey/economy.js';
 import {locationProfile} from '../data/countries/turkey/profile.js';
 
@@ -7,17 +8,17 @@ export function ensureAssets(state){
 }
 
 export function affordableCarOptions(state){
- const cash=state.finance?.cash??0;
+ const available=liquidFunds(state);
  return TURKEY_2026_ECONOMY.assets.cars
   .map(car=>({...car}))
-  .filter(car=>cash>=car.price*.35);
+  .filter(car=>available>=car.price*.35);
 }
 
 export function buyCar(state,id){
  const option=affordableCarOptions(state).find(x=>x.id===id);
  if(!option) throw new Error('Bu aracı karşılayamıyorsun.');
  const down=Math.round(option.price*.35);
- state.finance.cash-=down;
+ spendLiquidFunds(state,down);
  state.finance.debt+=option.price-down;
  ensureAssets(state).car={...option,purchasedAtAge:state.player.age,remainingDebt:option.price-down};
  state.finance.lifestyle.transport='car';
@@ -25,19 +26,19 @@ export function buyCar(state,id){
 }
 
 export function affordableHomeOptions(state){
- const cash=state.finance?.cash??0;
+ const available=liquidFunds(state);
  const income=state.career?.monthlyIncome??state.retirement?.pensionMonthly??0;
  const city=locationProfile(state);
  return TURKEY_2026_ECONOMY.assets.homes
   .map(home=>({...home,price:Math.round(home.price*city.housing),cityId:city.id,cityName:city.name}))
-  .filter(home=>cash>=home.price*.2&&income>=35000*city.wage);
+  .filter(home=>available>=home.price*.2&&income>=35000*city.wage);
 }
 
 export function buyHome(state,id){
  const option=affordableHomeOptions(state).find(x=>x.id===id);
  if(!option) throw new Error('Bu evi karşılayamıyorsun.');
  const down=Math.round(option.price*.2);
- state.finance.cash-=down;
+ spendLiquidFunds(state,down);
  state.finance.debt+=option.price-down;
  ensureAssets(state).home={...option,purchasedAtAge:state.player.age,remainingDebt:option.price-down};
  state.finance.lifestyle.housing='owned';
