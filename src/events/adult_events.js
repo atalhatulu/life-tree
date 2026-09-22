@@ -86,8 +86,8 @@ export const adultEvents=[
   ]
  },
  {
-  id:'adult-dating',title:'Yeni Biriyle Tanışma',minAge:19,maxAge:55,once:false,majorDecision:false,priority:18,
-  condition:s=>!s.social?.romance&&s.player.age>=(s.nextDatingAge??19)&&(s.preferences?.partnershipDesire??50)>=50&&(s.datingAttempts??0)<4,
+  id:'adult-dating',title:'Yeni Biriyle Tanışma',minAge:19,maxAge:55,once:false,majorDecision:false,priority:30,
+  condition:s=>!s.social?.romance&&s.player.age>=(s.nextDatingAge??19)&&(s.preferences?.partnershipDesire??50)>=50&&(s.datingAttempts??0)<6,
   choices:[
    {
     id:'meet',label:'Tanışmaya açık ol',result:s=>s.social.romance?s.social.romance.name+' ile görüşmeye başladın.':'Bu kez bir ilişkiye dönüşmedi.',
@@ -95,10 +95,10 @@ export const adultEvents=[
       const chance=Math.min(.82,.22+s.player.personality.sociability/180+s.player.appearance.attractiveness/260);
       s.datingAttempts=(s.datingAttempts??0)+1;
       if(rng.chance(chance))s.social.romance=createRomanticInterest(s,rng.fork('adult-date'),'romance-'+s.year);
-      s.nextDatingAge=s.player.age+(s.social.romance?2:3);
+      s.nextDatingAge=s.player.age+(s.social.romance?2:(s.player.age<35?2:3));
     }
    },
-   {id:'focus-self',label:'Kendime odaklan',result:'Bu dönem ilişki aramamayı seçtin.',effect:s=>{s.datingAttempts=(s.datingAttempts??0)+1;s.nextDatingAge=s.player.age+4;}}
+   {id:'focus-self',label:'Kendime odaklan',result:'Bu dönem ilişki aramamayı seçtin.',effect:s=>{s.datingAttempts=(s.datingAttempts??0)+1;s.nextDatingAge=s.player.age+(s.player.age<35?3:4);}}
   ]
  },
  {
