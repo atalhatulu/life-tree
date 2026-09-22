@@ -54,7 +54,7 @@ function humanLikeChoice(game,event,choices,rng){
  if(event.id==='buy-home'){
   const age=s.player.age;
   add('skip-home',debt>1200000?30:Math.max(0,22-(age-30)));
-  for(const c of choices)if(c.id.startsWith('home:'))add(c.id,(liquid>700000?32:8)+Math.max(0,age-30)*1.2+(s.social?.romance?.status==='married'?10:0));
+  for(const c of choices)if(c.id.startsWith('home:'))add(c.id,(liquid>500000?34:10)+Math.max(0,age-30)*1.2+(s.social?.romance?.status==='married'?10:0));
  }
  if(event.id==='career-switch'){
   add('stay',(s.career?.satisfaction??50)-45+(stress>70?10:0));
