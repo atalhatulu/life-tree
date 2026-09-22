@@ -212,7 +212,8 @@ const report={
   distressYears:[],distressEvents:[],restructured:0,discretionaryAnnual:[],
   monthlyIncome:[],monthlyExpenses:[],tax:[],familySupport:[],partnerContribution:[],
   childCosts:[],homeOwners:0,carOwners:0,homePurchaseAges:[],carPurchaseAges:[],
-  homePrices:[],carPrices:[],estateNet:[],inheritanceReceived:[]
+  homePrices:[],carPrices:[],estateNet:[],inheritanceReceived:[],
+  spendingTotals:{},durableOwners:{},durablePurchases:{},durableReplacements:{},durablePurchaseAges:{}
  },
 
  world:{
@@ -705,6 +706,17 @@ for(let i=0;i<lives;i++){
  report.finance.familySupport.push(state.finance?.familySupportMonthly??0);
  report.finance.partnerContribution.push(state.finance?.partnerContributionMonthly??0);
  report.finance.childCosts.push(state.finance?.childMonthlyCost??0);
+ for(const [category,amount] of Object.entries(state.finance?.spendingTotals??{}))inc(report.finance.spendingTotals,category,amount);
+ for(const [itemId,item] of Object.entries(state.finance?.durableGoods??{})){
+  if(item)inc(report.finance.durableOwners,itemId);
+ }
+ for(const entry of state.finance?.spendingHistory??[]){
+  if(entry.source!=='durable-goods')continue;
+  const itemId=entry.metadata?.itemId??'unknown';
+  inc(report.finance.durablePurchases,itemId);
+  if(entry.metadata?.replacement)inc(report.finance.durableReplacements,itemId);
+  push(report.finance.durablePurchaseAges,itemId,entry.age);
+ }
  if(state.assets?.home){
   report.finance.homeOwners++;
   if(state.assets.home.purchasedAtAge!=null)report.finance.homePurchaseAges.push(state.assets.home.purchasedAtAge);
@@ -1128,7 +1140,14 @@ const summary={
   homePrices:distribution(report.finance.homePrices),
   carPrices:distribution(report.finance.carPrices),
   estateNet:distribution(report.finance.estateNet),
-  inheritanceReceived:distribution(report.finance.inheritanceReceived)
+  inheritanceReceived:distribution(report.finance.inheritanceReceived),
+  spendingTotals:report.finance.spendingTotals,
+  durableGoods:{
+   ownershipPct:Object.fromEntries(Object.entries(report.finance.durableOwners).map(([k,v])=>[k,pct(v,valid)])),
+   purchases:report.finance.durablePurchases,
+   replacements:report.finance.durableReplacements,
+   purchaseAges:Object.fromEntries(Object.entries(report.finance.durablePurchaseAges).map(([k,v])=>[k,distribution(v)]))
+  }
  },
 
  segments:{
