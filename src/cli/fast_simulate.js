@@ -112,6 +112,7 @@ const seedPrefix=arg('seed-prefix','fast-audit');
 const report={
  config:{lives,toAge,policy,seedPrefix},
  runtimeMs:0,valid:0,invalid:0,deaths:0,
+ notables:{youngestDeath:null,oldestLife:null,richest:null,mostDebt:null,mostChildren:null,mostRelationships:null,mostHealthBurden:null,mostMentalEpisodes:null,mostMigrations:null,mostCareerTransitions:null},
 
  population:{
   sex:{},birthCities:{},finalCities:{},childhoodClasses:{},siblingCounts:{},
@@ -267,6 +268,36 @@ function recordSnapshot(state){
  bucket.moves+=state.migrationHistory?.length??0;
 }
 
+
+function lifeDigest(state,seed){
+ const finance=state.finance??{};
+ const netWorth=(finance.cash??0)+(finance.savings??0)+(state.assets?.home?.price??0)+(state.assets?.car?.price??0)-(finance.debt??0);
+ const partners=activeOrHistoricalPartners(state);
+ const mentalEpisodes=(state.mentalHealth?.episodes??[]).filter(e=>e.type!=='grief');
+ const transitions=(state.careerProfile?.recentJobs??[]).length+(state.career?.previousJobs?.length??0);
+ return {
+  seed,age:state.player.age,sex:state.player.sex,
+  origin:state.origin?.cityName,finalCity:state.location?.cityName??state.origin?.cityName,
+  alive:state.player.alive,cause:state.death?.cause??null,
+  job:state.career?.title??state.player.job??null,careerLevel:state.career?.levelTitle??null,sector:state.career?.sector??null,
+  netWorth:Math.round(netWorth),debt:Math.round(finance.debt??0),
+  home:Boolean(state.assets?.home),car:Boolean(state.assets?.car),
+  children:state.children?.length??0,relationships:partners.length,
+  divorces:state.social?.exSpouses?.length??0,widowed:state.social?.deceasedPartners?.length??0,
+  conditions:(state.healthProfile?.conditions??[]).map(x=>x.label??x.id),
+  conditionCount:state.healthProfile?.conditions?.length??0,
+  mentalEpisodes:mentalEpisodes.map(x=>x.type),mentalEpisodeCount:mentalEpisodes.length,
+  migrations:state.migrationHistory?.length??0,careerTransitions:transitions,
+  majorDecisions:(state.lifeTree?.nodes??[]).length
+ };
+}
+function pickNotable(slot,digest,score,prefer='max'){
+ const current=report.notables[slot];
+ if(!current||((prefer==='min')?score<current._score:score>current._score)){
+  report.notables[slot]={...digest,_score:score};
+ }
+}
+
 const started=performance.now();
 
 for(let i=0;i<lives;i++){
@@ -288,6 +319,18 @@ for(let i=0;i<lives;i++){
   continue;
  }
  report.valid++;
+
+ const digest=lifeDigest(state,game.seedText);
+ if(!state.player.alive)pickNotable('youngestDeath',digest,state.player.age,'min');
+ pickNotable('oldestLife',digest,state.player.age);
+ pickNotable('richest',digest,digest.netWorth);
+ pickNotable('mostDebt',digest,digest.debt);
+ pickNotable('mostChildren',digest,digest.children);
+ pickNotable('mostRelationships',digest,digest.relationships+digest.divorces*.5+digest.widowed*.25);
+ pickNotable('mostHealthBurden',digest,digest.conditionCount);
+ pickNotable('mostMentalEpisodes',digest,digest.mentalEpisodeCount);
+ pickNotable('mostMigrations',digest,digest.migrations);
+ pickNotable('mostCareerTransitions',digest,digest.careerTransitions);
 
  // Population / origin
  inc(report.population.sex,state.player.sex??'unknown');
@@ -717,8 +760,11 @@ function correlationSummary(rows){
  return result;
 }
 
+for(const value of Object.values(report.notables))if(value)delete value._score;
+
 const summary={
  config:report.config,
+ notables:report.notables,
  runtime:{
   ms:report.runtimeMs,
   seconds:Number((report.runtimeMs/1000).toFixed(2)),
