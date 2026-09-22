@@ -107,20 +107,22 @@ export function processPartnershipYear(state,rng){
  r.relationshipTension=clamp(
   (r.relationshipTension??10)*.72+stress*3.2+mismatch*1.4-qualityTime*7+rng.int(-2,3)
  );
- const conflictChance=Math.min(.34,.07+stress*.018+Math.max(0,72-compatibility)*.006);
- if(rng.fork('relationship-conflict').chance(conflictChance)){
-  r.relationshipTension=clamp(r.relationshipTension+rng.int(10,22));
-  r.relationship=clamp(r.relationship-rng.int(3,8));
+ const committed=r.status==='cohabiting'||r.status==='married';
+ const conflictChance=Math.min(.30,(committed?.075:.035)+stress*(committed?.016:.008)+Math.max(0,72-compatibility)*(committed?.005:.0025));
+ if(r.yearsTogether>=2&&rng.fork('relationship-conflict').chance(conflictChance)){
+  r.relationshipTension=clamp(r.relationshipTension+rng.int(committed?9:6,committed?19:13));
+  r.relationship=clamp(r.relationship-rng.int(committed?3:2,committed?7:5));
   entries.push({age:state.player.age,kind:'relationship',text:r.name+' ile aranızda bir süredir biriken bir anlaşmazlık yaşandı.'});
  }
  const delta=Math.round(
-  -1.6+(compatibility-70)*.055+qualityTime*2.5-stress*.8-(r.relationshipTension??0)/22+rng.int(-3,3)
+  (committed?-1.1:-.45)+(compatibility-70)*.06+qualityTime*(committed?2.7:2.2)-stress*(committed?.72:.35)-(r.relationshipTension??0)/(committed?25:34)+rng.int(-3,3)
  );
  r.relationship=clamp((r.relationship??55)+delta);
 
  if(r.relationship>=72&&r.relationshipTension<30)r.relationshipState='stable';
  else if(r.relationship>=45&&r.relationshipTension<60)r.relationshipState='strained';
  else r.relationshipState='conflict';
+ r.conflictYears=r.relationshipState==='conflict'?(r.conflictYears??0)+1:Math.max(0,(r.conflictYears??0)-1);
 
  if(r.status!=='married'&&r.yearsTogether>=1&&r.relationship<=18&&r.relationshipTension>=80){
   entries.push({age:state.player.age,kind:'relationship',paceBlock:true,text:r.name+' ile ilişkin sona erdi.'});
@@ -143,8 +145,8 @@ export function processPartnershipYear(state,rng){
    endRelationship(state,r,{divorce:true});
    return entries;
   }
-  if(r.marriageYears>=2&&r.relationship<50&&r.relationshipTension>50){
-   const chance=Math.min(.62,.10+(50-r.relationship)*.014+(r.relationshipTension-50)*.007);
+  if(r.marriageYears>=2&&r.relationship<55&&r.relationshipTension>45&&(r.conflictYears??0)>=2){
+   const chance=Math.min(.68,.13+(55-r.relationship)*.014+(r.relationshipTension-45)*.007+(r.conflictYears??0)*.025);
    if(rng.fork('divorce').chance(chance)){
     entries.push({age:state.player.age,kind:'relationship',paceBlock:true,text:r.name+' ile evliliğiniz boşanmayla sona erdi.'});
     endRelationship(state,r,{divorce:true});
