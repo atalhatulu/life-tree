@@ -64,6 +64,18 @@ export function processCareerDynamics(state,rng){
  return entries;
 }
 
+function transitionReasonForSwitch(state,job){
+ const current=state.career;
+ const currentIncome=current?.monthlyIncome??0;
+ const salaryRatio=currentIncome>0?(job.salary??0)/currentIncome:1;
+ const sameOrAdjacent=(job.transitionReason==='adjacent-family'||job.related===true);
+ if(job.requiresMove&&salaryRatio>=1.12)return 'relocation-upgrade';
+ if(salaryRatio>=1.15)return 'salary-growth';
+ if((current?.satisfaction??50)<35&&sameOrAdjacent)return 'low-satisfaction-adjacent';
+ if(sameOrAdjacent)return job.transitionReason??'adjacent-family';
+ return job.transitionReason??'career-switch';
+}
+
 export function switchJob(state,job){
  const old=state.career;
  archiveCareer(state,'career-switch');
@@ -87,7 +99,7 @@ export function switchJob(state,job){
   satisfaction:55,
   stability:60,
   enteredAtAge:state.player.age,
-  transitionReason:job.transitionReason??'career-switch',
+  transitionReason:transitionReasonForSwitch(state,job),
   previousJobs:[...(old?.previousJobs??[]),old?{title:old.title,years:old.years}:null].filter(Boolean)
  };
  state.player.job=job.title;
