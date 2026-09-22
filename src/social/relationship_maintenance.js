@@ -1,17 +1,24 @@
 import {socialTargets,relationshipValue,setRelationshipValue} from './social_activity_system.js';
 import {neglectPenalty} from './relationship_memory.js';
 
-function rules(kind){
- if(kind==='partner')return {graceYears:0,maxPenalty:3};
- if(kind==='child')return {graceYears:0,maxPenalty:2};
- if(kind==='friend')return {graceYears:1,maxPenalty:3};
- return {graceYears:2,maxPenalty:2};
+function rules(state,target){
+ if(target.kind==='partner'){
+  const status=state.social?.romance?.status;
+  if(status==='married'||status==='cohabiting')return {graceYears:2,maxPenalty:1};
+  return {graceYears:1,maxPenalty:2};
+ }
+ if(target.kind==='child'){
+  const age=target.person?.age??0;
+  return age<18?{graceYears:1,maxPenalty:1}:{graceYears:2,maxPenalty:2};
+ }
+ if(target.kind==='friend')return {graceYears:2,maxPenalty:2};
+ return {graceYears:3,maxPenalty:1};
 }
 
 export function processRelationshipMaintenanceYear(state){
  const entries=[];
  for(const target of socialTargets(state)){
-  const penalty=neglectPenalty(state,target.id,rules(target.kind));
+  const penalty=neglectPenalty(state,target.id,rules(state,target));
   if(penalty<=0)continue;
   const before=relationshipValue(state,target);
   const after=setRelationshipValue(state,target,before-penalty);
