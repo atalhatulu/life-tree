@@ -383,3 +383,25 @@ button { -webkit-tap-highlight-color: transparent; }
 .alternatives { margin-top:8px; border-top:1px solid #edf0f4; padding-top:7px; }
 .alternatives summary { cursor:pointer; color:#7c8798; font-size:10px; font-weight:750; }
 .yearly-turn-card { border-color:#d9e4db; }
+
+
+/* End-of-life recap */
+.death-summary { margin-bottom:12px; }
+.death-summary.hidden { display:none; }
+.death-hero { background:#1f2430; color:white; border-radius:16px; padding:16px; }
+.death-hero small { color:#aeb7c5; font-size:10px; font-weight:800; letter-spacing:.08em; }
+.death-hero h2 { margin:4px 0 4px; font-size:20px; }
+.death-hero p { margin:0; color:#c8cfda; font-size:11px; }
+.death-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+.death-grid div { background:white; border:1px solid #e4e8ef; border-radius:12px; padding:10px; }
+.death-grid span { display:block; font-size:9px; color:#8a94a5; margin-bottom:3px; }
+.death-grid strong { display:block; font-size:11px; color:#394252; line-height:1.35; }
+.death-highlights { background:white; border:1px solid #e4e8ef; border-radius:14px; padding:12px; margin-top:8px; }
+.death-highlights h3 { margin:0 0 7px; font-size:12px; }
+.death-highlights p { margin:5px 0; font-size:11px; line-height:1.4; color:#5f6a7b; }
+.death-decisions { background:white; border:1px solid #e4e8ef; border-radius:14px; padding:11px 12px; margin-top:8px; }
+.death-decisions summary { cursor:pointer; font-size:11px; font-weight:800; color:#4b5668; }
+.death-decision-row { display:grid; grid-template-columns:48px 1fr; gap:5px 8px; padding:9px 0; border-top:1px solid #edf0f4; }
+.death-decision-row b { font-size:10px; color:#738095; }
+.death-decision-row span { font-size:11px; color:#3f4859; }
+.death-decision-row small { grid-column:2; font-size:9px; color:#929bab; line-height:1.35; }
