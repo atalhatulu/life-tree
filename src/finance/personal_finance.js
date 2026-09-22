@@ -1,6 +1,7 @@
 import {TURKEY_2026_ECONOMY} from '../data/countries/turkey/economy.js';
 import {lifestyleMonthlyCost} from '../lifestyle/lifestyle_system.js';
 import {economy} from '../world/world_state.js';
+import {ensureSpendingHistory,recordSpending} from './life_spending_system.js';
 
 const STARTING_CASH_BY_CLASS={düşük:2500,orta:7500,'üst-orta':18000,yüksek:50000};
 const STUDENT_SUPPORT_BY_CLASS={düşük:3500,orta:7500,'üst-orta':11000,yüksek:17000};
@@ -12,6 +13,7 @@ export function ensurePersonalFinance(state){
   state.finance.financialDistressYears??=0;
   state.finance.financialDistressEvents??=0;
   state.finance.debtRestructured??=false;
+  ensureSpendingHistory(state);
   return state.finance;
  }
  const studentAwayFromHome=Boolean(state.higherEducation?.enrolled&&state.higherEducation?.movedForUniversity);
@@ -26,6 +28,9 @@ export function ensurePersonalFinance(state){
   financialDistressYears:0,
   financialDistressEvents:0,
   debtRestructured:false,
+  spendingHistory:[],
+  spendingTotals:{},
+  totalRecordedSpending:0,
   lifestyle:{housing:studentAwayFromHome?'shared':'family',food:'standard',clothing:'basic',transport:'public'}
  };
  return state.finance;
@@ -271,6 +276,12 @@ export function processPersonalFinanceYear(state){
 
  if(annualNet>=0){
   f.discretionaryAnnual=Math.round(annualNet*discretionaryRate(state));
+  recordSpending(state,{
+   category:'daily-life',
+   amount:f.discretionaryAnnual,
+   label:'Yıllık isteğe bağlı yaşam harcamaları',
+   source:'annual-budget'
+  });
   let available=Math.max(0,annualNet-f.discretionaryAnnual);
   available=serviceDebt(state,available);
   const reserveTarget=cashReserveTarget(f);
