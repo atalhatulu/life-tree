@@ -4,6 +4,7 @@ import {Game} from '../src/core/game.js';
 import {ensurePersonalFinance,processPersonalFinanceYear} from '../src/finance/personal_finance.js';
 import {settleEstate} from '../src/finance/estate_system.js';
 import {spendingSummary} from '../src/finance/life_spending_system.js';
+import {processDurableGoodsBudget} from '../src/finance/durable_goods_system.js';
 
 function adult(seed='finance-v2'){
  const g=new Game(seed);
@@ -130,4 +131,32 @@ test('durable spending share responds to lifestyle and interests while preservin
   premiumSummary.byCategory['durable-goods']/premiumSummary.total>
   frugalSummary.byCategory['durable-goods']/frugalSummary.total
  );
+});
+
+
+test('durable goods budget creates owned items without double charging the annual budget',()=>{
+ const g=adult('durable-goods-first-purchase');
+ g.state.player.age=30;
+ g.state.year=2056;
+ g.state.finance.lifestyle={housing:'apartment',food:'standard',clothing:'standard',transport:'public'};
+ g.state.player.interests={...(g.state.player.interests??{}),teknoloji:90,oyun:80};
+ const result=processDurableGoodsBudget(g.state,100000);
+ const summary=spendingSummary(g.state);
+ assert.equal(summary.total,100000);
+ assert.equal(result.spent,100000);
+ assert.ok(g.state.finance.durableGoods.phone||g.state.finance.durableGoods.computer);
+});
+
+test('durable goods are replaced after their useful lifespan',()=>{
+ const g=adult('durable-goods-replacement');
+ g.state.player.age=30;
+ g.state.year=2056;
+ g.state.finance.lifestyle={housing:'family',food:'standard',clothing:'standard',transport:'public'};
+ processDurableGoodsBudget(g.state,30000);
+ assert.equal(g.state.finance.durableGoods.phone.generation,1);
+ g.state.player.age=34;
+ g.state.year=2060;
+ processDurableGoodsBudget(g.state,30000);
+ assert.equal(g.state.finance.durableGoods.phone.generation,2);
+ assert.equal(g.state.finance.durableGoods.phone.purchasedAtAge,34);
 });
