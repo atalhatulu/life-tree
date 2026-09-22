@@ -162,3 +162,43 @@ test('healthy low-strain marriage does not receive arbitrary divorce risk',()=>{
  assert.ok((g.state.social.romance.strain??0)<1);
  assert.ok(!chances.some(p=>p>=.025&&p<=.16),'healthy marriage should not get divorce RNG merely for existing');
 });
+
+
+test('older balanced procedural exercise favors sustainable activities over high intensity',()=>{
+ const counts={};
+ for(let i=0;i<80;i++){
+  const g=adult('older-physical-'+i);
+  g.state.player.age=72;
+  g.state.healthProfile.fitness=42;
+  const plan=proceduralActionPlan(g,'balanced',new RNG('older-plan-'+i));
+  const physical=plan.find(x=>x.type==='physical');
+  assert.ok(physical);
+  counts[physical.id]=(counts[physical.id]??0)+1;
+ }
+ const sustainable=(counts.walk??0)+(counts.yoga??0)+(counts.swim??0);
+ const intense=(counts.run??0)+(counts.gym??0);
+ assert.ok(sustainable>intense,'older adults should prefer sustainable activity mix');
+});
+
+test('low fitness increases physical action urgency without forcing one activity type',()=>{
+ const low=adult('low-fitness-urgency');
+ const high=adult('high-fitness-urgency');
+ low.state.healthProfile.fitness=32;
+ high.state.healthProfile.fitness=78;
+ const lowPlan=proceduralActionPlan(low,'balanced',new RNG('low-fitness-plan'));
+ const highPlan=proceduralActionPlan(high,'balanced',new RNG('high-fitness-plan'));
+ const lowPhysical=lowPlan.find(x=>x.type==='physical');
+ const highPhysical=highPlan.find(x=>x.type==='physical');
+ assert.ok(lowPhysical&&highPhysical);
+ assert.ok(lowPhysical.utility>highPhysical.utility);
+});
+
+test('sustainable low intensity exercise has meaningful fitness gain',()=>{
+ const g=adult('sustainable-gain');
+ g.state.player.age=60;
+ g.state.healthProfile.fitness=45;
+ const before=g.state.healthProfile.fitness;
+ const result=g.performPhysicalActivity('walk');
+ assert.ok(result.fitnessGain>=0.5);
+ assert.ok(g.state.healthProfile.fitness>before);
+});
