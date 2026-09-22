@@ -158,16 +158,11 @@ export function chooseProceduralEventChoice(game,event,policy,rng){
    const exact=choices.find(choice=>choice.id===preferred[event.id]);
    if(exact)return exact;
   }
-  if(event.id==='university-application'&&['balanced','academic','social'].includes(policy)){
-   const ranked=[...(game.state.pendingUniversityApplications??[])].sort((a,b)=>(b.admissionChance??0)-(a.admissionChance??0));
-   const best=ranked[0];
-   const exact=best?choices.find(choice=>choice.id==='program:'+best.id):null;
-   if(exact)return exact;
+  if(event.id==='career-switch'&&policy==='vocational'){
+   const better=choices.find(choice=>choice.id!=='stay');
+   if(better)return better;
   }
-  if(event.id==='first-job'&&policy==='vocational'){
-   const exact=choices[0];
-   if(exact)return exact;
-  }
+  return choices[0];
  }
 
  return weightedPick(rng,choices,choice=>{
