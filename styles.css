@@ -433,3 +433,8 @@ button { -webkit-tap-highlight-color: transparent; }
   font-size:9px;font-weight:800;box-shadow:0 6px 18px rgba(0,0,0,.18);pointer-events:none;
 }
 .phone-frame{position:relative;}
+
+.setting-row{display:grid;grid-template-columns:85px 1fr;gap:8px;align-items:center;margin:8px 0;font-size:11px;color:#687386;}
+.setting-row select{border:1px solid #d9dfe9;border-radius:9px;padding:7px 8px;background:#fafbfd;color:#3f4859;}
+.picker-card{border-color:#bcdcc4;box-shadow:0 5px 18px rgba(65,140,82,.08);}
+.leisure-button{background:#f7fbf8;border-color:#d6e8da;}
