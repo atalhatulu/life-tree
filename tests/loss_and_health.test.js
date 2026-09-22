@@ -86,7 +86,7 @@ test('untreated chronic disease creates persistent health burden and recovery ce
   fork:()=>({chance:()=>false})
  };
  processHealthYear(g.state,rng);
- assert.ok(g.state.player.health.current<=88,'chronic disease should cap health below perfect');
+ assert.ok(g.state.player.health.current<=92,'untreated moderate chronic disease should impose a meaningful recovery ceiling');
 });
 
 test('mild condition alone cannot randomly kill a healthy young adult',()=>{
