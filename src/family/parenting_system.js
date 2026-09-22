@@ -23,7 +23,7 @@ export function parenthoodReadiness(state){
  else if(income>=40000)score+=4;
  if(liquid>=250000)score+=5;
  if(state.assets?.home||['owned','apartment','studio'].includes(state.finance?.lifestyle?.housing))score+=4;
- score-=(state.children?.length??0)*9;
+ score-=(state.children?.length??0)*8;
  if(age>=40)score-=4;
  if(age>=44)score-=8;
  return clamp(Math.round(score));
@@ -32,11 +32,11 @@ export function parenthoodReadiness(state){
 function fertilityChance(state){
  const r=state.social?.romance;
  const olderAge=Math.max(state.player.age,r?.age??state.player.age);
- if(olderAge<=34)return .87;
- if(olderAge<=38)return .78;
- if(olderAge<=41)return .64;
- if(olderAge<=44)return .47;
- return .28;
+ if(olderAge<=34)return .89;
+ if(olderAge<=38)return .80;
+ if(olderAge<=41)return .66;
+ if(olderAge<=44)return .49;
+ return .29;
 }
 
 export function addChild(state,rng){
