@@ -34,17 +34,19 @@ export function treatCondition(state,id,rng){
  }
 
  const resilience=treatmentResilience(state);
- const success=Math.min(.94,.46+resilience*.004+rng.next()*.12);
+ const severityPenalty=Math.max(0,(condition.severity??1)-1)*.06;
+ const success=Math.min(.88,Math.max(.42,.42+resilience*.0035+rng.next()*.10-severityPenalty));
  condition.treated=true;
  condition.treatmentAge=state.player.age;
  condition.treatmentSuccessful=rng.chance(success);
  condition.familyCovered=familyCovered;
  const progression=ensureConditionProgression(condition);
  if(condition.treatmentSuccessful){
-  progression.score=Math.max(0,progression.score-22);
-  progression.status=progression.score<=22?'remission':'stable';
-  condition.severity=Math.max(1,condition.severity-1);
-  state.player.health.current=Math.min(100,state.player.health.current+6);
+  // Treatment controls the disease course; it does not magically refill the
+  // body's Health reserve or rewrite the condition's intrinsic severity.
+  progression.score=Math.max(0,progression.score-12);
+  progression.status='stable';
+  progression.stableYears=Math.max(1,progression.stableYears??0);
  }else{
   progression.score=Math.min(100,progression.score+6);
   progression.status='active';

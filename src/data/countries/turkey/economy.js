@@ -1,7 +1,7 @@
 export const TURKEY_2026_ECONOMY={
  currency:'TRY',
  basis:'2026-real-TRY',
- netMinimumWage:28075.50,
+ netMinimumWage:30000,
  lifestyle:{
   housing:{family:1200,shared:10500,studio:16500,apartment:24500,owned:7000},
   food:{frugal:3500,standard:5200,healthy:7500,premium:13000},

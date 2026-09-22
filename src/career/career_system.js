@@ -2,7 +2,8 @@ import {generateJobOffers} from './job_market.js';
 import {economy} from '../world/world_state.js';
 import {moveToCity} from '../world/migration_system.js';
 import {archiveCareer,yearsInFamily} from './career_profile.js';
-import {metaFor} from './career_taxonomy.js';
+import {metaFor,familyCompatibility} from './career_taxonomy.js';
+import {humanCapitalFor,promotionChance,salaryGrowthRate} from './human_capital.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export function deepenCareerState(state){
@@ -21,11 +22,13 @@ export function processCareerDynamics(state,rng){
 
  c.satisfaction=clamp(c.satisfaction+rng.int(-5,4)+(c.degreeRelated?1:0));
  c.stability=clamp(c.stability+rng.int(-4,4)+(c.performance>65?2:-1));
+ const capital=humanCapitalFor(state,c.jobId);
+ c.humanCapital=capital.score;
 
  let promotedThisYear=false;
- if(c.performance>78&&c.years>=2&&rng.chance(.20)){
+ if(c.performance>70&&c.years>=2&&rng.chance(promotionChance(state))){
   c.level+=1;
-  c.monthlyIncome=Math.round(c.monthlyIncome*1.12);
+  c.monthlyIncome=Math.round(c.monthlyIncome*(1+.07+salaryGrowthRate(state)));
   state.player.monthlyIncome=c.monthlyIncome;
   c.stability=clamp(c.stability+8);
   promotedThisYear=true;
@@ -64,8 +67,25 @@ export function processCareerDynamics(state,rng){
  return entries;
 }
 
+function transitionReasonForSwitch(state,job){
+ const current=state.career;
+ const currentIncome=current?.monthlyIncome??0;
+ const salaryRatio=currentIncome>0?(job.salary??0)/currentIncome:1;
+ const sameOrAdjacent=(job.transitionReason==='adjacent-family'||job.related===true);
+ if(job.requiresMove&&salaryRatio>=1.12)return 'relocation-upgrade';
+ if(salaryRatio>=1.15)return 'salary-growth';
+ if((current?.satisfaction??50)<35&&sameOrAdjacent)return 'low-satisfaction-adjacent';
+ if(sameOrAdjacent)return job.transitionReason??'adjacent-family';
+ return job.transitionReason??'career-switch';
+}
+
 export function switchJob(state,job){
  const old=state.career;
+ if(!old?.employed)throw new Error('Aktif kariyer olmadan gönüllü kariyer değişimi yapılamaz.');
+ if(familyCompatibility(old.jobId,job.id)<65){
+  state.pendingCareerOffers=null;
+  throw new Error('Bu teklif mevcut kariyerinle artık tutarlı değil; yeniden eğitim veya ayrı bir kariyer dönüş yolu gerekir.');
+ }
  archiveCareer(state,'career-switch');
  let moveResult=null;
  if(job.requiresMove)moveResult=moveToCity(state,job.cityId,'career-switch',{housing:'shared',stress:4});
@@ -87,7 +107,7 @@ export function switchJob(state,job){
   satisfaction:55,
   stability:60,
   enteredAtAge:state.player.age,
-  transitionReason:job.transitionReason??'career-switch',
+  transitionReason:transitionReasonForSwitch(state,job),
   previousJobs:[...(old?.previousJobs??[]),old?{title:old.title,years:old.years}:null].filter(Boolean)
  };
  state.player.job=job.title;

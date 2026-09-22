@@ -7,9 +7,13 @@ import {ensureGuardianship} from '../family/guardianship_system.js';
 import {processChildhoodYear} from '../life/childhood_simulation.js';
 import {processAdolescenceYear} from '../life/adolescence_simulation.js';
 import {processSocialYear} from '../social/social_simulation.js';
+import {processRelationshipMaintenanceYear} from '../social/relationship_maintenance.js';
+import {performSocialActivity,availableSocialActivities,socialTargets} from '../social/social_activity_system.js';
 import {processRomanceYear} from '../social/romance_system.js';
 import {processAdultYear} from '../life/adult_simulation.js';
 import {performActivity,availableActivities} from '../life/activity_system.js';
+import {performHobby,availableHobbies} from '../life/hobby_system.js';
+import {performPhysicalActivity,availablePhysicalActivities} from '../health/physical_activity_system.js';
 import {EventEngine} from '../events/event_engine.js';
 import {parseSave} from './save_system.js';
 import {createDecisionSnapshot,restoreDecisionSnapshot} from '../timeline/snapshot.js';
@@ -19,9 +23,16 @@ import {adultEvents} from '../events/adult_events.js';
 import {lateLifeEvents} from '../events/late_life_events.js';
 import {parentingEvents} from '../events/parenting_events.js';
 import {lateAgeEvents} from '../events/late_age_events.js';
+import {storyEvents} from '../events/story_events.js';
 import {createWorldState,processWorldYear} from '../world/world_state.js';
 import {processGeneticHealthYear} from '../health/genetic_system.js';
 import {processDiseaseProgressionYear} from '../health/disease_progression.js';
+import {decisionContext} from '../life/decision_context.js';
+import {annualActionCapacity} from '../life/action_capacity.js';
+import {processSocialWellbeingYear} from '../social/social_wellbeing.js';
+import {processMentalHealthYear} from '../health/mental_health_system.js';
+import {processBodyYear} from '../health/body_system.js';
+import {systemicStorylets} from '../events/systemic_storylets.js';
 
 export class Game{
  constructor(seed=String(Date.now())){
@@ -35,7 +46,7 @@ export class Game{
   this.state.social={friends:[],romance:null};
   this.state.actions={remaining:0,max:3};
   this.state.world=createWorldState(2026);
-  this.events=new EventEngine([...childhoodEvents,...adolescenceEvents,...adultEvents,...lateLifeEvents,...parentingEvents,...lateAgeEvents]);
+  this.events=new EventEngine([...childhoodEvents,...adolescenceEvents,...adultEvents,...lateLifeEvents,...parentingEvents,...lateAgeEvents,...storyEvents,...systemicStorylets]);
   this.activeEventId=null;
  }
 
@@ -59,7 +70,8 @@ export class Game{
   if(!this.state.player.alive) throw new Error('Bu hayat sona erdi.');
   this.state.player.age+=1;
   this.state.year+=1;
-  this.state.actions.remaining=this.state.player.age>=5?this.state.actions.max:0;
+  this.state.actions.max=annualActionCapacity(this.state);
+  this.state.actions.remaining=this.state.actions.max;
 
   const aging=[
    this.state.parents.mother,this.state.parents.father,...this.state.siblings,
@@ -79,7 +91,11 @@ export class Game{
    ...processChildhoodYear(this.state,yearRng.fork('childhood')),
    ...processGeneticHealthYear(this.state,yearRng.fork('genetic-health')),
    ...processDiseaseProgressionYear(this.state,yearRng.fork('disease-progression')),
+   ...processRelationshipMaintenanceYear(this.state),
    ...processSocialYear(this.state,yearRng.fork('social')),
+   ...processSocialWellbeingYear(this.state),
+   ...processMentalHealthYear(this.state),
+   ...processBodyYear(this.state),
    ...processAdolescenceYear(this.state,yearRng.fork('adolescence')),
    ...processRomanceYear(this.state,yearRng.fork('romance')),
    ...processAdultYear(this.state,yearRng.fork('adult'))
@@ -99,11 +115,13 @@ export class Game{
   const isMajor=Boolean(selected.majorDecision??event.majorDecision);
   const snapshot=isMajor?createDecisionSnapshot(this.state,event,availableChoices):null;
 
+  const context=decisionContext(this.state,event,selected);
   const choiceRng=this.rng.fork('choice-'+this.state.year+'-'+event.id+'-'+choiceId);
   const resolved=this.events.resolve(this.state,event,choiceId,choiceRng);
   this.state=resolved.state;
   this.state.history.push({age:this.state.player.age,eventId:event.id,choiceId,result:resolved.result,kind:'choice'});
   if(resolved.decision){
+   resolved.decision.context=context;
    resolved.decision.snapshot=snapshot;
    this.state.lifeTree.nodes.push(resolved.decision);
   }
@@ -128,6 +146,28 @@ export class Game{
   return result;
  }
 
+ performSocialActivity(targetId,activityId){
+  const used=this.state.actions.max-this.state.actions.remaining;
+  const result=performSocialActivity(this.state,targetId,activityId,this.rng.fork('social-activity-'+this.state.year+'-'+used+'-'+targetId+'-'+activityId));
+  this.state.history.push({age:this.state.player.age,kind:'social-activity',targetId,activityId,result});
+  return result;
+ }
+ socialTargets(){return socialTargets(this.state);}
+ availableSocialActivities(targetId){return availableSocialActivities(this.state,targetId);}
+ performPhysicalActivity(id){
+  const used=this.state.actions.max-this.state.actions.remaining;
+  const result=performPhysicalActivity(this.state,id,this.rng.fork('physical-activity-'+this.state.year+'-'+used+'-'+id));
+  this.state.history.push({age:this.state.player.age,kind:'physical-activity',activityId:id,result});
+  return result;
+ }
+ availablePhysicalActivities(){return availablePhysicalActivities(this.state);}
+ performHobby(id){
+  const used=this.state.actions.max-this.state.actions.remaining;
+  const result=performHobby(this.state,id,this.rng.fork('hobby-'+this.state.year+'-'+used+'-'+id));
+  this.state.history.push({age:this.state.player.age,kind:'hobby',hobbyId:id,result});
+  return result;
+ }
+ availableHobbies(){return availableHobbies(this.state);}
  availableActivities(){return availableActivities(this.state);}
  pendingEvent(){return this.activeEventId?this.events.events.find(event=>event.id===this.activeEventId)??null:null;}
  eventChoices(event){return this.events.choicesFor(this.state,event);}

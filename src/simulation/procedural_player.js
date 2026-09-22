@@ -1,0 +1,223 @@
+import {scoreSocialActivity,relationshipValue} from '../social/social_activity_system.js';
+import {ensureRelationshipMemory,knownPreference} from '../social/relationship_memory.js';
+import {physicalCapacity} from '../health/physical_capacity.js';
+
+function policyBias(policy,key){
+ const table={
+  balanced:{physical:1,social:1,study:1,career:1,finance:1,health:1,hobby:.7},
+  academic:{physical:.6,social:.5,study:3,career:.8,finance:.6,health:1,hobby:1},
+  social:{physical:.8,social:3,study:.5,career:.5,finance:.5,health:.8,hobby:1.2},
+  vocational:{physical:.8,social:.6,study:.6,career:3,finance:1.5,health:.8,hobby:.5},
+  healthy:{physical:3,social:1,study:.7,career:.7,finance:1,health:2.5,hobby:.8},
+  frugal:{physical:1,social:.7,study:1,career:1.2,finance:3,health:1,hobby:.6},
+  'career-focused':{physical:.6,social:.4,study:1.2,career:3.2,finance:1.5,health:.7,hobby:.3},
+  reckless:{physical:.7,social:1.8,study:.2,career:.5,finance:.1,health:.2,hobby:1.5}
+ };
+ return table[policy]?.[key]??1;
+}
+
+function recentCount(state,kind,id,years=5){
+ const minAge=state.player.age-years;
+ return (state.history??[]).filter(item=>
+  item.age>=minAge&&item.kind===kind&&
+  (item.activityId===id||item.hobbyId===id)
+ ).length;
+}
+
+function weightedCandidate(rng,candidates){
+ if(!candidates.length)return null;
+ const floor=Math.min(...candidates.map(x=>x.utility));
+ return rng.weighted(candidates.map(candidate=>({
+  value:candidate,
+  weight:Math.max(.08,(candidate.frequencyWeight??1)*(1+Math.max(0,candidate.utility-floor)))
+ })));
+}
+
+function bestSocialPlan(game,policy,rng){
+ const state=game.state;
+ const targets=game.socialTargets();
+ const targetCandidates=[];
+ for(const target of targets){
+  const current=relationshipValue(state,target);
+  const memory=ensureRelationshipMemory(state,target.id);
+  const yearsSince=memory.lastInteractionAge==null?2:Math.max(0,state.player.age-memory.lastInteractionAge);
+  const status=target.kind==='partner'?state.social?.romance?.status:null;
+  const partnerNeed=current<62?3.6:current<75?2.5:current<88?1.45:.75;
+  const kindNeed=target.kind==='partner'
+   ?partnerNeed+(status==='married'||status==='cohabiting'?.25:0)
+   :target.kind==='child'?2.6
+    :target.kind==='family'?1.1
+     :.9;
+  const utility=kindNeed+Math.max(0,72-current)*.10+Math.min(5,yearsSince)*.55;
+  targetCandidates.push({target,utility,frequencyWeight:1});
+ }
+ const urgentPartner=targetCandidates
+  .filter(x=>x.target.kind==='partner')
+  .sort((a,b)=>b.utility-a.utility)
+  .find(x=>{
+   const memory=ensureRelationshipMemory(state,x.target.id);
+   const yearsSince=memory.lastInteractionAge==null?2:Math.max(0,state.player.age-memory.lastInteractionAge);
+   const current=relationshipValue(state,x.target);
+   return current<62||yearsSince>=2;
+  });
+ const picked=urgentPartner??weightedCandidate(rng,targetCandidates);
+ if(!picked)return null;
+ const target=picked.target;
+ const targetNeed=picked.utility;
+ const current=relationshipValue(state,target);
+ const plans=[];
+ for(const activity of game.availableSocialActivities(target.id)){
+  const scored=scoreSocialActivity(state,target.id,activity.id);
+  if(!scored)continue;
+  const monthlyIncome=Math.max(12000,state.finance?.monthlyIncome??12000);
+  const costPressure=activity.cost/Math.max(1000,monthlyIncome*.12);
+  const frugalPenalty=costPressure*(policy==='frugal'?1.8:.9);
+  const learned=knownPreference(state,target.id,activity.preferenceKind,activity.preferenceKey)??0;
+  const visibleExpected=activity.baseRelationship+learned*2+scored.repetition;
+  const recent=recentCount(state,'social-activity',activity.id,4);
+  const varietyPenalty=Math.min(2.8,recent*.35);
+  const partnerContinuity=target.kind==='partner'
+   ?Math.max(0,68-current)*.06+Math.min(1.4,targetNeed*.18)
+   :0;
+  const utility=visibleExpected*.40+targetNeed*.42+partnerContinuity-frugalPenalty-varietyPenalty+rng.int(-2,2)*.12;
+  plans.push({
+   targetId:target.id,
+   activityId:activity.id,
+   utility,
+   frequencyWeight:activity.frequencyWeight??1
+  });
+ }
+ return weightedCandidate(rng,plans);
+}
+
+function bestPhysicalPlan(game,policy,rng){
+ const state=game.state;
+ const options=game.availablePhysicalActivities();
+ if(!options.length)return null;
+ const fitness=state.healthProfile?.fitness??50;
+ const capacity=physicalCapacity(state);
+ const need=Math.max(0,75-fitness)*.09+Math.max(0,65-capacity)*.03;
+ const trainingNeed=Math.max(0,Math.min(1,(75-fitness)/35));
+ const ranked=options.map(activity=>{
+  const monthlyIncome=Math.max(12000,state.finance?.monthlyIncome??12000);
+  const costPressure=activity.cost/Math.max(1000,monthlyIncome*.10);
+  const frugalPenalty=costPressure*(policy==='frugal'?1.6:.7);
+  const intensityFit=Math.max(0,activity.minCapacity-capacity)*.2;
+  const preference=state.player.preferencesProfile?.activities?.[activity.preferenceKey]??0;
+  const recent=recentCount(state,'physical-activity',activity.id,3);
+  const gainValue=activity.fitnessGain*(.10+trainingNeed*.34);
+  const recoveryPenalty=activity.intensity>=3
+   ?recent*.24+Math.max(0,state.player.age-50)*.012+Math.max(0,58-capacity)*.025
+   :recent*.10;
+  const age=state.player.age;
+  const sustainableFit=
+   age>=70
+    ?(activity.id==='walk'?.75:activity.id==='yoga'?.65:activity.id==='swim'?.35:activity.intensity>=3?-.65:0)
+    :age>=55
+      ?(activity.id==='walk'?.45:activity.id==='yoga'?.35:activity.id==='swim'?.25:activity.intensity>=3?-.25:0)
+      :capacity>=65&&activity.intensity>=2?.20:0;
+  const lowFitnessUrgency=fitness<45?(45-fitness)*.035:0;
+  return {
+   id:activity.id,
+   frequencyWeight:activity.id==='walk'?1.30:activity.id==='run'?.52:1,
+   utility:need+lowFitnessUrgency+gainValue+preference*.40+sustainableFit-frugalPenalty-intensityFit-recoveryPenalty-Math.min(1.6,recent*.18)+rng.int(-2,2)*.10
+  };
+ });
+ return weightedCandidate(rng,ranked);
+}
+
+function bestHobbyPlan(game,policy,rng){
+ const options=game.availableHobbies();
+ if(!options.length)return null;
+ const state=game.state;
+ const monthlyIncome=Math.max(12000,state.finance?.monthlyIncome??12000);
+ const ranked=options.map(hobby=>{
+  const interest=state.player.interests?.[hobby.interest]??0;
+  const interestScore=Math.sqrt(Math.max(0,interest)/100)*1.05;
+  const recent=recentCount(state,'hobby',hobby.id,5);
+  const novelty=recent===0?1.55:Math.max(-2.6,.25-recent*.62);
+  const habitSaturation=interest>75?Math.min(.9,(interest-75)*.03):0;
+  const costPressure=hobby.cost/Math.max(1200,monthlyIncome*.12);
+  const frugalPenalty=policy==='frugal'?Math.min(1.5,costPressure*.7):Math.min(.35,costPressure*.18);
+  const physicalOverlap=hobby.id==='running'&&recentCount(state,'physical-activity','run',3)>0?.55:0;
+  const utility=1+interestScore+novelty-frugalPenalty-habitSaturation-physicalOverlap+rng.int(-2,2)*.10;
+  return {id:hobby.id,utility,frequencyWeight:hobby.frequencyWeight??1};
+ });
+ return weightedCandidate(rng,ranked);
+}
+
+function genericCandidates(game,policy,rng){
+ const state=game.state;
+ const ids=new Set(game.availableActivities().map(a=>a.id));
+ const out=[];
+ const add=(id,utility)=>{if(ids.has(id))out.push({type:'generic',id,utility:utility+rng.int(-2,2)*.12});};
+
+ const lastCheck=state.healthProfile?.lastCheckupAge;
+ const yearsSinceCheck=lastCheck==null?10:state.player.age-lastCheck;
+ if(ids.has('study'))add('study',policyBias(policy,'study')*2.2+(state.education?.performance<65?1:0));
+ if(ids.has('course'))add('course',policyBias(policy,'study')*1.2+(state.career?.employed ? 0.6 : 1));
+ if(ids.has('work-hard'))add('work-hard',policyBias(policy,'career')*1.6+(state.career?.performance<65?1:0));
+ if(ids.has('budget'))add('budget',policyBias(policy,'finance')*1.4+Math.min(4,(state.finance?.debt??0)/1000000));
+ if(ids.has('checkup'))add('checkup',policyBias(policy,'health')*1.2+Math.min(4,yearsSinceCheck*.6)+(state.healthProfile?.conditions?.length??0));
+ return out;
+}
+
+export function proceduralActionPlan(game,policy,rng){
+ const candidates=genericCandidates(game,policy,rng);
+
+ const physical=bestPhysicalPlan(game,policy,rng.fork('physical'));
+ if(physical)candidates.push({
+  type:'physical',
+  id:physical.id,
+  utility:physical.utility+policyBias(policy,'physical')*2.55
+ });
+
+ const hobby=bestHobbyPlan(game,policy,rng.fork('hobby'));
+ if(hobby)candidates.push({
+  type:'hobby',
+  id:hobby.id,
+  utility:hobby.utility+policyBias(policy,'hobby')*1.4
+ });
+
+ const social=bestSocialPlan(game,policy,rng.fork('social'));
+ if(social)candidates.push({
+  type:'social',
+  targetId:social.targetId,
+  id:social.activityId,
+  utility:social.utility+policyBias(policy,'social')*1.7
+ });
+
+ return candidates.sort((a,b)=>b.utility-a.utility);
+}
+
+export function performProceduralYearActions(game,policy,rng){
+ const results=[];
+ const usedTypes=new Set();
+
+ while(game.state.actions.remaining>0){
+  const plan=proceduralActionPlan(game,policy,rng.fork('slot-'+game.state.actions.remaining))
+   .filter(candidate=>{
+    if(candidate.type==='social'&&usedTypes.has('social')&&policy!=='social')return false;
+    if(candidate.type==='physical'&&usedTypes.has('physical'))return false;
+    if(candidate.type==='hobby'&&usedTypes.has('hobby'))return false;
+    if(candidate.type==='generic'&&usedTypes.has('generic:'+candidate.id))return false;
+    return true;
+   });
+  const selected=plan[0];
+  if(!selected)break;
+
+  try{
+   let result;
+   if(selected.type==='social')result=game.performSocialActivity(selected.targetId,selected.id);
+   else if(selected.type==='physical')result=game.performPhysicalActivity(selected.id);
+   else if(selected.type==='hobby')result=game.performHobby(selected.id);
+   else result=game.performActivity(selected.id);
+   results.push({selected,result});
+   usedTypes.add(selected.type==='generic'?'generic:'+selected.id:selected.type);
+  }catch{
+   usedTypes.add(selected.type==='generic'?'generic:'+selected.id:selected.type);
+   if(usedTypes.size>8)break;
+  }
+ }
+ return results;
+}

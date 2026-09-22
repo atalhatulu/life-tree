@@ -35,7 +35,6 @@ export function processSocialYear(state,rng){
    continue;
   }
 
-  friend.relationship=clamp(friend.relationship+rng.fork('rel-'+friend.id).int(-4,4));
   survivors.push(friend);
  }
  state.social.friends=survivors;

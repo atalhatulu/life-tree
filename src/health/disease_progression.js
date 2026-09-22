@@ -31,12 +31,14 @@ function biologicalPressure(state,condition){
  const fitness=state.healthProfile?.fitness??50;
  const stress=state.healthProfile?.stress??40;
  const severity=condition.severity??1;
- return (
-  severity*1.7+
-  Math.max(0,50-health)*.08+
-  Math.max(0,45-fitness)*.05+
-  Math.max(0,stress-50)*.035
+ const geneticCourse=condition.geneticCourse??geneticDiseaseModifiers(state,condition.id);
+ const baseline=(
+  severity*1.15+
+  Math.max(0,50-health)*.055+
+  (50-fitness)*.045+
+  Math.max(0,stress-45)*.025
  );
+ return baseline*geneticCourse.progressionMultiplier;
 }
 
 export function progressionBurden(condition){
@@ -53,7 +55,7 @@ export function processDiseaseProgressionYear(state,rng){
   condition.geneticCourse??=geneticDiseaseModifiers(state,condition.id);
   const p=ensureConditionProgression(condition);
   const beforeStage=p.stage;
-  const pressure=biologicalPressure(state,condition)+treatmentModifier(condition)+rng.int(-4,4);
+  const pressure=biologicalPressure(state,condition)+treatmentModifier(condition)+rng.int(-2,2);
 
   p.score=clamp(p.score+pressure);
   p.stage=stageFromScore(p.score);
@@ -89,12 +91,16 @@ export function processDiseaseProgressionYear(state,rng){
 
   const genetics=condition.geneticCourse??geneticDiseaseModifiers(state,condition.id);
   const treatedFactor=condition.treatmentSuccessful===true?.35:condition.treated===true?.70:1;
-  if(rng.chance(complicationChance*treatedFactor*genetics.complicationMultiplier)){
+  // Stronger fitness materially improves resilience but never makes a serious
+  // disease complication impossible.
+  const fitness=state.healthProfile?.fitness??50;
+  const fitnessComplicationFactor=clamp(1+(50-fitness)*.012,.58,1.42);
+  if(rng.chance(complicationChance*treatedFactor*genetics.complicationMultiplier*fitnessComplicationFactor)){
    p.complicationCount+=1;
    p.score=clamp(p.score+8);
    p.stage=stageFromScore(p.score);
-   state.player.health.current=clamp(state.player.health.current-(p.stage==='critical'?8:4));
-   state.healthProfile.fitness=clamp((state.healthProfile.fitness??50)-(p.stage==='critical'?5:2));
+   state.player.health.current=clamp(state.player.health.current-(p.stage==='critical'?7:3.5));
+   state.healthProfile.fitness=clamp((state.healthProfile.fitness??50)-(p.stage==='critical'?4:1.5));
    state.healthProfile.stress=clamp((state.healthProfile.stress??40)+5);
    entries.push({
     age:state.player.age,

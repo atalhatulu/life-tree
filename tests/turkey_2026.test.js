@@ -21,8 +21,8 @@ test('new life starts in Türkiye with a deterministic valid city',()=>{
  assert.equal(a.state.location.cityId,a.state.origin.cityId);
 });
 
-test('2026 Türkiye profile is anchored to official minimum wage baseline',()=>{
- assert.equal(TURKEY_2026_ECONOMY.netMinimumWage,28075.50);
+test('2026 Türkiye game economy uses configured 30000 TRY minimum wage baseline',()=>{
+ assert.equal(TURKEY_2026_ECONOMY.netMinimumWage,30000);
  const cleaner=TURKEY_PROFILE.jobs.find(job=>job.id==='cleaner');
  assert.ok(cleaner.income[0]>=28075);
 });

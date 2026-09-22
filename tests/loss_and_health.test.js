@@ -67,6 +67,27 @@ test('treatment consumes money or creates debt and closes untreated state',()=>{
  assert.ok(typeof result.condition.treatmentSuccessful==='boolean');
 });
 
+test('successful treatment controls disease without directly restoring health reserve',()=>{
+ const g=new Game('treatment-no-magic-heal');
+ g.state.player.age=60;
+ g.state.player.health.current=55;
+ ensurePersonalFinance(g.state);
+ g.state.finance.cash=500000;
+ g.state.healthProfile={
+  conditions:[{id:'cardiac',label:'Kalp-damar hastalığı',severity:3,diagnosedAtAge:58}],
+  stress:40,
+  fitness:55,
+  lastCheckupAge:59
+ };
+ const beforeHealth=g.state.player.health.current;
+ const rng={next:()=>1,chance:()=>true};
+ const result=treatCondition(g.state,'cardiac',rng);
+ assert.equal(result.condition.treatmentSuccessful,true);
+ assert.equal(g.state.player.health.current,beforeHealth);
+ assert.equal(result.condition.severity,3);
+ assert.equal(result.condition.progression.status,'stable');
+});
+
 test('untreated chronic disease creates persistent health burden and recovery ceiling',()=>{
  const g=new Game('persistent-health-burden');
  g.state.player.age=40;
@@ -86,7 +107,7 @@ test('untreated chronic disease creates persistent health burden and recovery ce
   fork:()=>({chance:()=>false})
  };
  processHealthYear(g.state,rng);
- assert.ok(g.state.player.health.current<=88,'chronic disease should cap health below perfect');
+ assert.ok(g.state.player.health.current<=92,'untreated moderate chronic disease should impose a meaningful recovery ceiling');
 });
 
 test('mild condition alone cannot randomly kill a healthy young adult',()=>{

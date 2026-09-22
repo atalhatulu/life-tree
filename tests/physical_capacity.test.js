@@ -52,7 +52,7 @@ test('same treatment roll can succeed in strong body and fail in weak body',()=>
   g.state.finance.cash=200000;
   g.state.healthProfile.conditions=[{id:'cardiac',label:'Kalp-damar hastalığı',severity:3,diagnosedAtAge:45}];
  }
- const rng={next:()=>0,chance:p=>p>=.70};
+ const rng={next:()=>0,chance:p=>p>=.50};
  const a=treatCondition(strong.state,'cardiac',rng);
  const b=treatCondition(weak.state,'cardiac',rng);
  assert.equal(a.condition.treatmentSuccessful,true);

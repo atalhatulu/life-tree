@@ -1,0 +1,51 @@
+import {liquidFunds,spendLiquidFunds} from '../finance/liquidity.js';
+import {HOBBY_ACTIVITIES,hobbyById} from './hobby_catalog.js';
+import {applyFitnessTraining} from '../health/physical_activity_system.js';
+import {growTrait} from '../character/personality_dynamics.js';
+import {economy} from '../world/world_state.js';
+
+const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
+const costFor=(state,hobby)=>Math.round(hobby.cost*(economy(state).costOfLiving??1));
+
+export function availableHobbies(state){
+ const available=liquidFunds(state);
+ return HOBBY_ACTIVITIES
+  .map(h=>({...h,cost:costFor(state,h)}))
+  .filter(h=>h.cost<=available);
+}
+
+export function performHobby(state,id,rng){
+ state.actions??={remaining:3,max:3};
+ if(state.actions.remaining<=0)throw new Error('Bu yıl için aksiyon hakkın kalmadı.');
+ const hobby=hobbyById(id);
+ if(!hobby)throw new Error('Geçersiz hobi.');
+ const cost=costFor(state,hobby);
+ if(cost>liquidFunds(state))throw new Error('Bu hobi etkinliğini karşılayacak likit kaynağın yok.');
+ if(cost>0)spendLiquidFunds(state,cost);
+
+ state.player.interests??={};
+ const current=state.player.interests[hobby.interest]??0;
+ const familiarity=current/100;
+ const skillGain=Math.max(.8,4.5*(1-familiarity*.65)*(1+rng.int(-1,1)*.08));
+ state.player.interests[hobby.interest]=clamp(current+skillGain);
+
+ state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
+ state.healthProfile.stress=clamp(state.healthProfile.stress-hobby.stressRelief);
+
+ if(hobby.physicalGain){
+  applyFitnessTraining(state,hobby.physicalGain);
+ }
+ if(hobby.curiosityGain){
+  state.player.personality.curiosity=growTrait(state.player.personality.curiosity,hobby.curiosityGain);
+ }
+
+ state.actions.remaining-=1;
+ return {
+  hobbyId:id,
+  interest:hobby.interest,
+  cost,
+  interestGain:Number(skillGain.toFixed(2)),
+  interestLevel:Number(state.player.interests[hobby.interest].toFixed(2)),
+  text:hobby.label+' hobinle ilgilendin.'
+ };
+}

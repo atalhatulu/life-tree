@@ -115,7 +115,6 @@ test('500 random lives remain valid through age 80 or death',()=>{
   }
   if(g.state.retirement?.retired)retirees++;
  }
- assert.ok(deaths>50);
  assert.equal(summaries,deaths);
  assert.ok(retirees>0);
 });

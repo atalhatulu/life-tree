@@ -1,5 +1,8 @@
+import {TURKEY_2026_ECONOMY} from '../data/countries/turkey/economy.js';
 import {lifestyleMonthlyCost} from '../lifestyle/lifestyle_system.js';
 import {economy} from '../world/world_state.js';
+import {ensureSpendingHistory,recordSpending} from './life_spending_system.js';
+import {processDurableGoodsBudget} from './durable_goods_system.js';
 
 const STARTING_CASH_BY_CLASS={düşük:2500,orta:7500,'üst-orta':18000,yüksek:50000};
 const STUDENT_SUPPORT_BY_CLASS={düşük:3500,orta:7500,'üst-orta':11000,yüksek:17000};
@@ -11,6 +14,7 @@ export function ensurePersonalFinance(state){
   state.finance.financialDistressYears??=0;
   state.finance.financialDistressEvents??=0;
   state.finance.debtRestructured??=false;
+  ensureSpendingHistory(state);
   return state.finance;
  }
  const studentAwayFromHome=Boolean(state.higherEducation?.enrolled&&state.higherEducation?.movedForUniversity);
@@ -25,6 +29,9 @@ export function ensurePersonalFinance(state){
   financialDistressYears:0,
   financialDistressEvents:0,
   debtRestructured:false,
+  spendingHistory:[],
+  spendingTotals:{},
+  totalRecordedSpending:0,
   lifestyle:{housing:studentAwayFromHome?'shared':'family',food:'standard',clothing:'basic',transport:'public'}
  };
  return state.finance;
@@ -44,9 +51,10 @@ function familySupport(state){
 
 function effectiveTaxRate(monthly,retired=false){
  if(retired)return .06;
- if(monthly<=40000)return .12;
- if(monthly<=80000)return .18;
- if(monthly<=140000)return .23;
+ const mw=TURKEY_2026_ECONOMY.netMinimumWage;
+ if(monthly<=mw*1.4)return .12;
+ if(monthly<=mw*2.8)return .18;
+ if(monthly<=mw*5)return .23;
  return .28;
 }
 
@@ -70,11 +78,64 @@ function recurringOwnershipCosts(state){
 function partnerContribution(state){
  const r=state.social?.romance;
  if(!r||!['cohabiting','married'].includes(r.status))return 0;
- return Math.round((r.monthlyIncome??0)*.55);
+ return Math.round((r.monthlyIncome??0)*(r.householdContributionRate??.55));
 }
 
 function securedDebt(state){
  return Math.max(0,state.assets?.home?.remainingDebt??0)+Math.max(0,state.assets?.car?.remainingDebt??0);
+}
+
+function unsecuredDebt(state){
+ return Math.max(0,(state.finance?.debt??0)-securedDebt(state));
+}
+
+function reduceDebtBalances(state,payment){
+ const f=state.finance;
+ let remaining=Math.min(Math.max(0,Math.round(payment)),Math.max(0,f.debt??0));
+ if(remaining<=0)return 0;
+ const paid=remaining;
+ f.debt=Math.max(0,f.debt-remaining);
+
+ const homeDebt=Math.max(0,state.assets?.home?.remainingDebt??0);
+ const carDebt=Math.max(0,state.assets?.car?.remainingDebt??0);
+ const secured=homeDebt+carDebt;
+ if(secured>0){
+  const securedPayment=Math.min(remaining,secured);
+  if(state.assets?.home?.remainingDebt){
+   const share=homeDebt/secured;
+   state.assets.home.remainingDebt=Math.max(0,Math.round(homeDebt-securedPayment*share));
+  }
+  if(state.assets?.car?.remainingDebt){
+   const share=carDebt/secured;
+   state.assets.car.remainingDebt=Math.max(0,Math.round(carDebt-securedPayment*share));
+  }
+ }
+ return paid;
+}
+
+function sweepExcessLiquidityToUnsecuredDebt(state,reserveTarget){
+ const f=state.finance;
+ const unsecured=unsecuredDebt(state);
+ if(unsecured<=0)return 0;
+ const liquid=(f.cash??0)+(f.savings??0);
+ const excess=Math.max(0,liquid-reserveTarget);
+ if(excess<=0)return 0;
+
+ const payment=Math.min(unsecured,excess);
+ let remaining=payment;
+ const savingsUsed=Math.min(f.savings??0,remaining);
+ f.savings-=savingsUsed;
+ remaining-=savingsUsed;
+ if(remaining>0){
+  const cashFloor=Math.min(f.cash??0,reserveTarget);
+  const cashAvailable=Math.max(0,(f.cash??0)-cashFloor);
+  const cashUsed=Math.min(cashAvailable,remaining);
+  f.cash-=cashUsed;
+  remaining-=cashUsed;
+ }
+ const actual=payment-remaining;
+ if(actual>0)reduceDebtBalances(state,actual);
+ return actual;
 }
 
 function serviceDebt(state,available){
@@ -82,20 +143,7 @@ function serviceDebt(state,available){
  if(f.debt<=0||available<=0)return available;
  const payment=Math.min(f.debt,Math.round(available*.70));
  if(payment<=0)return available;
- f.debt-=payment;
- const homeDebt=Math.max(0,state.assets?.home?.remainingDebt??0);
- const carDebt=Math.max(0,state.assets?.car?.remainingDebt??0);
- const secured=homeDebt+carDebt;
- if(secured>0){
-  if(state.assets?.home?.remainingDebt){
-   const share=homeDebt/secured;
-   state.assets.home.remainingDebt=Math.max(0,Math.round(homeDebt-payment*share));
-  }
-  if(state.assets?.car?.remainingDebt){
-   const share=carDebt/secured;
-   state.assets.car.remainingDebt=Math.max(0,Math.round(carDebt-payment*share));
-  }
- }
+ reduceDebtBalances(state,payment);
  return available-payment;
 }
 
@@ -123,8 +171,48 @@ function discretionaryRate(state){
  return clamp(rate,.10,.42);
 }
 
+function discretionaryCategoryShares(state){
+ const l=state.finance?.lifestyle??{};
+ const interests=state.player?.interests??{};
+ let daily=.55;
+ let experiences=.25;
+ let durable=.20;
+
+ if(l.food==='premium')daily+=.08;
+ else if(l.food==='healthy')daily+=.03;
+ else if(l.food==='frugal')daily-=.06;
+
+ if(l.clothing==='premium')daily+=.05;
+ if(l.transport==='car')durable+=.03;
+ if(['apartment','owned'].includes(l.housing))durable+=.03;
+
+ const experienceInterest=
+  (interests.sinema??0)+(interests.doğa??0)+(interests.müzik??0)+(interests.futbol??0)+(interests.dans??0);
+ const durableInterest=
+  (interests.teknoloji??0)+(interests.otomobil??0)+(interests.fotoğraf??0)+(interests.oyun??0);
+
+ experiences+=Math.max(-.04,Math.min(.08,(experienceInterest/5-50)*.0016));
+ durable+=Math.max(-.04,Math.min(.08,(durableInterest/4-50)*.0016));
+
+ if(state.retirement?.retired){
+  experiences-=.03;
+  daily+=.02;
+ }
+
+ daily=Math.max(.30,daily);
+ experiences=Math.max(.10,experiences);
+ durable=Math.max(.10,durable);
+ const total=daily+experiences+durable;
+ return {
+  daily:daily/total,
+  experiences:experiences/total,
+  durable:durable/total
+ };
+}
+
 function cashReserveTarget(f){
- return Math.round(clamp((f.monthlyExpenses+f.ownershipCostsMonthly)*6,100000,1500000));
+ const mw=TURKEY_2026_ECONOMY.netMinimumWage;
+ return Math.round(clamp((f.monthlyExpenses+f.ownershipCostsMonthly)*6,mw*3.3,mw*50));
 }
 
 function downgradeLifestyle(state){
@@ -161,7 +249,7 @@ function liquidateHome(state){
 function manageFinancialDistress(state,annualIncome,reserveTarget){
  const f=state.finance;
  const secured=securedDebt(state);
- const debtCapacity=secured+Math.max(750000,annualIncome*2.5);
+ const debtCapacity=secured+Math.max(TURKEY_2026_ECONOMY.netMinimumWage*25,annualIncome*2.5);
  const liquid=(f.cash??0)+(f.savings??0);
  const distressed=f.debt>debtCapacity&&liquid<reserveTarget*.5;
  const actions=[];
@@ -183,14 +271,29 @@ function manageFinancialDistress(state,annualIncome,reserveTarget){
  }
  if(
   f.financialDistressYears>=4&&!state.assets?.home&&!state.assets?.car&&
-  f.debt>Math.max(1500000,annualIncome*6)&&
+  f.debt>Math.max(TURKEY_2026_ECONOMY.netMinimumWage*50,annualIncome*6)&&
   (f.lastRestructureAge==null||state.player.age-f.lastRestructureAge>=5)
  ){
   const before=f.debt;
-  f.debt=Math.round(f.debt*.85);
+  const affordableDebt=Math.max(TURKEY_2026_ECONOMY.netMinimumWage*8.3,annualIncome*3.5);
+  const settlementTarget=Math.max(affordableDebt,Math.round(f.debt*.70));
+  f.debt=Math.min(f.debt,Math.round(settlementTarget));
   f.debtRestructured=true;
   f.lastRestructureAge=state.player.age;
   actions.push('borç yeniden yapılandırıldı (₺'+Math.round(before-f.debt).toLocaleString('tr-TR')+' uzlaşma indirimi)');
+ }
+
+ if(
+  f.financialDistressYears>=8&&!state.assets?.home&&!state.assets?.car&&
+  f.debt>Math.max(TURKEY_2026_ECONOMY.netMinimumWage*16.7,annualIncome*4)&&
+  (f.cash??0)+(f.savings??0)<reserveTarget*.25
+ ){
+  const before=f.debt;
+  const sustainable=Math.max(TURKEY_2026_ECONOMY.netMinimumWage*5,annualIncome*2.5);
+  f.debt=Math.min(f.debt,Math.round(sustainable));
+  f.debtRestructured=true;
+  f.insolvencyResolved=true;
+  actions.push('uzun süreli ödeme güçlüğü sonrası borç ödeme kapasitesine göre uzlaştırıldı (₺'+Math.round(before-f.debt).toLocaleString('tr-TR')+' indirildi)');
  }
  return actions;
 }
@@ -213,6 +316,23 @@ export function processPersonalFinanceYear(state){
 
  if(annualNet>=0){
   f.discretionaryAnnual=Math.round(annualNet*discretionaryRate(state));
+  const shares=discretionaryCategoryShares(state);
+  const dailyLife=Math.round(f.discretionaryAnnual*shares.daily);
+  const experiences=Math.round(f.discretionaryAnnual*shares.experiences);
+  const durableGoods=Math.max(0,f.discretionaryAnnual-dailyLife-experiences);
+  recordSpending(state,{
+   category:'daily-life',
+   amount:dailyLife,
+   label:'Günlük yaşam ve küçük kişisel harcamalar',
+   source:'annual-budget'
+  });
+  recordSpending(state,{
+   category:'experiences',
+   amount:experiences,
+   label:'Gezi, eğlence ve deneyim harcamaları',
+   source:'annual-budget'
+  });
+  processDurableGoodsBudget(state,durableGoods);
   let available=Math.max(0,annualNet-f.discretionaryAnnual);
   available=serviceDebt(state,available);
   const reserveTarget=cashReserveTarget(f);
@@ -226,10 +346,12 @@ export function processPersonalFinanceYear(state){
   if(unresolved>0)f.debt+=unresolved;
  }
 
- const interestRate=f.debtRestructured ? .035 : .055;
+ const interestRate=f.insolvencyResolved ? .02 : f.debtRestructured ? .035 : .055;
  f.debt+=Math.round(f.debt*interestRate);
  const reserveTarget=cashReserveTarget(f);
+ const reserveDebtPayment=sweepExcessLiquidityToUnsecuredDebt(state,reserveTarget);
  const distressActions=manageFinancialDistress(state,Math.max(0,annualIncome),reserveTarget);
+ if(reserveDebtPayment>0)distressActions.unshift('fazla likit rezervden ₺'+Math.round(reserveDebtPayment).toLocaleString('tr-TR')+' teminatsız borç kapatıldı');
 
  return [{
   age:state.player.age,
