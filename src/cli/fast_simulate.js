@@ -96,6 +96,7 @@ function closeFamily(state){
 }
 function activeOrHistoricalPartners(state){
  return [
+  ...(state.social?.exPartners??[]),
   ...(state.social?.exSpouses??[]),
   ...(state.social?.deceasedPartners??[]),
   ...(state.social?.romance?[state.social.romance]:[])
