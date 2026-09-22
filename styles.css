@@ -367,3 +367,50 @@ button { -webkit-tap-highlight-color: transparent; }
 .activity-button:hover { background:#eef3f7; }
 .activity-button:disabled { opacity:.45; cursor:default; }
 .activity-message { margin:10px 0 0 !important; padding:9px 10px; border-radius:10px; background:#f0f7f1; color:#477a51 !important; }
+
+
+.quick-strip{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:1px;
+  background:#e8ecf2;
+  border-bottom:1px solid #e6eaf0;
+}
+.quick-strip div{
+  min-width:0;
+  padding:9px 8px;
+  background:#fff;
+  display:grid;
+  gap:3px;
+}
+.quick-strip span{
+  color:#9099a9;
+  font-size:8px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+}
+.quick-strip b{
+  color:#364052;
+  font-size:10px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.age-actions{
+  display:grid;
+  grid-template-columns:1.7fr .8fr .8fr;
+  gap:7px;
+}
+.sim-button{
+  border:1px solid #d7dee8;
+  border-radius:14px;
+  background:#f4f7fa;
+  color:#465267;
+  font-size:11px;
+  font-weight:850;
+  cursor:pointer;
+}
+.sim-button:disabled{opacity:.45;cursor:default;}
+#stressBar{background:linear-gradient(90deg,#e8be5c,#dc7f48);}
+#mentalBar{background:linear-gradient(90deg,#8f9ce8,#8467c8);}
