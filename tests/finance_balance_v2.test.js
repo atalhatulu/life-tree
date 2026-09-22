@@ -103,3 +103,35 @@ test('annual discretionary spending is split across real life categories without
  assert.equal(summary.total,g.state.finance.discretionaryAnnual);
  assert.equal(summary.entries,3);
 });
+
+
+test('discretionary spending mix responds to lifestyle and interests while preserving total spend',()=>{
+ const premium=adult('finance-spending-premium');
+ premium.state.career={employed:true,monthlyIncome:120000};
+ premium.state.finance.cash=0;
+ premium.state.finance.savings=0;
+ premium.state.finance.lifestyle={housing:'apartment',food:'premium',clothing:'premium',transport:'car'};
+ premium.state.player.interests={...(premium.state.player.interests??{}),teknoloji:90,otomobil:90,fotoğraf:80,oyun:80};
+ processPersonalFinanceYear(premium.state);
+ const premiumSummary=spendingSummary(premium.state);
+
+ const frugal=adult('finance-spending-frugal');
+ frugal.state.career={employed:true,monthlyIncome:120000};
+ frugal.state.finance.cash=0;
+ frugal.state.finance.savings=0;
+ frugal.state.finance.lifestyle={housing:'family',food:'frugal',clothing:'basic',transport:'public'};
+ frugal.state.player.interests={...(frugal.state.player.interests??{}),teknoloji:10,otomobil:10,fotoğraf:10,oyun:10};
+ processPersonalFinanceYear(frugal.state);
+ const frugalSummary=spendingSummary(frugal.state);
+
+ assert.equal(premiumSummary.total,premium.state.finance.discretionaryAnnual);
+ assert.equal(frugalSummary.total,frugal.state.finance.discretionaryAnnual);
+ assert.ok(
+  premiumSummary.byCategory['durable-goods']/premiumSummary.total>
+  frugalSummary.byCategory['durable-goods']/frugalSummary.total
+ );
+ assert.ok(
+  premiumSummary.byCategory['daily-life']/premiumSummary.total>
+  frugalSummary.byCategory['daily-life']/frugalSummary.total
+ );
+});
