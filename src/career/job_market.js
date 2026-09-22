@@ -84,7 +84,10 @@ function chooseEmploymentSector(state,rng,job){
   let weight=1;
   if(value==='public')weight*=1.05+(100-(state.preferences?.riskTolerance??50))*.01;
   if(value==='private')weight*=1.15+(state.player.personality?.ambition??50)*.006;
-  if(value==='self-employed')weight*=.55+(state.preferences?.riskTolerance??50)*.012+(state.player.personality?.ambition??50)*.006;
+  if(value==='self-employed'){
+   const experience=state.careerProfile?.totalExperience??state.career?.totalYears??0;
+   weight*=.22+(state.preferences?.riskTolerance??50)*.006+(state.player.personality?.ambition??50)*.003+Math.min(.35,experience*.012);
+  }
   return {value,weight:Math.max(.1,weight)};
  });
  return rng.weighted(weights);

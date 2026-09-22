@@ -8,8 +8,8 @@ const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 const LEVELS=[
  {id:'junior',minYears:0},
  {id:'mid',minYears:3},
- {id:'senior',minYears:7},
- {id:'lead',minYears:12}
+ {id:'senior',minYears:8},
+ {id:'lead',minYears:18}
 ];
 
 function levelForYears(years){
@@ -48,8 +48,14 @@ export function processCareerDynamics(state,rng){
 
  const expectedLevel=levelForYears(c.years??0);
  let promotedThisYear=false;
- const promotionChance=Math.min(.42,.08+(c.performance-65)*.006+(c.network-50)*.002+(c.companyFit-50)*.0015);
- if(expectedLevel.id!==c.levelTitle&&c.performance>68&&rng.chance(Math.max(.06,promotionChance))){
+ const leadGate=expectedLevel.id==='lead';
+ const eligibleForPromotion=leadGate
+  ?c.performance>=82&&c.network>=62&&c.companyFit>=58&&c.years>=18
+  :c.performance>=68;
+ const promotionChance=leadGate
+  ?Math.min(.13,.025+(c.performance-80)*.003+(c.network-60)*.0015+(c.companyFit-55)*.001)
+  :Math.min(.34,.07+(c.performance-65)*.005+(c.network-50)*.0015+(c.companyFit-50)*.001);
+ if(expectedLevel.id!==c.levelTitle&&eligibleForPromotion&&rng.chance(Math.max(leadGate?.02:.05,promotionChance))){
   c.levelTitle=expectedLevel.id;
   c.level=Math.min(4,(c.level??1)+1);
   c.monthlyIncome=Math.round(c.monthlyIncome*(expectedLevel.id==='lead'?1.16:1.11));

@@ -48,12 +48,13 @@ function humanLikeChoice(game,event,choices,rng){
   add('wait-child',118-readiness+(stress>60?20:0)+childCount*8);
  }
  if(event.id==='buy-car'){
-  add('skip-car',debt>0?45:0);
-  for(const c of choices)if(c.id.startsWith('car:'))add(c.id,liquid>600000?25:-10);
+  add('skip-car',debt>800000?32:8);
+  for(const c of choices)if(c.id.startsWith('car:'))add(c.id,liquid>450000?28:5);
  }
  if(event.id==='buy-home'){
-  add('skip-home',debt>0?35:0);
-  for(const c of choices)if(c.id.startsWith('home:'))add(c.id,liquid>1500000?35:-15);
+  const age=s.player.age;
+  add('skip-home',debt>1200000?30:Math.max(0,22-(age-30)));
+  for(const c of choices)if(c.id.startsWith('home:'))add(c.id,(liquid>500000?34:10)+Math.max(0,age-30)*1.2+(s.social?.romance?.status==='married'?10:0));
  }
  if(event.id==='career-switch'){
   add('stay',(s.career?.satisfaction??50)-45+(stress>70?10:0));
