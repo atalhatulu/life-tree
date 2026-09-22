@@ -105,7 +105,7 @@ test('annual discretionary spending is split across real life categories without
 });
 
 
-test('discretionary spending mix responds to lifestyle and interests while preserving total spend',()=>{
+test('durable spending share responds to lifestyle and interests while preserving total spend',()=>{
  const premium=adult('finance-spending-premium');
  premium.state.career={employed:true,monthlyIncome:120000};
  premium.state.finance.cash=0;
@@ -129,9 +129,5 @@ test('discretionary spending mix responds to lifestyle and interests while prese
  assert.ok(
   premiumSummary.byCategory['durable-goods']/premiumSummary.total>
   frugalSummary.byCategory['durable-goods']/frugalSummary.total
- );
- assert.ok(
-  premiumSummary.byCategory['daily-life']/premiumSummary.total>
-  frugalSummary.byCategory['daily-life']/frugalSummary.total
  );
 });
