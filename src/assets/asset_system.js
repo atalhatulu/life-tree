@@ -32,13 +32,13 @@ export function affordableHomeOptions(state){
  const city=locationProfile(state);
  return TURKEY_2026_ECONOMY.assets.homes
   .map(home=>({...home,price:Math.round(home.price*city.housing*(economy(state).housingMarket??1)),cityId:city.id,cityName:city.name}))
-  .filter(home=>cash>=home.price*.15&&income>=30000*city.wage);
+  .filter(home=>cash>=home.price*.12&&income>=30000*city.wage);
 }
 
 export function buyHome(state,id){
  const option=affordableHomeOptions(state).find(x=>x.id===id);
  if(!option) throw new Error('Bu evi karşılayamıyorsun.');
- const down=Math.round(option.price*.15);
+ const down=Math.round(option.price*.12);
  state.finance.cash-=down;
  addDebt(state,'housing',option.price-down);
  ensureAssets(state).home={...option,purchasedAtAge:state.player.age,remainingDebt:option.price-down};
