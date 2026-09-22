@@ -79,25 +79,65 @@ function securedDebt(state){
  return Math.max(0,state.assets?.home?.remainingDebt??0)+Math.max(0,state.assets?.car?.remainingDebt??0);
 }
 
+function unsecuredDebt(state){
+ return Math.max(0,(state.finance?.debt??0)-securedDebt(state));
+}
+
+function reduceDebtBalances(state,payment){
+ const f=state.finance;
+ let remaining=Math.min(Math.max(0,Math.round(payment)),Math.max(0,f.debt??0));
+ if(remaining<=0)return 0;
+ const paid=remaining;
+ f.debt=Math.max(0,f.debt-remaining);
+
+ const homeDebt=Math.max(0,state.assets?.home?.remainingDebt??0);
+ const carDebt=Math.max(0,state.assets?.car?.remainingDebt??0);
+ const secured=homeDebt+carDebt;
+ if(secured>0){
+  const securedPayment=Math.min(remaining,secured);
+  if(state.assets?.home?.remainingDebt){
+   const share=homeDebt/secured;
+   state.assets.home.remainingDebt=Math.max(0,Math.round(homeDebt-securedPayment*share));
+  }
+  if(state.assets?.car?.remainingDebt){
+   const share=carDebt/secured;
+   state.assets.car.remainingDebt=Math.max(0,Math.round(carDebt-securedPayment*share));
+  }
+ }
+ return paid;
+}
+
+function sweepExcessLiquidityToUnsecuredDebt(state,reserveTarget){
+ const f=state.finance;
+ const unsecured=unsecuredDebt(state);
+ if(unsecured<=0)return 0;
+ const liquid=(f.cash??0)+(f.savings??0);
+ const excess=Math.max(0,liquid-reserveTarget);
+ if(excess<=0)return 0;
+
+ const payment=Math.min(unsecured,excess);
+ let remaining=payment;
+ const savingsUsed=Math.min(f.savings??0,remaining);
+ f.savings-=savingsUsed;
+ remaining-=savingsUsed;
+ if(remaining>0){
+  const cashFloor=Math.min(f.cash??0,reserveTarget);
+  const cashAvailable=Math.max(0,(f.cash??0)-cashFloor);
+  const cashUsed=Math.min(cashAvailable,remaining);
+  f.cash-=cashUsed;
+  remaining-=cashUsed;
+ }
+ const actual=payment-remaining;
+ if(actual>0)reduceDebtBalances(state,actual);
+ return actual;
+}
+
 function serviceDebt(state,available){
  const f=state.finance;
  if(f.debt<=0||available<=0)return available;
  const payment=Math.min(f.debt,Math.round(available*.70));
  if(payment<=0)return available;
- f.debt-=payment;
- const homeDebt=Math.max(0,state.assets?.home?.remainingDebt??0);
- const carDebt=Math.max(0,state.assets?.car?.remainingDebt??0);
- const secured=homeDebt+carDebt;
- if(secured>0){
-  if(state.assets?.home?.remainingDebt){
-   const share=homeDebt/secured;
-   state.assets.home.remainingDebt=Math.max(0,Math.round(homeDebt-payment*share));
-  }
-  if(state.assets?.car?.remainingDebt){
-   const share=carDebt/secured;
-   state.assets.car.remainingDebt=Math.max(0,Math.round(carDebt-payment*share));
-  }
- }
+ reduceDebtBalances(state,payment);
  return available-payment;
 }
 
@@ -247,7 +287,9 @@ export function processPersonalFinanceYear(state){
  const interestRate=f.insolvencyResolved ? .02 : f.debtRestructured ? .035 : .055;
  f.debt+=Math.round(f.debt*interestRate);
  const reserveTarget=cashReserveTarget(f);
+ const reserveDebtPayment=sweepExcessLiquidityToUnsecuredDebt(state,reserveTarget);
  const distressActions=manageFinancialDistress(state,Math.max(0,annualIncome),reserveTarget);
+ if(reserveDebtPayment>0)distressActions.unshift('fazla likit rezervden ₺'+Math.round(reserveDebtPayment).toLocaleString('tr-TR')+' teminatsız borç kapatıldı');
 
  return [{
   age:state.player.age,
