@@ -274,14 +274,14 @@ function manageFinancialDistress(state,annualIncome,reserveTarget){
   actions.push('ev satıldı (₺'+proceeds.toLocaleString('tr-TR')+')');
  }
  if(
-  f.financialDistressYears>=4&&!state.assets?.home&&!state.assets?.car&&
-  f.debt>Math.max(1500000,annualIncome*6)&&
+  f.financialDistressYears>=3&&!state.assets?.home&&!state.assets?.car&&
+  f.debt>Math.max(1200000,annualIncome*4.5)&&
   (f.lastRestructureAge==null||state.player.age-f.lastRestructureAge>=5)
  ){
   ensureDebtBuckets(f);
   const before=f.debt;
-  f.debts.consumer=Math.round(f.debts.consumer*.75);
-  f.debts.emergency=Math.round(f.debts.emergency*.82);
+  f.debts.consumer=Math.round(f.debts.consumer*.68);
+  f.debts.emergency=Math.round(f.debts.emergency*.72);
   syncDebt(f);
   f.debtRestructured=true;
   f.lastRestructureAge=state.player.age;
@@ -327,7 +327,12 @@ export function processPersonalFinanceYear(state){
   f.activitySpendingAnnual=Math.round((f.activitySpendingAnnual??0)*.25+available);
  }else{
   const unresolved=drawReserves(f,Math.abs(annualNet));
-  if(unresolved>0)addDebt(state,'emergency',unresolved);
+  if(unresolved>0){
+   const consumerLimit=Math.max(60000,Math.min(240000,annualIncome*.18));
+   const consumerPart=Math.min(unresolved,consumerLimit);
+   if(consumerPart>0)addDebt(state,'consumer',consumerPart);
+   if(unresolved>consumerPart)addDebt(state,'emergency',unresolved-consumerPart);
+  }
  }
 
  ensureDebtBuckets(f);
