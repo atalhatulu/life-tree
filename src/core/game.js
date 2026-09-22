@@ -105,12 +105,13 @@ export class Game{
   const isMajor=Boolean(selected.majorDecision??event.majorDecision);
   const snapshot=isMajor?createDecisionSnapshot(this.state,event,availableChoices):null;
 
+  const context=decisionContext(this.state,event,selected);
   const choiceRng=this.rng.fork('choice-'+this.state.year+'-'+event.id+'-'+choiceId);
   const resolved=this.events.resolve(this.state,event,choiceId,choiceRng);
   this.state=resolved.state;
   this.state.history.push({age:this.state.player.age,eventId:event.id,choiceId,result:resolved.result,kind:'choice'});
   if(resolved.decision){
-   resolved.decision.context=decisionContext(this.state,event,selected);
+   resolved.decision.context=context;
    resolved.decision.snapshot=snapshot;
    this.state.lifeTree.nodes.push(resolved.decision);
   }
