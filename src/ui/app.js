@@ -1,4 +1,5 @@
 import { Game } from '../core/game.js';
+import { autoplay } from '../simulation/autoplay.js';
 
 let game;
 let pendingEvent = null;
@@ -7,13 +8,14 @@ let activityMessage = '';
 const $ = (selector) => document.querySelector(selector);
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, value));
 
-function getHappiness(player) {
-  const curiosity = player.personality?.curiosity ?? 50;
-  const sociability = player.personality?.sociability ?? 50;
-  return clamp(Math.round((curiosity + sociability + 100) / 3));
+function getHealth(player) { return clamp(Math.round(player.health?.current ?? 70)); }
+function getStress() { return clamp(Math.round(game.state.healthProfile?.stress ?? 0)); }
+function getMental() { return clamp(Math.round(game.state.mentalHealth?.strain ?? 0)); }
+function money(value=0){ return '₺'+Math.round(value).toLocaleString('tr-TR'); }
+function netWorth(){
+  const f=game.state.finance??{};
+  return (f.cash??0)+(f.savings??0)+(game.state.assets?.home?.price??0)+(game.state.assets?.car?.price??0)-(f.debt??0);
 }
-function getLooks(player) { return clamp(player.appearance?.attractiveness ?? 50); }
-function getHealth(player) { return clamp(Math.round(((player.health?.current ?? 70) + (player.health?.constitution ?? 70)) / 2)); }
 
 function updateBar(id, value) {
   $(`#${id}Bar`).style.width = `${value}%`;
@@ -87,15 +89,48 @@ function renderActivities() {
 }
 
 function renderAssets() {
-  const { household } = game.state;
-  $('#assets').innerHTML = `<article class="summary-card"><h3>Aile Hanesi</h3><p>Ekonomik sınıf: <strong>${household.economicClass}</strong></p><p>Aylık hane geliri: <strong>₺${household.monthlyIncome.toLocaleString('tr-TR')}</strong></p><p>Hanede yaşayan kişi: ${household.people}</p><p>Eğitim desteği: ${household.educationSupport}/100</p><p>Hobi desteği: ${household.hobbySupport}/100</p></article>`;
+  const { household, finance, assets } = game.state;
+  const debts=finance?.debts??{};
+  $('#assets').innerHTML = `
+    <article class="summary-card">
+      <h3>Kişisel Finans</h3>
+      <p>Nakit: <strong>${money(finance?.cash)}</strong></p>
+      <p>Birikim: <strong>${money(finance?.savings)}</strong></p>
+      <p>Toplam borç: <strong>${money(finance?.debt)}</strong></p>
+      <p>Net worth: <strong>${money(netWorth())}</strong></p>
+      <p class="muted">Tüketici ${money(debts.consumer)} • Acil ${money(debts.emergency)} • Konut ${money(debts.housing)} • Araç ${money(debts.car)}</p>
+    </article>
+    <article class="summary-card">
+      <h3>Varlıklar</h3>
+      <p>Ev: <strong>${assets?.home ? assets.home.label : 'Yok'}</strong></p>
+      <p>Araç: <strong>${assets?.car ? assets.car.label : 'Yok'}</strong></p>
+      <p>Konut düzeni: ${finance?.lifestyle?.housing ?? '—'}</p>
+    </article>
+    <article class="summary-card">
+      <h3>Aile Hanesi</h3>
+      <p>Başlangıç sınıfı: <strong>${household.economicClass}</strong></p>
+      <p>Aylık hane geliri: <strong>${money(household.monthlyIncome)}</strong></p>
+    </article>`;
 }
 
 function renderCareer() {
-  const e = game.state.education;
-  $('#career').innerHTML = e
-    ? `<article class="summary-card"><h3>${e.schoolName}</h3><p>Kademe: İlkokul</p><p>Okul kalitesi: ${e.quality}/100</p><p>Başarı: ${Math.round(e.performance)}/100</p><p>Motivasyon: ${Math.round(e.motivation)}/100</p><p>Devam: ${Math.round(e.attendance)}/100</p></article>`
-    : '<article class="empty-state">Henüz okul hayatın başlamadı.</article>';
+  const e=game.state.education;
+  const c=game.state.career;
+  const higher=game.state.higherEducation;
+  $('#career').innerHTML=`
+    <article class="summary-card">
+      <h3>Kariyer</h3>
+      <p>İş: <strong>${c?.title ?? game.state.player.job ?? 'Çalışmıyor'}</strong></p>
+      <p>Seviye: <strong>${c?.levelTitle ?? '—'}</strong> • Sektör: <strong>${c?.sector ?? '—'}</strong></p>
+      <p>Aylık gelir: <strong>${money(c?.monthlyIncome ?? game.state.player.monthlyIncome)}</strong></p>
+      <p>Performans: ${Math.round(c?.performance ?? 0)}/100 • Memnuniyet: ${Math.round(c?.satisfaction ?? 0)}/100</p>
+      <p>Network: ${Math.round(c?.network ?? 0)}/100 • Company fit: ${Math.round(c?.companyFit ?? 0)}/100</p>
+    </article>
+    <article class="summary-card">
+      <h3>Eğitim</h3>
+      <p>${higher?.completed ? 'Üniversite mezunu' : higher?.enrolled ? 'Üniversitede' : e?.schoolName ?? 'Temel eğitim'}</p>
+      <p>${higher?.programTitle ?? higher?.programId ?? ''}</p>
+    </article>`;
 }
 
 function renderLifeTree() {
@@ -122,16 +157,42 @@ function renderTimeline() {
 
 function renderEvent() {
   const card=$('#eventCard');
-  if(!pendingEvent){card.classList.add('hidden');card.innerHTML='';$('#ageUp').disabled=false;return;}
-  $('#ageUp').disabled=true;card.classList.remove('hidden');
+  const dead=!game.state.player.alive;
+  if(!pendingEvent){
+    card.classList.toggle('hidden',!dead);
+    if(dead){
+      const d=game.state.death??{};
+      card.innerHTML=`<h3>Hayat sona erdi</h3><p><strong>${game.state.player.age} yaş</strong> • ${d.cause??'Bilinmeyen neden'}</p><p>Net worth: <strong>${money(netWorth())}</strong> • Çocuk: <strong>${game.state.children?.length??0}</strong></p><p>Kariyer: <strong>${game.state.career?.title??game.state.player.job??'—'}</strong> • ${game.state.career?.levelTitle??'—'}</p><p>Büyük karar: <strong>${game.state.lifeTree?.nodes?.length??0}</strong></p>`;
+    }else card.innerHTML='';
+    $('#ageUp').disabled=dead;
+    $('#sim5').disabled=dead;
+    $('#sim10').disabled=dead;
+    return;
+  }
+  $('#ageUp').disabled=true;
+  $('#sim5').disabled=true;
+  $('#sim10').disabled=true;
+  card.classList.remove('hidden');
   card.innerHTML=`<h3>${pendingEvent.title}</h3><p>${pendingEvent.majorDecision?'Bu seçim Life Tree üzerinde bir dönüm noktası olarak kaydedilecek.':'Bu yıl hayatında bir seçim yapman gerekiyor.'}</p><div class="choice-list">${game.eventChoices(pendingEvent).map(choice=>`<button class="choice-button" data-choice="${choice.id}">${choice.label}</button>`).join('')}</div>`;
   card.querySelectorAll('[data-choice]').forEach(button=>button.addEventListener('click',()=>{game.makeChoice(pendingEvent,button.dataset.choice);pendingEvent=null;render();}));
 }
 
 function render(){
-  const {player,household,year}=game.state;
-  $('#identity').textContent=`${player.name} ${player.surname}`;$('#subtitle').textContent=`${player.age} yaş • ${year} • ${household.economicClass} sınıf`;$('#seed').textContent=`seed: ${game.seedText}`;
-  updateBar('health',getHealth(player));updateBar('happiness',getHappiness(player));updateBar('looks',getLooks(player));
+  const {player,household,year,finance,social,children}=game.state;
+  $('#identity').textContent=`${player.name} ${player.surname}`;
+  $('#subtitle').textContent=`${player.age} yaş • ${year} • ${household.economicClass} sınıf`;
+  $('#seed').textContent=`seed: ${game.seedText}`;
+
+  updateBar('health',getHealth(player));
+  updateBar('stress',getStress());
+  updateBar('mental',getMental());
+
+  $('#moneyQuick').textContent=money((finance?.cash??0)+(finance?.savings??0));
+  $('#debtQuick').textContent=money(finance?.debt??0);
+  $('#jobQuick').textContent=game.state.career?.title??player.job??'—';
+  const r=social?.romance;
+  $('#familyQuick').textContent=`${r?.status==='married'?'Evli':r?'İlişki':'Bekâr'} • ${children?.length??0} çocuk`;
+
   renderTimeline();renderRelationships();renderActivities();renderAssets();renderCareer();renderLifeTree();renderEvent();
 }
 
@@ -141,6 +202,22 @@ function newLife(seed=$('#seedInput').value.trim()||String(Date.now())){game=new
 $('#newLife').addEventListener('click',()=>newLife());
 $('#applySeed').addEventListener('click',()=>newLife());
 $('#seedInput').addEventListener('keydown',event=>{if(event.key==='Enter')newLife();});
-$('#ageUp').addEventListener('click',()=>{if(pendingEvent)return;activityMessage='';pendingEvent=game.ageOneYear();render();});
+$('#ageUp').addEventListener('click',()=>{
+  if(pendingEvent||!game.state.player.alive)return;
+  activityMessage='';
+  pendingEvent=game.ageOneYear();
+  render();
+});
+
+function fastForward(years){
+  if(pendingEvent||!game.state.player.alive)return;
+  activityMessage='';
+  const target=Math.min(100,game.state.player.age+years);
+  autoplay(game,{toAge:target,policy:'human-like'});
+  pendingEvent=game.pendingEvent();
+  render();
+}
+$('#sim5').addEventListener('click',()=>fastForward(5));
+$('#sim10').addEventListener('click',()=>fastForward(10));
 document.querySelectorAll('.nav-item').forEach(button=>button.addEventListener('click',()=>switchScreen(button.dataset.screen)));
 newLife('life-tree-demo');
