@@ -1,5 +1,6 @@
 import {activityEfficiency,capacityBand} from '../health/physical_capacity.js';
 import {growTrait} from '../character/personality_dynamics.js';
+import {payDownDebt} from '../finance/personal_finance.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export const ACTIVITY_DEFS=[
@@ -130,7 +131,7 @@ export function performActivity(state,id,rng){
   if(state.finance.debt>0&&state.finance.cash>10000){
    const payment=Math.min(state.finance.debt,Math.round(state.finance.cash*.20));
    state.finance.cash-=payment;
-   state.finance.debt-=payment;
+   payDownDebt(state,payment);
    result='Bütçeni düzenleyip borcunun bir kısmını kapattın.';
   }else result='Bütçeni gözden geçirip finansal planını güncelledin.';
  }
