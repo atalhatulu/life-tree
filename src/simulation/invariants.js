@@ -149,7 +149,6 @@ export function validateState(state){
   if(e.entrepreneurship!=null&&(!Number.isFinite(e.entrepreneurship)||e.entrepreneurship<.65||e.entrepreneurship>1.40))errors.push('world entrepreneurship out of range');
  }
  if(state.assets?.car&&state.finance?.lifestyle?.transport!=='car')errors.push('car asset without car transport lifestyle');
- if(state.assets?.home&&state.finance?.lifestyle?.housing!=='owned')errors.push('home asset without owned housing lifestyle');
  if(!state.social?.romance&&(state.finance?.partnerContributionMonthly??0)>0)errors.push('partner contribution without active partner');
  const branchIds=new Set();
  for(const branch of state.lifeTree?.branches??[]){
