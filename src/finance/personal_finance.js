@@ -46,22 +46,6 @@ export function payDownDebt(state,amount){
  return syncDebt(f);
 }
 
-export function payDownDebt(state,amount){
- const f=ensurePersonalFinance(state);
- ensureDebtBuckets(f);
- let budget=Math.max(0,Math.round(amount));
- const order=['consumer','emergency','medical','car','housing'];
- for(const key of order){
-  if(budget<=0)break;
-  const paid=Math.min(f.debts[key],budget);
-  f.debts[key]-=paid;
-  budget-=paid;
-  if(key==='housing'&&state.assets?.home)state.assets.home.remainingDebt=Math.max(0,(state.assets.home.remainingDebt??0)-paid);
-  if(key==='car'&&state.assets?.car)state.assets.car.remainingDebt=Math.max(0,(state.assets.car.remainingDebt??0)-paid);
- }
- return syncDebt(f);
-}
-
 export function ensurePersonalFinance(state){
  if(state.finance){
   state.finance.savings??=0;
