@@ -7,6 +7,7 @@ import {knownPreference} from '../src/social/relationship_memory.js';
 import {performSocialActivity} from '../src/social/social_activity_system.js';
 import {performPhysicalActivity} from '../src/health/physical_activity_system.js';
 import {processHealthYear} from '../src/health/health_system.js';
+import {processDiseaseProgressionYear} from '../src/health/disease_progression.js';
 import {ensurePersonalFinance} from '../src/finance/personal_finance.js';
 import {performProceduralYearActions} from '../src/simulation/procedural_player.js';
 import {performHobby} from '../src/life/hobby_system.js';
@@ -153,4 +154,50 @@ test('compatible dating relationship deepens over time without random bonus',()=
  const rng={int:()=>0,chance:()=>false,fork:()=>({chance:()=>false})};
  processPartnershipYear(g.state,rng);
  assert.ok(g.state.social.romance.relationship>50);
+});
+
+
+test('higher fitness preserves more health reserve at the same age without direct healing',()=>{
+ const fit=adult('fitness-protection-high');
+ const unfit=adult('fitness-protection-low');
+ for(const g of [fit,unfit]){
+  g.state.player.age=65;
+  g.state.player.health.current=78;
+  g.state.player.health.constitution=60;
+  g.state.healthProfile.stress=40;
+  g.state.healthProfile.lastExerciseAge=50;
+  g.state.finance.lifestyle={food:'standard'};
+ }
+ fit.state.healthProfile.fitness=75;
+ unfit.state.healthProfile.fitness=35;
+ const rng={int:()=>0,chance:()=>false,fork:()=>({chance:()=>false})};
+ processHealthYear(fit.state,rng,{healthBeforeYear:78});
+ processHealthYear(unfit.state,rng,{healthBeforeYear:78});
+ assert.ok(fit.state.player.health.current>unfit.state.player.health.current);
+});
+
+test('higher fitness slows chronic disease progression under otherwise identical conditions',()=>{
+ const fit=adult('progression-fit');
+ const unfit=adult('progression-unfit');
+ for(const g of [fit,unfit]){
+  g.state.player.age=60;
+  g.state.player.health.current=70;
+  g.state.healthProfile.stress=45;
+  g.state.healthProfile.conditions=[{
+   id:'hypertension',
+   label:'Yüksek tansiyon',
+   severity:2,
+   diagnosedAtAge:55,
+   geneticCourse:{progressionMultiplier:1,complicationMultiplier:1,initialProgressionBonus:0}
+  }];
+ }
+ fit.state.healthProfile.fitness=75;
+ unfit.state.healthProfile.fitness=35;
+ const rng={int:()=>0,chance:()=>false};
+ processDiseaseProgressionYear(fit.state,rng);
+ processDiseaseProgressionYear(unfit.state,rng);
+ assert.ok(
+  fit.state.healthProfile.conditions[0].progression.score<
+  unfit.state.healthProfile.conditions[0].progression.score
+ );
 });
