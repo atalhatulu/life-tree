@@ -14,7 +14,7 @@ export const ACTIVITY_DEFS=[
  {id:'date',label:'Partnerinle vakit geçir',minAge:18,condition:s=>Boolean(s.social?.romance)},
  {id:'checkup',label:'Sağlık kontrolü yaptır',minAge:18},
  {id:'budget',label:'Bütçeni gözden geçir',minAge:20,condition:s=>Boolean(s.finance)},
- {id:'therapy',label:'Terapi / psikolojik destek',minAge:16,condition:s=>(s.mentalHealth?.strain??0)>=42}
+ {id:'therapy',label:'Terapi / psikolojik destek',minAge:16,condition:s=>(s.mentalHealth?.strain??0)>=40}
 ];
 
 function activityMemory(state,id){

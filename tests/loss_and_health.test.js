@@ -178,7 +178,7 @@ test('adult health and fitness lose a small amount to aging every year',()=>{
  assert.ok(g.state.healthProfile.fitness<beforeFitness);
 });
 
-test('ordinary mortality cannot kill while vital bars are still healthy',()=>{
+test('advanced-age mortality can occur even while vital bars are still healthy',()=>{
  const g=new Game('reserve-gated-mortality');
  g.state.player.age=95;
  g.state.player.health.current=75;
@@ -187,7 +187,8 @@ test('ordinary mortality cannot kill while vital bars are still healthy',()=>{
  g.state.lateLife={mobility:60,isolation:20,careNeed:false,careMode:null,retirementStyle:null};
  const rng={int:()=>0,chance:()=>true,fork:()=>({chance:()=>true})};
  processHealthYear(g.state,rng);
- assert.equal(g.state.player.alive,true);
+ assert.equal(g.state.player.alive,false);
+ assert.equal(g.state.death.age,95);
 });
 
 test('critically depleted vital reserve can end life through ordinary mortality',()=>{

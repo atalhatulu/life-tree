@@ -3,7 +3,7 @@ const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 export function ensureMentalHealth(state){
  state.mentalHealth??={
   resilience:clamp(Math.round(45+(state.player.health.constitution??60)*.25+(state.player.personality?.patience??50)*.20),20,90),
-  strain:20,
+  strain:18,
   status:'stable',
   episodes:[],
   therapyYears:0,
@@ -13,14 +13,23 @@ export function ensureMentalHealth(state){
 }
 
 function recentLossCount(state){
- const age=state.player.age;
- return (state.history??[]).filter(x=>x.age===age&&(x.kind==='death'||(x.kind==='social'&&String(x.text??'').includes('hayatını kaybetti'))||(x.kind==='relationship'&&String(x.text??'').includes('hayatını kaybetti')))).length;
+ const year=state.year;
+ const family=[
+  state.parents?.mother,state.parents?.father,
+  ...(state.siblings??[]),
+  state.grandparents?.maternal?.grandmother,state.grandparents?.maternal?.grandfather,
+  state.grandparents?.paternal?.grandmother,state.grandparents?.paternal?.grandfather
+ ].filter(Boolean);
+ const familyLosses=family.filter(p=>p.deathYear===year).length;
+ const friendLosses=(state.social?.deceasedFriends??[]).filter(p=>p.deathYear===year).length;
+ const partnerLosses=(state.social?.deceasedPartners??[]).filter(p=>p.deathYear===year).length;
+ return familyLosses+friendLosses+partnerLosses;
 }
 
 function statusFromStrain(strain){
- if(strain>=82)return 'crisis';
- if(strain>=68)return 'distressed';
- if(strain>=48)return 'strained';
+ if(strain>=76)return 'crisis';
+ if(strain>=58)return 'distressed';
+ if(strain>=36)return 'strained';
  return 'stable';
 }
 
@@ -36,21 +45,27 @@ export function processMentalHealthYear(state,rng){
  const losses=recentLossCount(state);
  const overwork=(state.activityMemory?.['work-hard']?.streak??0)>=4;
 
- let pressure=0;
- pressure+=Math.max(0,stress-45)*.09;
- if(debt>1000000)pressure+=2.2;
- if(debt>4000000)pressure+=2.8;
- if(unemployed)pressure+=2.5;
- if(conflict)pressure+=2.8;
- if(isolation)pressure+=1.6;
- if(overwork)pressure+=2.2;
- pressure+=losses*5;
+ let pressure=.55;
+ pressure+=Math.max(0,stress-35)*.075;
+ if(debt>500000)pressure+=1.1;
+ if(debt>1500000)pressure+=1.5;
+ if(debt>4000000)pressure+=1.8;
+ if(unemployed)pressure+=2.6;
+ if(conflict)pressure+=3.0;
+ if(isolation)pressure+=1.35;
+ if(overwork)pressure+=1.8;
+ if(state.parentCare?.active)pressure+=1.25;
+ if((state.finance?.financialDistressYears??0)>0)pressure+=1.1;
+ if(state.lastDivorceAge===state.player.age)pressure+=7;
+ if(state.widowedAtAge===state.player.age)pressure+=9;
+ pressure+=losses*9;
 
- let recovery=1.5+(m.resilience-50)*.035;
- if((state.healthProfile?.fitness??50)>=60)recovery+=.8;
- if((state.social?.friends?.length??0)>=2)recovery+=.7;
- if(relationship?.relationshipState==='stable')recovery+=.7;
- if(m.therapyYears>0)recovery+=1.1;
+ let recovery=.60+(m.resilience-50)*.015;
+ if((state.healthProfile?.fitness??50)>=65)recovery+=.25;
+ if((state.social?.friends?.length??0)>=2)recovery+=.25;
+ if(relationship?.relationshipState==='stable')recovery+=.20;
+ if(m.therapyYears>0)recovery+=.30;
+ recovery=Math.max(.15,recovery);
 
  m.strain=clamp(m.strain+pressure-recovery+rng.int(-2,2));
  const before=m.status;
@@ -67,18 +82,18 @@ export function processMentalHealthYear(state,rng){
  if(m.status==='stable')m.recoveryYears=(m.recoveryYears??0)+1;
  else m.recoveryYears=0;
 
- state.healthProfile.stress=clamp((state.healthProfile.stress??20)+(m.status==='crisis'?4:m.status==='distressed'?2:m.status==='strained'?1:-1));
+ state.healthProfile.stress=clamp((state.healthProfile.stress??20)+(m.status==='crisis'?4:m.status==='distressed'?2:m.status==='strained'?1:0));
  return entries;
 }
 
 export function applyMentalHealthActivity(state,id){
  const m=ensureMentalHealth(state);
- if(id==='exercise')m.strain=clamp(m.strain-3);
- if(id==='socialize')m.strain=clamp(m.strain-4);
- if(id==='hobby')m.strain=clamp(m.strain-3);
- if(id==='date')m.strain=clamp(m.strain-3);
+ if(id==='exercise')m.strain=clamp(m.strain-1.5);
+ if(id==='socialize')m.strain=clamp(m.strain-2);
+ if(id==='hobby')m.strain=clamp(m.strain-1.5);
+ if(id==='date')m.strain=clamp(m.strain-1.5);
  if(id==='therapy'){
-  m.strain=clamp(m.strain-9);
+  m.strain=clamp(m.strain-11);
   m.therapyYears=(m.therapyYears??0)+1;
   m.status=statusFromStrain(m.strain);
  }

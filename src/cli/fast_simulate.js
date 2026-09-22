@@ -184,7 +184,7 @@ const report={
   diagnosisAges:{},treated:0,untreated:0,treatmentSuccess:0,treatmentFailure:0,
   treatmentAges:[],geneticDiagnoses:0,deathHealthHigh70:0,deathHealthLow25:0,
   checkups:0,
-  mentalStrain:[],mentalStatuses:{},therapyYears:[],mentalEpisodes:[]
+  mentalStrain:[],mentalStatuses:{},therapyYears:[],mentalEpisodes:[],mentalEpisodeLives:0,mentalStrainEpisodeLives:0,mentalEpisodeTypes:{}
  },
 
  genetics:{
@@ -509,7 +509,12 @@ for(let i=0;i<lives;i++){
   report.health.mentalStrain.push(state.mentalHealth.strain??0);
   inc(report.health.mentalStatuses,state.mentalHealth.status??'unknown');
   report.health.therapyYears.push(state.mentalHealth.therapyYears??0);
-  report.health.mentalEpisodes.push(state.mentalHealth.episodes?.length??0);
+  const episodes=state.mentalHealth.episodes??[];
+  const episodeCount=episodes.length;
+  report.health.mentalEpisodes.push(episodeCount);
+  if(episodeCount>0)report.health.mentalEpisodeLives++;
+  if(episodes.some(e=>['strained','distressed','crisis'].includes(e.type)))report.health.mentalStrainEpisodeLives++;
+  for(const episode of episodes)inc(report.health.mentalEpisodeTypes,episode.type??'unknown');
  }
 
  // Genetics
@@ -894,7 +899,10 @@ const summary={
   mentalStrain:distribution(report.health.mentalStrain),
   mentalStatuses:report.health.mentalStatuses,
   therapyYears:distribution(report.health.therapyYears),
-  mentalEpisodes:distribution(report.health.mentalEpisodes)
+  mentalEpisodes:distribution(report.health.mentalEpisodes),
+  mentalEpisodeLivesPct:pct(report.health.mentalEpisodeLives,valid),
+  mentalStrainEpisodeLivesPct:pct(report.health.mentalStrainEpisodeLives,valid),
+  mentalEpisodeTypes:report.health.mentalEpisodeTypes
  },
 
  genetics:{
