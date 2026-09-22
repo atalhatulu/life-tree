@@ -77,8 +77,9 @@ export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
  // poor Fitness accelerates it.
  const fitnessWearMultiplier=clamp(1-(h.fitness-50)*.008,.72,1.28);
  const nutritionWearMultiplier=lifestyle?.food==='healthy'?.92:lifestyle?.food==='frugal'?1.06:1;
+ const recentActivityWearMultiplier=exercisedRecently?.94:1;
  const healthWearMultiplier=clamp(
-  agingMultiplier*fitnessWearMultiplier*nutritionWearMultiplier,
+  agingMultiplier*fitnessWearMultiplier*nutritionWearMultiplier*recentActivityWearMultiplier,
   .55,
   1.45
  );
