@@ -1,3 +1,4 @@
+import {TURKEY_2026_ECONOMY} from '../data/countries/turkey/economy.js';
 import {lifestyleMonthlyCost} from '../lifestyle/lifestyle_system.js';
 import {economy} from '../world/world_state.js';
 
@@ -44,9 +45,10 @@ function familySupport(state){
 
 function effectiveTaxRate(monthly,retired=false){
  if(retired)return .06;
- if(monthly<=40000)return .12;
- if(monthly<=80000)return .18;
- if(monthly<=140000)return .23;
+ const mw=TURKEY_2026_ECONOMY.netMinimumWage;
+ if(monthly<=mw*1.4)return .12;
+ if(monthly<=mw*2.8)return .18;
+ if(monthly<=mw*5)return .23;
  return .28;
 }
 
@@ -124,7 +126,8 @@ function discretionaryRate(state){
 }
 
 function cashReserveTarget(f){
- return Math.round(clamp((f.monthlyExpenses+f.ownershipCostsMonthly)*6,100000,1500000));
+ const mw=TURKEY_2026_ECONOMY.netMinimumWage;
+ return Math.round(clamp((f.monthlyExpenses+f.ownershipCostsMonthly)*6,mw*3.3,mw*50));
 }
 
 function downgradeLifestyle(state){
@@ -161,7 +164,7 @@ function liquidateHome(state){
 function manageFinancialDistress(state,annualIncome,reserveTarget){
  const f=state.finance;
  const secured=securedDebt(state);
- const debtCapacity=secured+Math.max(750000,annualIncome*2.5);
+ const debtCapacity=secured+Math.max(TURKEY_2026_ECONOMY.netMinimumWage*25,annualIncome*2.5);
  const liquid=(f.cash??0)+(f.savings??0);
  const distressed=f.debt>debtCapacity&&liquid<reserveTarget*.5;
  const actions=[];
@@ -183,11 +186,11 @@ function manageFinancialDistress(state,annualIncome,reserveTarget){
  }
  if(
   f.financialDistressYears>=4&&!state.assets?.home&&!state.assets?.car&&
-  f.debt>Math.max(1500000,annualIncome*6)&&
+  f.debt>Math.max(TURKEY_2026_ECONOMY.netMinimumWage*50,annualIncome*6)&&
   (f.lastRestructureAge==null||state.player.age-f.lastRestructureAge>=5)
  ){
   const before=f.debt;
-  const affordableDebt=Math.max(250000,annualIncome*3.5);
+  const affordableDebt=Math.max(TURKEY_2026_ECONOMY.netMinimumWage*8.3,annualIncome*3.5);
   const settlementTarget=Math.max(affordableDebt,Math.round(f.debt*.70));
   f.debt=Math.min(f.debt,Math.round(settlementTarget));
   f.debtRestructured=true;
@@ -197,11 +200,11 @@ function manageFinancialDistress(state,annualIncome,reserveTarget){
 
  if(
   f.financialDistressYears>=8&&!state.assets?.home&&!state.assets?.car&&
-  f.debt>Math.max(500000,annualIncome*4)&&
+  f.debt>Math.max(TURKEY_2026_ECONOMY.netMinimumWage*16.7,annualIncome*4)&&
   (f.cash??0)+(f.savings??0)<reserveTarget*.25
  ){
   const before=f.debt;
-  const sustainable=Math.max(150000,annualIncome*2.5);
+  const sustainable=Math.max(TURKEY_2026_ECONOMY.netMinimumWage*5,annualIncome*2.5);
   f.debt=Math.min(f.debt,Math.round(sustainable));
   f.debtRestructured=true;
   f.insolvencyResolved=true;
