@@ -28,6 +28,7 @@ import {createWorldState,processWorldYear} from '../world/world_state.js';
 import {processGeneticHealthYear} from '../health/genetic_system.js';
 import {processDiseaseProgressionYear} from '../health/disease_progression.js';
 import {decisionContext} from '../life/decision_context.js';
+import {annualActionCapacity} from '../life/action_capacity.js';
 
 export class Game{
  constructor(seed=String(Date.now())){
@@ -65,7 +66,8 @@ export class Game{
   if(!this.state.player.alive) throw new Error('Bu hayat sona erdi.');
   this.state.player.age+=1;
   this.state.year+=1;
-  this.state.actions.remaining=this.state.player.age>=5?this.state.actions.max:0;
+  this.state.actions.max=annualActionCapacity(this.state);
+  this.state.actions.remaining=this.state.actions.max;
 
   const aging=[
    this.state.parents.mother,this.state.parents.father,...this.state.siblings,
