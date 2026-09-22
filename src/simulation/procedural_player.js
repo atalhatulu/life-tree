@@ -109,10 +109,18 @@ function bestPhysicalPlan(game,policy,rng){
   const recoveryPenalty=activity.intensity>=3
    ?recent*.24+Math.max(0,state.player.age-50)*.012+Math.max(0,58-capacity)*.025
    :recent*.10;
+  const age=state.player.age;
+  const sustainableFit=
+   age>=70
+    ?(activity.id==='walk'?.75:activity.id==='yoga'?.65:activity.id==='swim'?.35:activity.intensity>=3?-.65:0)
+    :age>=55
+      ?(activity.id==='walk'?.45:activity.id==='yoga'?.35:activity.id==='swim'?.25:activity.intensity>=3?-.25:0)
+      :capacity>=65&&activity.intensity>=2?.20:0;
+  const lowFitnessUrgency=fitness<45?(45-fitness)*.035:0;
   return {
    id:activity.id,
    frequencyWeight:activity.id==='walk'?1.30:activity.id==='run'?.52:1,
-   utility:need+gainValue+preference*.40-frugalPenalty-intensityFit-recoveryPenalty-Math.min(1.6,recent*.18)+rng.int(-2,2)*.10
+   utility:need+lowFitnessUrgency+gainValue+preference*.40+sustainableFit-frugalPenalty-intensityFit-recoveryPenalty-Math.min(1.6,recent*.18)+rng.int(-2,2)*.10
   };
  });
  return weightedCandidate(rng,ranked);
