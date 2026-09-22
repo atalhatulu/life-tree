@@ -46,8 +46,12 @@ export function processPartnershipYear(state,rng){
   return entries;
  }
 
+ const currentRelationship=r.relationship??55;
+ const compatibility=r.compatibility??60;
+ const sharedLifeFactor=r.status==='married'?.08:r.status==='cohabiting'?.07:.10;
+ const compatibilityGrowth=Math.max(0,(compatibility-currentRelationship)*sharedLifeFactor);
  const financeStress=(state.finance?.debt??0)>3000000?2:(state.finance?.debt??0)>750000?1:0;
- if(financeStress>0)r.relationship=clamp((r.relationship??55)-financeStress);
+ r.relationship=clamp(currentRelationship+compatibilityGrowth-financeStress);
 
  if(r.status!=='married'&&r.yearsTogether>=2&&r.relationship<40&&rng.chance(.18)){
   entries.push({age:state.player.age,kind:'relationship',text:r.name+' ile ilişkin sona erdi.'});
