@@ -14,4 +14,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: node --test tests/group6_part1.test.js
+      - run: node --test tests/group6_part1.test.js tests/group6_part2.test.js
+      - run: npm test
