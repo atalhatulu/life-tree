@@ -125,10 +125,6 @@ function personCard(person, relation) {
       <p>İlgiler: ${interestText(person)}</p>
       ${person.background?.parentingStyle ? `<p>Ebeveynlik tarzı: ${person.background.parentingStyle.replace('_',' ')}</p>` : ''}
     </article>`;
-  $('#assets').querySelectorAll('[data-lifestyle]').forEach(sel=>{
-    const key=sel.dataset.lifestyle;sel.value=finance?.lifestyle?.[key]??sel.value;
-    sel.addEventListener('change',()=>{try{setLifestyle(game.state,{[key]:sel.value});activityMessage='Yaşam tarzını güncelledin.';}catch(error){activityMessage=error.message;}render();});
-  });
 }
 
 function siblingLabel(person, index) {
@@ -221,6 +217,17 @@ function renderAssets() {
       <p>Başlangıç sınıfı: <strong>${household.economicClass}</strong></p>
       <p>Aylık hane geliri: <strong>${money(household.monthlyIncome)}</strong></p>
     </article>`;
+  $('#assets').querySelectorAll('[data-lifestyle]').forEach(sel=>{
+    const key=sel.dataset.lifestyle;
+    sel.value=finance?.lifestyle?.[key]??sel.value;
+    sel.addEventListener('change',()=>{
+      try{
+        setLifestyle(game.state,{[key]:sel.value});
+        activityMessage='Yaşam tarzını güncelledin.';
+      }catch(error){activityMessage=error.message;}
+      render();
+    });
+  });
 }
 
 function renderCareer() {
@@ -440,5 +447,6 @@ $('#ageUp').addEventListener('click',()=>{
   render();
 });
 
+$('#autoLife').addEventListener('click',toggleAutoLife);
 document.querySelectorAll('.nav-item').forEach(button=>button.addEventListener('click',()=>switchScreen(button.dataset.screen)));
 newLife('life-tree-demo');
