@@ -160,3 +160,22 @@ test('durable goods are replaced after their useful lifespan',()=>{
  assert.equal(g.state.finance.durableGoods.phone.generation,2);
  assert.equal(g.state.finance.durableGoods.phone.purchasedAtAge,34);
 });
+
+
+test('annual finance flow funds durable goods purchases and records them in spending telemetry',()=>{
+ const g=adult('durable-goods-finance-flow');
+ g.state.player.age=30;
+ g.state.year=2056;
+ g.state.career={employed:true,monthlyIncome:250000};
+ g.state.finance.cash=0;
+ g.state.finance.savings=0;
+ g.state.finance.lifestyle={housing:'apartment',food:'standard',clothing:'standard',transport:'public'};
+ g.state.player.interests={...(g.state.player.interests??{}),teknoloji:95,oyun:90};
+ processPersonalFinanceYear(g.state);
+ const summary=spendingSummary(g.state);
+ const durableEntries=g.state.finance.spendingHistory.filter(entry=>entry.source==='durable-goods');
+ assert.ok(summary.byCategory['durable-goods']>0);
+ assert.ok(durableEntries.length>0,'annual budget should create at least one concrete durable purchase when budget permits');
+ assert.ok(g.state.finance.durableGoods.phone||g.state.finance.durableGoods.computer||g.state.finance.durableGoods.household);
+ assert.equal(summary.total,g.state.finance.discretionaryAnnual);
+});
