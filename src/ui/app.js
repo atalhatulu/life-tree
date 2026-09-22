@@ -1,6 +1,7 @@
 import { Game } from '../core/game.js';
 import { autoplay, humanLikeChoice, activityOrder } from '../simulation/autoplay.js';
 import { RNG } from '../core/rng.js';
+import { setLifestyle, lifestyleMonthlyCost } from '../lifestyle/lifestyle_system.js';
 
 let game;
 let pendingEvent = null;
@@ -8,6 +9,8 @@ let activityMessage = '';
 let autoLifeRunning = false;
 let autoLifeToken = 0;
 let autoLifeRng = null;
+let yearMoment = null;
+let leisurePicker = null;
 const sleep = (ms) => new Promise(resolve=>setTimeout(resolve,ms));
 
 const $ = (selector) => document.querySelector(selector);
@@ -20,6 +23,82 @@ function money(value=0){ return '₺'+Math.round(value).toLocaleString('tr-TR');
 function netWorth(){
   const f=game.state.finance??{};
   return (f.cash??0)+(f.savings??0)+(game.state.assets?.home?.price??0)+(game.state.assets?.car?.price??0)-(f.debt??0);
+}
+
+
+function spendCash(amount){
+  const f=game.state.finance;
+  if(!f)return false;
+  const cost=Math.max(0,Math.round(amount));
+  if((f.cash??0)<cost)return false;
+  f.cash-=cost;
+  f.activitySpendingAnnual=(f.activitySpendingAnnual??0)+cost;
+  return true;
+}
+function livingCompanions(){
+  const out=[{id:'alone',label:'Yalnız',type:'alone'}];
+  for(const f of game.state.social?.friends??[]) out.push({id:'friend:'+f.id,label:f.name+' (arkadaş)',type:'friend',person:f});
+  const r=game.state.social?.romance;
+  if(r)out.push({id:'partner',label:(r.name??'Partner')+' (partner)',type:'partner',person:r});
+  for(const [i,c] of (game.state.children??[]).entries())out.push({id:'child:'+i,label:(c.name??('Çocuk '+(i+1))),type:'child',person:c});
+  return out;
+}
+const LEISURE={
+ cinema:{label:'Sinemaya git',costs:[250,550,1100]},
+ meal:{label:'Dışarıda yemek ye',costs:[350,850,1800]},
+ shopping:{label:'Alışveriş yap',costs:[500,1500,4000]}
+};
+function applyLeisure(kind,companionId,tier){
+  if(game.state.actions.remaining<=0){activityMessage='Bu yıl aksiyon hakkın kalmadı.';return;}
+  const def=LEISURE[kind], cost=def.costs[tier];
+  if(!spendCash(cost)){activityMessage='Bu seçim için yeterli nakdin yok.';return;}
+  const companion=livingCompanions().find(x=>x.id===companionId)??livingCompanions()[0];
+  if(companion.type==='partner'){
+    companion.person.relationship=clamp((companion.person.relationship??60)+3+tier*2);
+    companion.person.relationshipTension=clamp((companion.person.relationshipTension??10)-2-tier);
+  }else if(companion.type==='friend'){
+    companion.person.relationship=clamp((companion.person.relationship??55)+3+tier*2);
+    companion.person.lastContactAge=game.state.player.age;
+  }else if(companion.type==='child'){
+    companion.person.relationship=clamp((companion.person.relationship??60)+4+tier);
+  }
+  game.state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
+  game.state.healthProfile.stress=clamp(game.state.healthProfile.stress-(2+tier));
+  if(kind==='shopping'){
+    game.state.player.appearance.attractiveness=clamp((game.state.player.appearance.attractiveness??50)+tier);
+  }
+  game.state.actions.remaining--;
+  const text=def.label+' • '+companion.label+' • '+money(cost)+' harcadın.';
+  game.state.history.push({age:game.state.player.age,kind:'activity',activityId:'leisure:'+kind,text});
+  activityMessage=text;leisurePicker=null;
+}
+function makeYearMoment(){
+  if(!game.state.player.alive)return null;
+  const age=game.state.player.age;
+  const rng=new RNG(game.seedText+':year-moment:'+game.state.year);
+  if(age<7)return {title:'Küçük bir yıl',text:'Boş zamanında neye yöneldin?',choices:[
+    {id:'play',label:'Oyun oyna'},{id:'family',label:'Ailenle vakit geçir'},{id:'learn',label:'Bir şey öğren'}
+  ]};
+  if(age<18)return {title:'Bu yıl neye ağırlık verdin?',text:'Okul dışında zamanını nasıl geçirdin?',choices:[
+    {id:'friends',label:'Arkadaşlarla takıl'},{id:'study',label:'Derse ağırlık ver'},{id:'save',label:'Harçlığı biriktir'}
+  ]};
+  return rng.pick([
+    {title:'Hafta sonu planı',text:'Kendine biraz zaman ayıracaksın.',choices:[{id:'cinema',label:'Sinemaya git'},{id:'rest',label:'Evde dinlen'},{id:'social',label:'Birini ara'}]},
+    {title:'Küçük bir para kararı',text:'Bu ay elinde biraz serbest para kaldı.',choices:[{id:'save',label:'Biriktir'},{id:'shopping',label:'Kendine bir şey al'},{id:'meal',label:'Dışarıda yemek ye'}]}
+  ]);
+}
+function applyYearMoment(choice){
+  const s=game.state;
+  s.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
+  let text='';
+  if(choice==='play'||choice==='rest'){s.healthProfile.stress=clamp(s.healthProfile.stress-3);text='Kendine zaman ayırdın.';}
+  if(choice==='family'){s.player.personality.sociability=clamp((s.player.personality.sociability??50)+1);text='Ailenle vakit geçirdin.';}
+  if(choice==='learn'||choice==='study'){s.player.personality.discipline=clamp((s.player.personality.discipline??50)+1);text='Kendini geliştirmeye zaman ayırdın.';}
+  if(choice==='friends'||choice==='social'){s.player.personality.sociability=clamp((s.player.personality.sociability??50)+1);text='Sosyal bağlarına vakit ayırdın.';}
+  if(choice==='save'){if(s.finance)s.finance.cash=(s.finance.cash??0)+Math.round((s.familySupportMonthly??s.finance.familySupportMonthly??0)*.15);text='Harcamayıp kenara koymayı seçtin.';}
+  if(['cinema','shopping','meal'].includes(choice)){leisurePicker=choice;text='Bir aktivite planladın.';switchScreen('activitiesScreen');}
+  s.history.push({age:s.player.age,kind:'year-moment',text});
+  yearMoment=null;render();
 }
 
 function updateBar(id, value) {
@@ -46,6 +125,10 @@ function personCard(person, relation) {
       <p>İlgiler: ${interestText(person)}</p>
       ${person.background?.parentingStyle ? `<p>Ebeveynlik tarzı: ${person.background.parentingStyle.replace('_',' ')}</p>` : ''}
     </article>`;
+  $('#assets').querySelectorAll('[data-lifestyle]').forEach(sel=>{
+    const key=sel.dataset.lifestyle;sel.value=finance?.lifestyle?.[key]??sel.value;
+    sel.addEventListener('change',()=>{try{setLifestyle(game.state,{[key]:sel.value});activityMessage='Yaşam tarzını güncelledin.';}catch(error){activityMessage=error.message;}render();});
+  });
 }
 
 function siblingLabel(person, index) {
@@ -77,25 +160,34 @@ function renderRelationships() {
 }
 
 function renderActivities() {
-  const interests = Object.entries(game.state.player.interests)
-    .sort((a,b)=>b[1]-a[1])
-    .map(([name,score])=>`<div class="meter-row"><span>${name}</span><div class="mini-bar"><i style="width:${score}%"></i></div><b>${score}</b></div>`)
-    .join('');
-  const actions = game.availableActivities();
-  $('#activities').innerHTML = `
-    <article class="summary-card">
-      <div class="card-row"><h3>Bu yıl yapabileceklerin</h3><span class="relationship-pill">${game.state.actions.remaining}/${game.state.actions.max}</span></div>
-      <div class="activity-grid">
-        ${actions.map(a=>`<button class="activity-button" data-activity="${a.id}" ${game.state.actions.remaining<=0?'disabled':''}>${a.label}</button>`).join('') || '<p>Henüz aktif seçim yapacak yaşta değilsin.</p>'}
-      </div>
-      ${activityMessage ? `<p class="activity-message">${activityMessage}</p>` : ''}
-    </article>
-    <article class="summary-card"><h3>İlgi Alanların</h3>${interests || '<p>Henüz belirgin bir ilgin oluşmadı.</p>'}</article>`;
+  const interests=Object.entries(game.state.player.interests).sort((a,b)=>b[1]-a[1])
+    .map(([name,score])=>`<div class="meter-row"><span>${name}</span><div class="mini-bar"><i style="width:${score}%"></i></div><b>${score}</b></div>`).join('');
+  const actions=game.availableActivities();
+  const leisureButtons=Object.entries(LEISURE).map(([id,x])=>`<button class="activity-button leisure-button" data-leisure="${id}">${x.label}</button>`).join('');
+  let picker='';
+  if(leisurePicker){
+    const def=LEISURE[leisurePicker];
+    picker=`<article class="summary-card picker-card"><h3>${def.label}</h3><p>Kiminle?</p>
+      <div class="choice-list">${livingCompanions().slice(0,8).map(c=>`<button class="choice-button companion-choice" data-companion="${c.id}">${c.label}</button>`).join('')}</div>
+      <p class="muted">Bir kişi seçince bütçe seçenekleri açılır.</p><div id="budgetChoices"></div></article>`;
+  }
+  $('#activities').innerHTML=`
+    ${picker}
+    <article class="summary-card"><div class="card-row"><h3>Serbest zaman</h3><span class="relationship-pill">${game.state.actions.remaining}/${game.state.actions.max}</span></div>
+      <div class="activity-grid">${leisureButtons}</div></article>
+    <article class="summary-card"><h3>Diğer aktiviteler</h3><div class="activity-grid">
+      ${actions.map(x=>`<button class="activity-button" data-activity="${x.id}" ${game.state.actions.remaining<=0?'disabled':''}>${x.label}</button>`).join('')}
+    </div>${activityMessage?`<p class="activity-message">${activityMessage}</p>`:''}</article>
+    <article class="summary-card"><h3>İlgi Alanların</h3>${interests||'<p>Henüz belirgin bir ilgin oluşmadı.</p>'}</article>`;
 
+  $('#activities').querySelectorAll('[data-leisure]').forEach(b=>b.addEventListener('click',()=>{leisurePicker=b.dataset.leisure;renderActivities();}));
   $('#activities').querySelectorAll('[data-activity]').forEach(button=>button.addEventListener('click',()=>{
-    try { activityMessage = game.performActivity(button.dataset.activity); }
-    catch (error) { activityMessage = error.message; }
-    render();
+    try{activityMessage=game.performActivity(button.dataset.activity);}catch(error){activityMessage=error.message;}render();
+  }));
+  $('#activities').querySelectorAll('[data-companion]').forEach(button=>button.addEventListener('click',()=>{
+    const id=button.dataset.companion, def=LEISURE[leisurePicker];
+    $('#budgetChoices').innerHTML=`<p>Bütçe</p><div class="choice-list">${def.costs.map((cost,i)=>`<button class="choice-button" data-budget="${i}">${['Ekonomik','Standart','Premium'][i]} • ${money(cost)}</button>`).join('')}</div>`;
+    $('#budgetChoices').querySelectorAll('[data-budget]').forEach(x=>x.addEventListener('click',()=>{applyLeisure(leisurePicker,id,Number(x.dataset.budget));render();}));
   }));
 }
 
@@ -116,6 +208,13 @@ function renderAssets() {
       <p>Ev: <strong>${assets?.home ? assets.home.label : 'Yok'}</strong></p>
       <p>Araç: <strong>${assets?.car ? assets.car.label : 'Yok'}</strong></p>
       <p>Konut düzeni: ${finance?.lifestyle?.housing ?? '—'}</p>
+    </article>
+    <article class="summary-card">
+      <h3>Yaşam Tarzı</h3>
+      <p>Tahmini aylık temel yaşam gideri: <strong>${money(lifestyleMonthlyCost(game.state))}</strong></p>
+      <label class="setting-row">Yemek <select data-lifestyle="food"><option value="frugal">Ucuz / düzensiz</option><option value="standard">Standart</option><option value="healthy">Sağlıklı</option><option value="premium">Premium</option></select></label>
+      <label class="setting-row">Kıyafet <select data-lifestyle="clothing"><option value="basic">Temel</option><option value="standard">Özenli</option><option value="premium">Marka / premium</option></select></label>
+      <label class="setting-row">Ulaşım <select data-lifestyle="transport"><option value="public">Toplu taşıma</option><option value="car">Araba ağırlıklı</option></select></label>
     </article>
     <article class="summary-card">
       <h3>Aile Hanesi</h3>
@@ -170,6 +269,13 @@ function renderEvent() {
   const card=$('#eventCard');
   const dead=!game.state.player.alive;
   if(!pendingEvent){
+    if(yearMoment&&!dead){
+      card.classList.remove('hidden');
+      card.innerHTML=`<h3>${yearMoment.title}</h3><p>${yearMoment.text}</p><div class="choice-list">${yearMoment.choices.map(c=>`<button class="choice-button" data-moment="${c.id}">${c.label}</button>`).join('')}</div>`;
+      card.querySelectorAll('[data-moment]').forEach(b=>b.addEventListener('click',()=>applyYearMoment(b.dataset.moment)));
+      $('#ageUp').disabled=true;
+      return;
+    }
     card.classList.toggle('hidden',!dead);
     if(dead){
       const d=game.state.death??{};
@@ -317,7 +423,7 @@ function toggleAutoLife(){
 function switchScreen(id){document.querySelectorAll('.screen-panel').forEach(panel=>panel.classList.toggle('active',panel.id===id));document.querySelectorAll('.nav-item').forEach(button=>button.classList.toggle('active',button.dataset.screen===id));}
 function newLife(seed=$('#seedInput').value.trim()||String(Date.now())){
   autoLifeRunning=false;autoLifeToken++;setAutoStatus('');
-  game=new Game(seed);pendingEvent=null;activityMessage='';autoLifeRng=null;
+  game=new Game(seed);pendingEvent=null;yearMoment=null;leisurePicker=null;activityMessage='';autoLifeRng=null;
   $('#autoLife')?.classList.remove('running');
   if($('#autoLife'))$('#autoLife').textContent='▶ AUTO LIFE';
   switchScreen('lifeScreen');render();
@@ -330,6 +436,7 @@ $('#ageUp').addEventListener('click',()=>{
   if(pendingEvent||!game.state.player.alive)return;
   activityMessage='';
   pendingEvent=game.ageOneYear();
+  if(!pendingEvent&&game.state.player.alive)yearMoment=makeYearMoment();
   render();
 });
 
