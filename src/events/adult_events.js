@@ -181,7 +181,7 @@ export const adultEvents=[
    {
     id:'have-child',label:'Çocuk sahibi olmayı deneyin',majorDecision:true,
     result:s=>s.lastParenthoodAttempt?.success?s.lastParenthoodAttempt.childName+' dünyaya geldi.':'Bu yıl çocuk sahibi olamadınız; daha sonra tekrar deneyebilirsiniz.',
-    effect:(s,rng)=>{attemptChild(s,rng.fork('child-attempt'));s.nextChildDecisionAge=s.player.age+(s.lastParenthoodAttempt?.success?3:1);}
+    effect:(s,rng)=>{attemptChild(s,rng.fork('child-attempt'));s.nextChildDecisionAge=s.player.age+(s.lastParenthoodAttempt?.success?((s.children?.length??0)>=2?3:2):1);}
    },
    {id:'wait-child',label:'Şimdilik bekle',result:'Çocuk kararını ertelediniz.',effect:s=>{s.nextChildDecisionAge=s.player.age+1;}}
   ]
