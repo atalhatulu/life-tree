@@ -76,7 +76,7 @@ function choiceWeight(state,event,choice){
   if(!offer)return .4;
   const current=state.career?.monthlyIncome??0;
   const salaryGain=(offer.salary-current)/Math.max(20000,current||20000);
-  const movePenalty=offer.requiresMove?.45:0;
+  const movePenalty=offer.requiresMove ? .45 : 0;
   return .7+Math.max(-.3,salaryGain)*1.4+(100-(state.career?.satisfaction??50))/70-movePenalty;
  }
  if(event.id==='first-job'){
@@ -94,7 +94,7 @@ function choiceWeight(state,event,choice){
   return .7+(program.admissionChance??50)/70+(state.player.personality.curiosity??50)/120+(state.player.personality.ambition??50)/140;
  }
  if(event.id==='gap-year-direction'){
-  if(choice.id==='seek-work')return .7+(state.gapYears??0)*.45+(state.education?.path==='vocational'?.8:0);
+  if(choice.id==='seek-work')return .7+(state.gapYears??0)*.45+(state.education?.path==='vocational' ? .8 : 0);
   if(choice.id==='retry-university')return .8+(state.player.personality.ambition??50)/80+(state.player.personality.curiosity??50)/100-Math.min(1,(state.gapYears??0)*.12);
   return .5+Math.max(0,2-(state.gapYears??0))*.35;
  }
@@ -118,7 +118,7 @@ function choiceWeight(state,event,choice){
   const ambition=state.player.personality.ambition??50;
   const curiosity=state.player.personality.curiosity??50;
   if(choice.id==='university')return .5+perf/45+ambition/80+curiosity/100;
-  if(choice.id==='work')return .8+(state.education?.path==='vocational'?1.1:0)+(100-perf)/90;
+  if(choice.id==='work')return .8+(state.education?.path==='vocational' ? 1.1 : 0)+(100-perf)/90;
   return .55+(100-(state.player.personality.discipline??50))/100;
  }
  if(event.id==='high-school-path'){
