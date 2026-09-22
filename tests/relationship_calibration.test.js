@@ -56,3 +56,52 @@ test('healthy dating relationship can reach commitment gate at moderate relation
  const event=g.events.events.find(e=>e.id==='relationship-commitment');
  assert.equal(event.condition(g.state),true);
 });
+
+
+test('very high relationship settles toward a compatibility-based anchor instead of sticking to 100',()=>{
+ const g=coupled('relationship-anchor');
+ g.state.social.romance.status='married';
+ g.state.social.romance.relationship=100;
+ g.state.social.romance.compatibility=82;
+ g.state.social.romance.marriageYears=8;
+ g.state.relationshipMemories['partner-cal'].lastInteractionAge=g.state.player.age;
+ const rng={int:()=>0,chance:()=>false,fork:()=>({chance:()=>false})};
+ processPartnershipYear(g.state,rng);
+ assert.ok(g.state.social.romance.relationship<100);
+ assert.ok(g.state.social.romance.relationship>=82);
+});
+
+test('sustained relationship strain can causally end a marriage',()=>{
+ const g=coupled('causal-divorce');
+ g.state.social.romance.status='married';
+ g.state.social.romance.relationship=68;
+ g.state.social.romance.compatibility=62;
+ g.state.social.romance.marriageYears=6;
+ g.state.social.romance.strain=3;
+ g.state.social.romance.strainedYears=2;
+ g.state.social.romance.personality.ambition=5;
+ g.state.player.personality.ambition=90;
+ g.state.finance.debt=4000000;
+ g.state.healthProfile.stress=75;
+ g.state.relationshipMemories['partner-cal'].lastInteractionAge=g.state.player.age-3;
+ const rng={int:()=>0,chance:()=>true,fork:()=>({chance:()=>false})};
+ const entries=processPartnershipYear(g.state,rng);
+ assert.equal(g.state.social.romance,null);
+ assert.ok((g.state.social.exSpouses??[]).length===1);
+ assert.ok(entries.some(x=>x.text.includes('evliliğiniz sona erdi')));
+});
+
+test('healthy marriage is not exposed to divorce RNG without sustained strain',()=>{
+ const g=coupled('healthy-marriage-stable');
+ g.state.social.romance.status='married';
+ g.state.social.romance.relationship=86;
+ g.state.social.romance.compatibility=84;
+ g.state.social.romance.marriageYears=6;
+ g.state.social.romance.strain=.3;
+ g.state.social.romance.strainedYears=0;
+ g.state.relationshipMemories['partner-cal'].lastInteractionAge=g.state.player.age;
+ const rng={int:()=>0,chance:()=>true,fork:()=>({chance:()=>false})};
+ processPartnershipYear(g.state,rng);
+ assert.ok(g.state.social.romance);
+ assert.equal((g.state.social.exSpouses??[]).length,0);
+});
