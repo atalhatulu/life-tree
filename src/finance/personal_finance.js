@@ -30,6 +30,22 @@ function syncDebt(f){
  return f.debt;
 }
 
+export function payDownDebt(state,amount){
+ const f=ensurePersonalFinance(state);
+ ensureDebtBuckets(f);
+ let budget=Math.max(0,Math.round(amount));
+ const order=['consumer','emergency','medical','car','housing'];
+ for(const key of order){
+  if(budget<=0)break;
+  const paid=Math.min(f.debts[key],budget);
+  f.debts[key]-=paid;
+  budget-=paid;
+  if(key==='housing'&&state.assets?.home)state.assets.home.remainingDebt=Math.max(0,(state.assets.home.remainingDebt??0)-paid);
+  if(key==='car'&&state.assets?.car)state.assets.car.remainingDebt=Math.max(0,(state.assets.car.remainingDebt??0)-paid);
+ }
+ return syncDebt(f);
+}
+
 export function ensurePersonalFinance(state){
  if(state.finance){
   state.finance.savings??=0;
@@ -189,7 +205,14 @@ function liquidateCar(state){
  const car=state.assets?.car;
  if(!car)return 0;
  const proceeds=Math.round((car.price??0)*.45);
- state.finance.debt=Math.max(0,state.finance.debt-proceeds);
+ ensureDebtBuckets(state.finance);
+ const paid=Math.min(state.finance.debts.car??0,proceeds);
+ state.finance.debts.car=Math.max(0,(state.finance.debts.car??0)-paid);
+ if(proceeds>paid){
+  const extra=Math.min(state.finance.debts.consumer??0,proceeds-paid);
+  state.finance.debts.consumer=Math.max(0,(state.finance.debts.consumer??0)-extra);
+ }
+ syncDebt(state.finance);
  state.assets.car=null;
  state.finance.lifestyle.transport='public';
  return proceeds;
@@ -199,7 +222,14 @@ function liquidateHome(state){
  const home=state.assets?.home;
  if(!home)return 0;
  const proceeds=Math.round((home.price??0)*.88);
- state.finance.debt=Math.max(0,state.finance.debt-proceeds);
+ ensureDebtBuckets(state.finance);
+ const paid=Math.min(state.finance.debts.housing??0,proceeds);
+ state.finance.debts.housing=Math.max(0,(state.finance.debts.housing??0)-paid);
+ if(proceeds>paid){
+  const extra=Math.min(state.finance.debts.consumer??0,proceeds-paid);
+  state.finance.debts.consumer=Math.max(0,(state.finance.debts.consumer??0)-extra);
+ }
+ syncDebt(state.finance);
  state.assets.home=null;
  state.finance.lifestyle.housing='shared';
  return proceeds;
