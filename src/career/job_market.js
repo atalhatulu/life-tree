@@ -240,6 +240,7 @@ export function acceptJob(state,jobId){
  state.nextPath='work';
  state.pendingJobOffers=null;
  state.unemployedSinceAge=null;
+ state.unemployment=null;
  return {...offer,moveResult};
 }
 
