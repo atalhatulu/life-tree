@@ -105,10 +105,10 @@ export function processPartnershipYear(state,rng){
  const compatibility=r.compatibility??60;
  const mismatch=Math.max(0,70-compatibility)/10;
  r.relationshipTension=clamp(
-  (r.relationshipTension??10)*.80+stress*3.5+mismatch*1.6-qualityTime*6+rng.int(-2,4)
+  (r.relationshipTension??10)*.84+stress*3.7+mismatch*1.7-qualityTime*5+rng.int(-2,4)
  );
  const committed=r.status==='cohabiting'||r.status==='married';
- const conflictChance=Math.min(.36,(committed?.09:.04)+stress*(committed?.018:.009)+Math.max(0,74-compatibility)*(committed?.0055:.0028));
+ const conflictChance=Math.min(.42,(committed?.115:.04)+stress*(committed?.020:.009)+Math.max(0,74-compatibility)*(committed?.006:.0028));
  if(r.yearsTogether>=2&&rng.fork('relationship-conflict').chance(conflictChance)){
   r.relationshipTension=clamp(r.relationshipTension+rng.int(committed?9:6,committed?19:13));
   r.relationship=clamp(r.relationship-rng.int(committed?3:2,committed?7:5));
@@ -145,8 +145,8 @@ export function processPartnershipYear(state,rng){
    endRelationship(state,r,{divorce:true});
    return entries;
   }
-  if(r.marriageYears>=2&&r.relationship<62&&r.relationshipTension>38&&(r.conflictYears??0)>=2){
-   const chance=Math.min(.72,.08+(62-r.relationship)*.012+(r.relationshipTension-38)*.006+(r.conflictYears??0)*.035);
+  if(r.marriageYears>=2&&r.relationship<66&&r.relationshipTension>32&&(r.conflictYears??0)>=2){
+   const chance=Math.min(.74,.10+(66-r.relationship)*.012+(r.relationshipTension-32)*.0065+(r.conflictYears??0)*.04);
    if(rng.fork('divorce').chance(chance)){
     entries.push({age:state.player.age,kind:'relationship',paceBlock:true,text:r.name+' ile evliliğiniz boşanmayla sona erdi.'});
     endRelationship(state,r,{divorce:true});
