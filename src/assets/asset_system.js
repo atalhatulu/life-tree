@@ -1,5 +1,6 @@
 import {TURKEY_2026_ECONOMY} from '../data/countries/turkey/economy.js';
 import {locationProfile} from '../data/countries/turkey/profile.js';
+import {addDebt} from '../finance/personal_finance.js';
 
 export function ensureAssets(state){
  state.assets??={home:null,car:null};
@@ -18,7 +19,7 @@ export function buyCar(state,id){
  if(!option) throw new Error('Bu aracı karşılayamıyorsun.');
  const down=Math.round(option.price*.35);
  state.finance.cash-=down;
- state.finance.debt+=option.price-down;
+ addDebt(state,'car',option.price-down);
  ensureAssets(state).car={...option,purchasedAtAge:state.player.age,remainingDebt:option.price-down};
  state.finance.lifestyle.transport='car';
  return option;
@@ -38,7 +39,7 @@ export function buyHome(state,id){
  if(!option) throw new Error('Bu evi karşılayamıyorsun.');
  const down=Math.round(option.price*.2);
  state.finance.cash-=down;
- state.finance.debt+=option.price-down;
+ addDebt(state,'housing',option.price-down);
  ensureAssets(state).home={...option,purchasedAtAge:state.player.age,remainingDebt:option.price-down};
  state.finance.lifestyle.housing='owned';
  return option;
