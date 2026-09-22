@@ -13,8 +13,17 @@ export function ensureMentalHealth(state){
 }
 
 function recentLossCount(state){
- const age=state.player.age;
- return (state.history??[]).filter(x=>x.age===age&&(x.kind==='death'||(x.kind==='social'&&String(x.text??'').includes('hayatını kaybetti'))||(x.kind==='relationship'&&String(x.text??'').includes('hayatını kaybetti')))).length;
+ const year=state.year;
+ const family=[
+  state.parents?.mother,state.parents?.father,
+  ...(state.siblings??[]),
+  state.grandparents?.maternal?.grandmother,state.grandparents?.maternal?.grandfather,
+  state.grandparents?.paternal?.grandmother,state.grandparents?.paternal?.grandfather
+ ].filter(Boolean);
+ const familyLosses=family.filter(p=>p.deathYear===year).length;
+ const friendLosses=(state.social?.deceasedFriends??[]).filter(p=>p.deathYear===year).length;
+ const partnerLosses=(state.social?.deceasedPartners??[]).filter(p=>p.deathYear===year).length;
+ return familyLosses+friendLosses+partnerLosses;
 }
 
 function statusFromStrain(strain){
@@ -41,17 +50,21 @@ export function processMentalHealthYear(state,rng){
  if(debt>500000)pressure+=1.1;
  if(debt>1500000)pressure+=1.5;
  if(debt>4000000)pressure+=1.8;
- if(unemployed)pressure+=2.2;
- if(conflict)pressure+=2.4;
- if(isolation)pressure+=1.25;
+ if(unemployed)pressure+=2.6;
+ if(conflict)pressure+=3.0;
+ if(isolation)pressure+=1.35;
  if(overwork)pressure+=1.8;
- pressure+=losses*6;
+ if(state.parentCare?.active)pressure+=1.25;
+ if((state.finance?.financialDistressYears??0)>0)pressure+=1.1;
+ if(state.lastDivorceAge===state.player.age)pressure+=7;
+ if(state.widowedAtAge===state.player.age)pressure+=9;
+ pressure+=losses*9;
 
- let recovery=.75+(m.resilience-50)*.018;
- if((state.healthProfile?.fitness??50)>=65)recovery+=.35;
- if((state.social?.friends?.length??0)>=2)recovery+=.30;
- if(relationship?.relationshipState==='stable')recovery+=.25;
- if(m.therapyYears>0)recovery+=.35;
+ let recovery=.60+(m.resilience-50)*.015;
+ if((state.healthProfile?.fitness??50)>=65)recovery+=.25;
+ if((state.social?.friends?.length??0)>=2)recovery+=.25;
+ if(relationship?.relationshipState==='stable')recovery+=.20;
+ if(m.therapyYears>0)recovery+=.30;
  recovery=Math.max(.15,recovery);
 
  m.strain=clamp(m.strain+pressure-recovery+rng.int(-2,2));
