@@ -297,7 +297,8 @@ export function processPersonalFinanceYear(state){
  f.partnerContributionMonthly=partnerContribution(state);
  f.adultChildSupportMonthly=state.lateLife?.familySupportMonthly??0;
  const macro=economy(state);
- f.monthlyExpenses=Math.round((lifestyleMonthlyCost(state)+(f.childMonthlyCost??0)+lateLifeCareCosts(state))*macro.costOfLiving);
+ f.parentCareMonthlyCost=state.parentCare?.active?(state.parentCare.monthlyCost??0):0;
+ f.monthlyExpenses=Math.round((lifestyleMonthlyCost(state)+(f.childMonthlyCost??0)+(f.parentCareMonthlyCost??0)+lateLifeCareCosts(state))*macro.costOfLiving);
  const taxRate=effectiveTaxRate(f.monthlyIncome,Boolean(state.retirement?.retired));
  f.monthlyTax=Math.round(f.monthlyIncome*taxRate);
  f.ownershipCostsMonthly=recurringOwnershipCosts(state);
