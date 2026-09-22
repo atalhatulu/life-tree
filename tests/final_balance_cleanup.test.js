@@ -129,7 +129,7 @@ test('sustained financial and goal strain can make a weak marriage vulnerable wi
  g.state.social.romance={
   id:'partner-strain',name:'Ece',surname:'Kaya',alive:true,age:40,status:'married',
   relationship:68,compatibility:62,yearsTogether:10,marriageYears:5,
-  strain:2.4,health:{current:85},personality:{ambition:10},
+  strain:2.4,strainedYears:1,health:{current:85},personality:{ambition:10},
   preferencesProfile:{food:{},activities:{}}
  };
  g.state.player.personality.ambition=90;
