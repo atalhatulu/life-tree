@@ -4,6 +4,8 @@ import {Game} from '../src/core/game.js';
 import {scoreSocialActivity} from '../src/social/social_activity_system.js';
 import {proceduralActionPlan} from '../src/simulation/procedural_player.js';
 import {switchJob} from '../src/career/career_system.js';
+import {archiveCareer} from '../src/career/career_profile.js';
+import {processPartnershipYear} from '../src/social/partnership_system.js';
 import {RNG} from '../src/core/rng.js';
 
 function adult(seed='cleanup'){
@@ -88,4 +90,33 @@ test('balanced procedural hobby choice does not collapse to running',()=>{
  }
  assert.ok(Object.keys(counts).length>=7,'hobby plan should remain broad');
  assert.ok((counts.running??0)<30,'running should not dominate hobby selection');
+});
+
+
+test('relationship far above compatibility gently returns toward a sustainable equilibrium',()=>{
+ const g=adult('relationship-equilibrium');
+ g.state.social.romance={
+  id:'partner-eq',name:'Ece',surname:'Kaya',alive:true,age:32,status:'cohabiting',
+  relationship:100,compatibility:82,yearsTogether:8,
+  health:{current:85},personality:{ambition:g.state.player.personality.ambition},
+  preferencesProfile:{food:{},activities:{}}
+ };
+ g.state.relationshipMemories={'partner-eq':{
+  interactions:5,lastInteractionAge:32,recentActivities:['tea'],positiveImpact:20,negativeImpact:0,knownPreferences:{}
+ }};
+ const rng={int:()=>0,chance:()=>false,fork:()=>({chance:()=>false})};
+ processPartnershipYear(g.state,rng);
+ assert.ok(g.state.social.romance.relationship<100);
+ assert.ok(g.state.social.romance.relationship>90);
+});
+
+test('same career exit cannot be archived twice in the same year',()=>{
+ const g=adult('career-archive-dedupe');
+ g.state.career={
+  employed:true,jobId:'developer',title:'Yazılımcı',family:'tech',
+  monthlyIncome:90000,years:4,totalYears:4,performance:60,satisfaction:50,stability:60
+ };
+ archiveCareer(g.state,'career-switch');
+ archiveCareer(g.state,'career-switch');
+ assert.equal(g.state.careerProfile.recentJobs.filter(x=>x.jobId==='developer'&&x.leftAtAge===32&&x.reason==='career-switch').length,1);
 });
