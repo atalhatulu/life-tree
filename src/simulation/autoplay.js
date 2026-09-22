@@ -109,7 +109,7 @@ function activityOrder(game,policy,rng){
   const stress=s.healthProfile?.stress??30, health=s.player.health.current??70;
   const mentalStrain=s.mentalHealth?.strain??0;
   const debt=s.finance?.debt??0, employed=Boolean(s.career?.employed);
-  if(mentalStrain>=48)order.push('therapy');
+  if(mentalStrain>=44)order.push('therapy');
   if(health<55||stress>65)order.push('exercise');
   if(debt>250000)order.push('budget');
   if(s.higherEducation?.enrolled)order.push('study');
