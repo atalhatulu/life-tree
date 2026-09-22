@@ -88,7 +88,7 @@ test('minimum wage baseline is 30000 TRY and entry salary floor respects it',asy
 });
 
 
-test('annual discretionary spending is recorded in categorized life spending ledger',()=>{
+test('annual discretionary spending is split across real life categories without changing total spend',()=>{
  const g=adult('finance-spending-ledger');
  g.state.career={employed:true,monthlyIncome:120000};
  g.state.finance.cash=0;
@@ -97,7 +97,9 @@ test('annual discretionary spending is recorded in categorized life spending led
  processPersonalFinanceYear(g.state);
  const summary=spendingSummary(g.state);
  assert.ok(g.state.finance.discretionaryAnnual>0);
- assert.equal(summary.byCategory['daily-life'],g.state.finance.discretionaryAnnual);
+ assert.ok(summary.byCategory['daily-life']>0);
+ assert.ok(summary.byCategory.experiences>0);
+ assert.ok(summary.byCategory['durable-goods']>0);
  assert.equal(summary.total,g.state.finance.discretionaryAnnual);
- assert.equal(summary.entries,1);
+ assert.equal(summary.entries,3);
 });
