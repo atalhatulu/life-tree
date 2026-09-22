@@ -31,12 +31,14 @@ function biologicalPressure(state,condition){
  const fitness=state.healthProfile?.fitness??50;
  const stress=state.healthProfile?.stress??40;
  const severity=condition.severity??1;
- return (
-  severity*1.7+
-  Math.max(0,50-health)*.08+
-  Math.max(0,45-fitness)*.05+
-  Math.max(0,stress-50)*.035
+ const geneticCourse=condition.geneticCourse??geneticDiseaseModifiers(state,condition.id);
+ const baseline=(
+  severity*.95+
+  (55-health)*.05+
+  (50-fitness)*.08+
+  (stress-45)*.03
  );
+ return baseline*geneticCourse.progressionMultiplier;
 }
 
 export function progressionBurden(condition){
@@ -53,7 +55,7 @@ export function processDiseaseProgressionYear(state,rng){
   condition.geneticCourse??=geneticDiseaseModifiers(state,condition.id);
   const p=ensureConditionProgression(condition);
   const beforeStage=p.stage;
-  const pressure=biologicalPressure(state,condition)+treatmentModifier(condition)+rng.int(-4,4);
+  const pressure=biologicalPressure(state,condition)+treatmentModifier(condition)+rng.int(-2,2);
 
   p.score=clamp(p.score+pressure);
   p.stage=stageFromScore(p.score);
@@ -89,7 +91,11 @@ export function processDiseaseProgressionYear(state,rng){
 
   const genetics=condition.geneticCourse??geneticDiseaseModifiers(state,condition.id);
   const treatedFactor=condition.treatmentSuccessful===true?.35:condition.treated===true?.70:1;
-  if(rng.chance(complicationChance*treatedFactor*genetics.complicationMultiplier)){
+  // Fitness cannot make complications impossible, but stronger physical reserve
+  // materially lowers risk while poor fitness increases vulnerability.
+  const fitness=state.healthProfile?.fitness??50;
+  const fitnessComplicationFactor=clamp(1+(45-fitness)*.012,.58,1.42);
+  if(rng.chance(complicationChance*treatedFactor*genetics.complicationMultiplier*fitnessComplicationFactor)){
    p.complicationCount+=1;
    p.score=clamp(p.score+8);
    p.stage=stageFromScore(p.score);
