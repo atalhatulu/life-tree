@@ -9,13 +9,10 @@ export const storyEvents=[
  {
   id:'childhood-friend-invite',title:'Okuldan Sonra',minAge:8,maxAge:13,once:true,priority:4,
   condition:s=>(s.social?.friends?.length??0)>0,
-  choices:s=>{
-   const friend=s.social.friends[0];
-   return [
-    {id:'join-friend',label:friend.name+' ile okuldan sonra vakit geçir',result:friend.name+' ile okul dışında da yakınlaşmaya başladın.',effect:n=>{const target=(n.social?.friends??[]).find(x=>x.id===friend.id);if(target)target.relationship=clamp((target.relationship??55)+5);n.player.personality.sociability=growTrait(n.player.personality.sociability,1);}},
-    {id:'go-home',label:'Eve dönüp kendi işlerinle ilgilen',result:'O gün kendi düzenine dönmeyi seçtin.',effect:n=>{n.player.personality.discipline=growTrait(n.player.personality.discipline,1);}}
-   ];
-  }
+  choices:[
+   {id:'join-friend',label:'Bir arkadaşınla okuldan sonra vakit geçir',result:n=>{const friend=n.social?.friends?.[0];return friend?friend.name+' ile okul dışında da yakınlaşmaya başladın.':'Arkadaşlarınla okul dışında vakit geçirdin.';},effect:n=>{const target=n.social?.friends?.[0];if(target)target.relationship=clamp((target.relationship??55)+5);n.player.personality.sociability=growTrait(n.player.personality.sociability,1);}},
+   {id:'go-home',label:'Eve dönüp kendi işlerinle ilgilen',result:'O gün kendi düzenine dönmeyi seçtin.',effect:n=>{n.player.personality.discipline=growTrait(n.player.personality.discipline,1);}}
+  ]
  },
  {
   id:'family-weekend-choice',title:'Ailece Bir Gün',minAge:9,maxAge:17,once:true,priority:4,
@@ -44,13 +41,10 @@ export const storyEvents=[
  {
   id:'friend-needs-support',title:'Bir Arkadaşının Sana İhtiyacı Var',minAge:20,maxAge:70,once:false,priority:10,
   condition:s=>(s.social?.friends?.length??0)>0&&s.player.age>=(s.nextFriendSupportAge??20),
-  choices:s=>{
-   const friend=[...(s.social.friends??[])].sort((a,b)=>(b.relationship??50)-(a.relationship??50))[0];
-   return [
-    {id:'support-friend',label:friend.name+' için zaman ayır',result:friend.name+' zor bir dönemden geçerken yanında oldun.',effect:n=>{const target=(n.social?.friends??[]).find(x=>x.id===friend.id);if(target)target.relationship=clamp((target.relationship??50)+6);addStress(n,1);n.nextFriendSupportAge=n.player.age+5;}},
-    {id:'cannot-help',label:'Bu kez kendi sorumluluklarına odaklan',result:'Bu kez arkadaşına istediğin kadar zaman ayıramadın.',effect:n=>{const target=(n.social?.friends??[]).find(x=>x.id===friend.id);if(target)target.relationship=clamp((target.relationship??50)-3);n.nextFriendSupportAge=n.player.age+5;}}
-   ];
-  }
+  choices:[
+   {id:'support-friend',label:'Arkadaşın için zaman ayır',result:n=>{const friend=[...(n.social?.friends??[])].sort((a,b)=>(b.relationship??50)-(a.relationship??50))[0];return friend?friend.name+' zor bir dönemden geçerken yanında oldun.':'Bir arkadaşının yanında oldun.';},effect:n=>{const target=[...(n.social?.friends??[])].sort((a,b)=>(b.relationship??50)-(a.relationship??50))[0];if(target)target.relationship=clamp((target.relationship??50)+6);addStress(n,1);n.nextFriendSupportAge=n.player.age+5;}},
+   {id:'cannot-help',label:'Bu kez kendi sorumluluklarına odaklan',result:'Bu kez arkadaşına istediğin kadar zaman ayıramadın.',effect:n=>{const target=[...(n.social?.friends??[])].sort((a,b)=>(b.relationship??50)-(a.relationship??50))[0];if(target)target.relationship=clamp((target.relationship??50)-3);n.nextFriendSupportAge=n.player.age+5;}}
+  ]
  },
  {
   id:'couple-finance-talk',title:'Ev Bütçesi Üzerine Konuşma',minAge:24,maxAge:65,once:false,priority:20,
@@ -63,13 +57,10 @@ export const storyEvents=[
  {
   id:'parent-child-time',title:'Çocuğunla Geçireceğin Zaman',minAge:28,maxAge:65,once:false,priority:14,
   condition:s=>(s.children??[]).some(c=>c.age>=6&&c.age<=17)&&s.player.age>=(s.nextChildBondAge??28),
-  choices:s=>{
-   const child=(s.children??[]).find(c=>c.age>=6&&c.age<=17);
-   return [
-    {id:'make-time',label:child.name+' ile özel zaman geçir',result:child.name+' ile baş başa geçirdiğiniz zaman ilişkinizi güçlendirdi.',effect:n=>{const target=(n.children??[]).find(x=>x.id===child.id);if(target)target.relationship=clamp((target.relationship??60)+5);n.nextChildBondAge=n.player.age+4;}},
-    {id:'too-busy',label:'Bu dönem sorumluluklara öncelik ver',result:'Yoğunluk yüzünden çocuğunla planladığın kadar zaman geçiremedin.',effect:n=>{const target=(n.children??[]).find(x=>x.id===child.id);if(target)target.relationship=clamp((target.relationship??60)-3);n.nextChildBondAge=n.player.age+3;}}
-   ];
-  }
+  choices:[
+   {id:'make-time',label:'Çocuğunla özel zaman geçir',result:n=>{const child=(n.children??[]).find(c=>c.age>=6&&c.age<=17);return child?child.name+' ile baş başa geçirdiğiniz zaman ilişkinizi güçlendirdi.':'Çocuğunla özel zaman geçirdin.';},effect:n=>{const target=(n.children??[]).find(c=>c.age>=6&&c.age<=17);if(target)target.relationship=clamp((target.relationship??60)+5);n.nextChildBondAge=n.player.age+4;}},
+   {id:'too-busy',label:'Bu dönem sorumluluklara öncelik ver',result:'Yoğunluk yüzünden çocuğunla planladığın kadar zaman geçiremedin.',effect:n=>{const target=(n.children??[]).find(c=>c.age>=6&&c.age<=17);if(target)target.relationship=clamp((target.relationship??60)-3);n.nextChildBondAge=n.player.age+3;}}
+  ]
  },
  {
   id:'midlife-priority-check',title:'Hayatındaki Öncelikler',minAge:40,maxAge:52,once:true,priority:12,
