@@ -192,6 +192,35 @@ function renderTimeline() {
   $('#timeline').innerHTML=entries.filter(e=>e.text).sort((a,b)=>b.age-a.age).map(entry=>`<article class="life-entry"><div class="life-age">${entry.age} yaş</div><div class="life-copy">${entry.text}</div></article>`).join('');
 }
 
+function renderDeathSummary() {
+  const host=$('#deathSummary');
+  const d=game.state.deathSummary;
+  if(!d){host.classList.add('hidden');host.innerHTML='';return;}
+  const recap=d.recap;
+  host.classList.remove('hidden');
+  host.innerHTML=`
+    <div class="death-hero">
+      <small>${d.birthYear}–${d.deathYear}</small>
+      <h2>${d.name}</h2>
+      <p>${d.age} yıllık hayat • ${d.cause}</p>
+    </div>
+    <div class="death-grid">
+      <div><span>Eğitim</span><strong>${d.education}</strong></div>
+      <div><span>Kariyer</span><strong>${d.career}</strong></div>
+      <div><span>Aile</span><strong>${d.children} çocuk • ${d.grandchildren} torun</strong></div>
+      <div><span>Life Tree</span><strong>${d.majorDecisions} büyük karar</strong></div>
+      <div><span>Son sağlık</span><strong>${recap.health.finalHealth}/100</strong></div>
+      <div><span>Net tereke</span><strong>₺${Math.round(d.estateNet).toLocaleString('tr-TR')}</strong></div>
+    </div>
+    ${d.highlights?.length?`<div class="death-highlights"><h3>Hayatından öne çıkanlar</h3>${d.highlights.map(h=>`<p>• ${h.text}</p>`).join('')}</div>`:''}
+    ${recap.decisions?.length?`<details class="death-decisions"><summary>Dönüm noktalarını göster</summary>${recap.decisions.map(node=>`
+      <div class="death-decision-row">
+        <b>${node.age} yaş</b><span>${node.title} → ${node.choice}</span>
+        ${node.context?.length?`<small>${node.context.join(' • ')}</small>`:''}
+      </div>`).join('')}</details>`:''}
+  `;
+}
+
 function renderEvent() {
   const card=$('#eventCard');
   if(!pendingEvent){card.classList.add('hidden');card.innerHTML='';$('#ageUp').disabled=false;return;}
@@ -208,7 +237,7 @@ function render(){
   const {player,household,year}=game.state;
   $('#identity').textContent=`${player.name} ${player.surname}`;$('#subtitle').textContent=`${player.age} yaş • ${year} • ${household.economicClass} sınıf`;$('#seed').textContent=`seed: ${game.seedText}`;
   updateBar('health',getHealth(player));updateBar('happiness',getHappiness(player));updateBar('looks',getLooks(player));
-  renderTimeline();renderRelationships();renderActivities();renderAssets();renderCareer();renderLifeTree();renderEvent();
+  renderTimeline();renderRelationships();renderActivities();renderAssets();renderCareer();renderLifeTree();renderDeathSummary();renderEvent();
   const ageButton=$('#ageUp');
   if(!pendingEvent&&player.alive&&player.age>=5&&game.state.actions.remaining>0){
     ageButton.textContent=`YILI BİTİR • ${game.state.actions.remaining} AKSİYON KALDI`;
