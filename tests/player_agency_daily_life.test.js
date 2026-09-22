@@ -145,8 +145,12 @@ test('compatible dating relationship deepens over time without random bonus',()=
  g.state.social.romance={
   id:'partner-growth',name:'Ece',alive:true,age:31,status:'dating',
   relationship:50,compatibility:85,yearsTogether:1,
-  health:{current:80},preferencesProfile:{food:{},activities:{}}
+  health:{current:80},preferencesProfile:{food:{},activities:{}},
+  personality:{ambition:50}
  };
+ g.state.relationshipMemories={'partner-growth':{
+  interactions:2,lastInteractionAge:g.state.player.age,recentActivities:[],positiveImpact:4,negativeImpact:0,knownPreferences:{}
+ }};
  const rng={int:()=>0,chance:()=>false,fork:()=>({chance:()=>false})};
  processPartnershipYear(g.state,rng);
  assert.ok(g.state.social.romance.relationship>50);
