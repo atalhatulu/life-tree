@@ -19,6 +19,8 @@ import {generatePartnerMoveOpportunity} from '../world/migration_system.js';
 import {processUnemploymentYear} from '../career/unemployment_system.js';
 import {processRetrainingYear} from '../career/career_system.js';
 import {processMentalHealthYear} from '../health/mental_health_system.js';
+import {processMilitaryYear} from './military_service.js';
+import {processMiddleAgeYear} from './middle_age_system.js';
 
 export function processAdultYear(state,rng){
  const entries=[];
@@ -48,6 +50,8 @@ export function processAdultYear(state,rng){
  entries.push(...processCareerDynamics(state,rng.fork('career-dynamics')));
  entries.push(...processUnemploymentYear(state));
  entries.push(...processRetrainingYear(state));
+ entries.push(...processMilitaryYear(state));
+ entries.push(...processMiddleAgeYear(state,rng.fork('middle-age')));
  entries.push(...processPartnershipYear(state,rng.fork('partnership')));
  entries.push(...processChildrenYear(state,rng.fork('children')));
  entries.push(...processDescendantLives(state,rng.fork('descendants')));
