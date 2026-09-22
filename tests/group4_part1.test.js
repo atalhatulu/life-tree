@@ -29,7 +29,7 @@ test('career depth initializes human-readable level and workplace factors',()=>{
 
 test('career promotion progression respects experience bands',()=>{
  const g=new Game('career-promotion');
- employed(g,{years:18});
+ employed(g,{years:20});
  g.state.career.levelTitle='senior';
  g.state.career.performance=95;
  g.state.career.network=90;
