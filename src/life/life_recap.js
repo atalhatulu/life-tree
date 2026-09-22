@@ -85,9 +85,11 @@ export function buildLifeRecap(state){
 
  const decisions=(state.lifeTree?.nodes??[]).map(node=>({
   age:node.age,
+  year:node.year??null,
   eventId:node.eventId,
   title:node.title,
-  choice:node.label
+  choice:node.label,
+  context:[...(node.context??[])]
  }));
 
  const treated=(state.healthProfile?.conditions??[]).filter(c=>c.treated);
@@ -144,7 +146,9 @@ export function buildLifeRecap(state){
   },
   finances:{
    cash:Math.round(state.finance?.cash??0),
+   savings:Math.round(state.finance?.savings??0),
    debt:Math.round(state.finance?.debt??0),
+   netLiquid:Math.round((state.finance?.cash??0)+(state.finance?.savings??0)-(state.finance?.debt??0)),
    inheritanceReceived:Math.round(sumInheritance(state)),
    homeOwned:Boolean(state.assets?.home),
    carOwned:Boolean(state.assets?.car),
