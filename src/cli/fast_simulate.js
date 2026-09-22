@@ -142,7 +142,8 @@ const report={
  education:{
   highSchoolPaths:{},schoolNames:{},performance:[],readiness:[],aptitude:[],
   universityAttempts:0,admissions:0,graduates:0,programs:{},universities:{},
-  graduationAges:[],universityMoves:0,gapYears:[],degreeRelatedCareer:0
+  graduationAges:[],universityMoves:0,gapYears:[],degreeRelatedCareer:0,
+  yksScores:[],funding:{},housing:{}
  },
 
  career:{
@@ -151,8 +152,8 @@ const report={
   promotions:0,firings:0,unemploymentStarts:0,firstJobAges:[],
   retirementAges:[],retirementSources:{},pensions:[],
   voluntaryUnrelated:0,forcedUnrelated:0,degreeBackedReturns:0,
-  postBusinessDistant:0,sameOccupationReturns:0,
-  exitReasons:{},issues:[]
+  postBusinessDistant:0,sameOccupationReturns:0,rapidVoluntaryReturns:0,
+  exitReasons:{},issues:[],sectors:{},levels:{},unemploymentDurations:[]
  },
 
  business:{
@@ -163,7 +164,7 @@ const report={
  relationships:{
   everRomance:0,activeAtEnd:0,marriedAtEnd:0,everMarried:0,everCohabited:0,
   divorced:0,everWidowed:0,partnerDeaths:0,relationshipCounts:[],
-  firstDatingAges:[],marriageAges:[],yearsTogether:[],compatibility:[],relationshipScore:[],
+  firstDatingAges:[],firstRelationshipAges:[],marriageAges:[],yearsTogether:[],compatibility:[],relationshipScore:[],
   children:[],childless:0,marriedChildless:0,grandchildren:[],
   childOutcomes:{},childEducationPlans:{}
  },
@@ -182,7 +183,8 @@ const report={
   progressionStages:{},progressionStatuses:{},complications:[],
   diagnosisAges:{},treated:0,untreated:0,treatmentSuccess:0,treatmentFailure:0,
   treatmentAges:[],geneticDiagnoses:0,deathHealthHigh70:0,deathHealthLow25:0,
-  checkups:0
+  checkups:0,
+  mentalStrain:[],mentalStatuses:{},therapyYears:[],mentalEpisodes:[]
  },
 
  genetics:{
@@ -200,12 +202,19 @@ const report={
   distressYears:[],distressEvents:[],restructured:0,discretionaryAnnual:[],
   monthlyIncome:[],monthlyExpenses:[],tax:[],familySupport:[],partnerContribution:[],
   childCosts:[],homeOwners:0,carOwners:0,homePurchaseAges:[],carPurchaseAges:[],
-  homePrices:[],carPrices:[],estateNet:[],inheritanceReceived:[]
+  homePrices:[],carPrices:[],estateNet:[],inheritanceReceived:[],
+  debtTypes:{consumer:[],medical:[],housing:[],car:[],emergency:[]}
  },
 
  world:{
-  recessions:0,booms:0,healthCostShocks:0,
+  recessions:0,booms:0,healthCostShocks:0,housingSurges:0,
   finalLaborMarket:[],finalCostOfLiving:[],finalWageIndex:[],finalHealthcareCost:[],finalConfidence:[]
+ },
+ military:{
+  eligible:0,completed:0,standard:0,paid:0,deferred:0,completionAges:[],paidFees:[]
+ },
+ care:{
+  parentCareLives:0,modes:{},monthlyCosts:[]
  },
 
  pacing:{
@@ -359,6 +368,9 @@ for(let i=0;i<lives;i++){
   if(gradAge!=null)report.education.graduationAges.push(gradAge);
  }
  if(state.career?.degreeRelated)report.education.degreeRelatedCareer++;
+ if(Number.isFinite(state.universityPlanning?.yksScore))report.education.yksScores.push(state.universityPlanning.yksScore);
+ if(state.higherEducation?.funding)inc(report.education.funding,state.higherEducation.funding);
+ if(state.higherEducation?.housingChoice)inc(report.education.housing,state.higherEducation.housingChoice);
 
  // Career
  if(state.career?.employed)report.career.employedAtEnd++;
@@ -370,6 +382,9 @@ for(let i=0;i<lives;i++){
  }
  if(state.career?.title)inc(report.career.finalJobs,state.career.title);
  if(state.career?.family)inc(report.career.finalFamilies,state.career.family);
+ if(state.career?.sector)inc(report.career.sectors,state.career.sector);
+ if(state.career?.levelTitle)inc(report.career.levels,state.career.levelTitle);
+ if(Number.isFinite(state.unemployment?.durationYears))report.career.unemploymentDurations.push(state.unemployment.durationYears);
  report.career.transitions.push(careerTransitionCount(state));
  report.career.totalExperience.push(state.careerProfile?.totalExperience??state.career?.totalYears??0);
  for(const [jobId,years] of Object.entries(state.careerProfile?.experienceByJob??{}))inc(report.career.jobYears,jobId,years);
@@ -388,6 +403,7 @@ for(let i=0;i<lives;i++){
   if(issue.type==='degree-backed-return')report.career.degreeBackedReturns++;
   if(issue.type==='post-business-distant-reentry')report.career.postBusinessDistant++;
   if(issue.type==='same-occupation-return')report.career.sameOccupationReturns++;
+  if(issue.type==='rapid-voluntary-return')report.career.rapidVoluntaryReturns++;
   if(report.samples.careerIssues.length<20)report.samples.careerIssues.push({seed:game.seedText,...issue});
  }
  report.career.issues.push(...careerIssues.map(x=>x.type));
@@ -423,6 +439,8 @@ for(let i=0;i<lives;i++){
  report.relationships.partnerDeaths+=state.social?.deceasedPartners?.length??0;
  const datingAge=firstAge(state,x=>x.kind==='choice'&&x.eventId==='adult-dating'&&x.choiceId==='meet');
  if(datingAge!=null)report.relationships.firstDatingAges.push(datingAge);
+ const relationshipAges=partners.map(p=>p.startedAtAge).filter(Number.isFinite);
+ if(relationshipAges.length)report.relationships.firstRelationshipAges.push(Math.min(...relationshipAges));
  for(const p of partners){
   if(p.marriedAtAge!=null)report.relationships.marriageAges.push(p.marriedAtAge);
   if(p.yearsTogether!=null)report.relationships.yearsTogether.push(p.yearsTogether);
@@ -487,6 +505,12 @@ for(let i=0;i<lives;i++){
   }else report.health.untreated++;
  }
  report.health.checkups+=historyCount(state,x=>x.kind==='activity'&&x.activityId==='checkup');
+ if(state.mentalHealth){
+  report.health.mentalStrain.push(state.mentalHealth.strain??0);
+  inc(report.health.mentalStatuses,state.mentalHealth.status??'unknown');
+  report.health.therapyYears.push(state.mentalHealth.therapyYears??0);
+  report.health.mentalEpisodes.push(state.mentalHealth.episodes?.length??0);
+ }
 
  // Genetics
  const genetics=geneticSummary(state.player);
@@ -544,6 +568,7 @@ for(let i=0;i<lives;i++){
  }
  if(state.estate?.net!=null)report.finance.estateNet.push(state.estate.net);
  report.finance.inheritanceReceived.push((state.inheritanceHistory??[]).reduce((s,x)=>s+(x.amount??0),0));
+ for(const key of Object.keys(report.finance.debtTypes))report.finance.debtTypes[key].push(state.finance?.debts?.[key]??0);
 
  if(debt>5000000&&report.samples.extremeDebt.length<10)report.samples.extremeDebt.push({seed:game.seedText,age,debt,cash,savings});
  if(cash>5000000&&report.samples.extremeCash.length<10)report.samples.extremeCash.push({seed:game.seedText,age,cash,savings,debt});
@@ -558,8 +583,23 @@ for(let i=0;i<lives;i++){
   report.world.finalConfidence.push(world.confidence);
  }
  report.world.recessions+=historyCount(state,x=>x.kind==='world'&&String(x.text??'').includes('Ekonomik durgunluk'));
- report.world.booms+=historyCount(state,x=>x.kind==='world'&&String(x.text??'').includes('Güçlü ekonomik dönem'));
+ report.world.booms+=historyCount(state,x=>x.kind==='world'&&(String(x.text??'').includes('Ekonomik genişleme')||String(x.text??'').includes('Güçlü ekonomik dönem')));
  report.world.healthCostShocks+=historyCount(state,x=>x.kind==='world'&&String(x.text??'').includes('Sağlık hizmetlerinin'));
+ report.world.housingSurges+=historyCount(state,x=>x.kind==='world'&&String(x.text??'').includes('Konut piyasasında'));
+
+ // Military / elder-care telemetry
+ if(state.militaryService?.eligible)report.military.eligible++;
+ if(state.militaryService?.status==='completed'){
+  report.military.completed++;
+  inc(report.military,state.militaryService.mode??'unknown');
+  if(Number.isFinite(state.militaryService.completedAtAge))report.military.completionAges.push(state.militaryService.completedAtAge);
+  if((state.militaryService.paidFee??0)>0)report.military.paidFees.push(state.militaryService.paidFee);
+ }else if(state.militaryService?.status==='deferred')report.military.deferred++;
+ if(state.parentCare?.startedAtAge!=null){
+  report.care.parentCareLives++;
+  inc(report.care.modes,state.parentCare.mode??'unknown');
+  report.care.monthlyCosts.push(state.parentCare.monthlyCost??0);
+ }
 
  // Pacing / event telemetry
  const pacedNodes=(state.lifeTree?.nodes??[]).filter(n=>n.age>=21&&n.pacingCategory);
@@ -737,7 +777,10 @@ const summary={
   graduationAges:distribution(report.education.graduationAges),
   universityMovePct:pct(report.education.universityMoves,valid),
   gapYears:distribution(report.education.gapYears),
-  finalCareerDegreeRelatedPct:pct(report.education.degreeRelatedCareer,valid)
+  finalCareerDegreeRelatedPct:pct(report.education.degreeRelatedCareer,valid),
+  yksScores:distribution(report.education.yksScores),
+  funding:report.education.funding,
+  housing:report.education.housing
  },
 
  career:{
@@ -756,6 +799,9 @@ const summary={
   retirementSources:report.career.retirementSources,
   pensions:distribution(report.career.pensions),
   exitReasons:report.career.exitReasons,
+  sectors:report.career.sectors,
+  levels:report.career.levels,
+  unemploymentDurations:distribution(report.career.unemploymentDurations),
   anomalyAudit:{
    voluntaryUnrelatedSwitchCount:report.career.voluntaryUnrelated,
    forcedUnrelatedReemploymentCount:report.career.forcedUnrelated,
@@ -793,6 +839,7 @@ const summary={
   partnerDeathsPerLife:avg(report.relationships.partnerDeaths,valid),
   relationshipCounts:distribution(report.relationships.relationshipCounts),
   firstDatingAges:distribution(report.relationships.firstDatingAges),
+  firstRelationshipAges:distribution(report.relationships.firstRelationshipAges),
   marriageAges:distribution(report.relationships.marriageAges),
   yearsTogether:distribution(report.relationships.yearsTogether),
   compatibility:distribution(report.relationships.compatibility),
@@ -843,7 +890,11 @@ const summary={
   geneticDiagnosisCount:report.health.geneticDiagnoses,
   health70PlusAmongDeathsPct:pct(report.health.deathHealthHigh70,Math.max(1,report.deaths)),
   healthUnder25AmongDeathsPct:pct(report.health.deathHealthLow25,Math.max(1,report.deaths)),
-  checkupsPerLife:avg(report.health.checkups,valid)
+  checkupsPerLife:avg(report.health.checkups,valid),
+  mentalStrain:distribution(report.health.mentalStrain),
+  mentalStatuses:report.health.mentalStatuses,
+  therapyYears:distribution(report.health.therapyYears),
+  mentalEpisodes:distribution(report.health.mentalEpisodes)
  },
 
  genetics:{
@@ -888,13 +939,15 @@ const summary={
   homePrices:distribution(report.finance.homePrices),
   carPrices:distribution(report.finance.carPrices),
   estateNet:distribution(report.finance.estateNet),
-  inheritanceReceived:distribution(report.finance.inheritanceReceived)
+  inheritanceReceived:distribution(report.finance.inheritanceReceived),
+  debtTypes:Object.fromEntries(Object.entries(report.finance.debtTypes).map(([k,v])=>[k,distribution(v)]))
  },
 
  world:{
   recessionsPerLife:avg(report.world.recessions,valid),
   boomsPerLife:avg(report.world.booms,valid),
   healthCostShocksPerLife:avg(report.world.healthCostShocks,valid),
+  housingSurgesPerLife:avg(report.world.housingSurges,valid),
   finalLaborMarket:distribution(report.world.finalLaborMarket),
   finalCostOfLiving:distribution(report.world.finalCostOfLiving),
   finalWageIndex:distribution(report.world.finalWageIndex),
