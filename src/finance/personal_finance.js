@@ -2,6 +2,7 @@ import {TURKEY_2026_ECONOMY} from '../data/countries/turkey/economy.js';
 import {lifestyleMonthlyCost} from '../lifestyle/lifestyle_system.js';
 import {economy} from '../world/world_state.js';
 import {ensureSpendingHistory,recordSpending} from './life_spending_system.js';
+import {processDurableGoodsBudget} from './durable_goods_system.js';
 
 const STARTING_CASH_BY_CLASS={düşük:2500,orta:7500,'üst-orta':18000,yüksek:50000};
 const STUDENT_SUPPORT_BY_CLASS={düşük:3500,orta:7500,'üst-orta':11000,yüksek:17000};
@@ -331,12 +332,7 @@ export function processPersonalFinanceYear(state){
    label:'Gezi, eğlence ve deneyim harcamaları',
    source:'annual-budget'
   });
-  recordSpending(state,{
-   category:'durable-goods',
-   amount:durableGoods,
-   label:'Elektronik, eşya ve dayanıklı tüketim',
-   source:'annual-budget'
-  });
+  processDurableGoodsBudget(state,durableGoods);
   let available=Math.max(0,annualNet-f.discretionaryAnnual);
   available=serviceDebt(state,available);
   const reserveTarget=cashReserveTarget(f);
