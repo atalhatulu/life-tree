@@ -123,17 +123,17 @@ export const adultEvents=[
   id:'relationship-commitment',title:'İlişkinin Geleceği',minAge:22,maxAge:55,once:false,majorDecision:false,priority:58,
   condition:s=>{
    const r=s.social?.romance;if(!r)return false;ensurePartnershipState(s);
-   return r.status==='dating'&&r.yearsTogether>=2&&r.relationship>=56&&s.player.age>=(s.nextCommitmentAge??22)&&(s.preferences?.partnershipDesire??50)>=40;
+   return r.status==='dating'&&r.yearsTogether>=2&&r.relationship>=54&&s.player.age>=(s.nextCommitmentAge??22)&&(s.preferences?.partnershipDesire??50)>=40;
   },
   choices:[
    {id:'cohabit',label:'Birlikte yaşamayı teklif et',majorDecision:true,result:'Birlikte yaşamaya başladınız.',effect:s=>moveInTogether(s)},
-   {id:'marry',label:'Evlilik teklif et',majorDecision:true,condition:s=>s.social.romance.relationship>=64,result:'Evlendiniz.',effect:s=>marryPartner(s)},
+   {id:'marry',label:'Evlilik teklif et',majorDecision:true,condition:s=>s.social.romance.relationship>=62,result:'Evlendiniz.',effect:s=>marryPartner(s)},
    {id:'wait',label:'İlişkiyi olduğu gibi sürdür',result:'Şimdilik büyük bir adım atmamayı seçtin.',effect:s=>{s.social.romance.relationship=Math.min(100,s.social.romance.relationship+1);s.nextCommitmentAge=s.player.age+2;}}
   ]
  },
  {
   id:'marriage-after-cohabiting',title:'Evlilik Kararı',minAge:23,maxAge:60,once:false,majorDecision:false,priority:57,
-  condition:s=>s.social?.romance?.status==='cohabiting'&&s.social.romance.yearsTogether>=3&&s.social.romance.relationship>=62&&s.player.age>=(s.nextMarriageAge??23)&&(s.preferences?.marriageDesire??50)>=45,
+  condition:s=>s.social?.romance?.status==='cohabiting'&&s.social.romance.yearsTogether>=3&&s.social.romance.relationship>=58&&s.player.age>=(s.nextMarriageAge??23)&&(s.preferences?.marriageDesire??50)>=45,
   choices:[
    {id:'marry',label:'Evlen',majorDecision:true,result:'Evlendiniz.',effect:s=>marryPartner(s)},
    {id:'continue',label:'Birlikte yaşamaya devam et',result:'Resmî evlilik olmadan birlikte yaşamaya devam ettiniz.',effect:s=>{s.social.romance.relationship=Math.min(100,s.social.romance.relationship+1);s.nextMarriageAge=s.player.age+2;}}
