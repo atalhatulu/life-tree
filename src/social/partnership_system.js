@@ -62,10 +62,9 @@ export function processPartnershipYear(state,rng){
  const financeStress=(state.finance?.debt??0)>3000000?2.2:(state.finance?.debt??0)>750000?1.1:0;
  const ambitionGap=Math.abs((state.player.personality.ambition??50)-(r.personality?.ambition??50));
  const goalFriction=ambitionGap>=45?.7:ambitionGap>=30?.3:0;
- const neglectFriction=sharedHousehold
-  ?Math.max(0,yearsSinceInteraction-2)*.35
-  :Math.max(0,yearsSinceInteraction-1)*.45;
- r.relationship=clamp(currentRelationship+compatibilityGrowth-financeStress-goalFriction-neglectFriction);
+ // Explicit neglect decay is handled once by relationship_maintenance.js.
+ // Partnership processing only models shared-life growth and concrete friction.
+ r.relationship=clamp(currentRelationship+compatibilityGrowth-financeStress-goalFriction);
 
  if(r.status!=='married'&&r.yearsTogether>=2&&r.relationship<40&&rng.chance(.18)){
   entries.push({age:state.player.age,kind:'relationship',text:r.name+' ile ilişkin sona erdi.'});
