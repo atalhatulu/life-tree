@@ -26,10 +26,10 @@ function annualAgingWear(age){
  if(age<30)return {health:.02,fitness:.10};
  if(age<45)return {health:.07,fitness:.25};
  if(age<60)return {health:.35,fitness:.65};
- if(age<70)return {health:1.15,fitness:2.1};
- if(age<80)return {health:2.25,fitness:3.6};
- if(age<90)return {health:3.80,fitness:5.3};
- if(age<100)return {health:5.60,fitness:6.7};
+ if(age<70)return {health:1.35,fitness:2.1};
+ if(age<80)return {health:2.70,fitness:3.6};
+ if(age<90)return {health:4.20,fitness:5.3};
+ if(age<100)return {health:5.80,fitness:6.7};
  return {health:7.4,fitness:8.2};
 }
 
@@ -102,7 +102,7 @@ export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
  if(lifestyle?.food==='frugal')additionalLoss+=.20;
 
  const previousHealth=healthBeforeYear??state.player.health.current;
- const healthCeiling=clamp(100-activeBurden*4.5,25,100);
+ const healthCeiling=clamp(100-activeBurden*6,20,100);
  const uncertainty=rng.int(-1,1)*.15;
  const yearlyLoss=Math.max(.01,wear.health+additionalLoss+uncertainty);
  state.player.health.current=Math.min(
