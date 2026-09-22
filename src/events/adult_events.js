@@ -1,6 +1,7 @@
 import {applyUniversityProgram,generateUniversityApplications} from '../education/university_system.js';
 import {acceptJob,generateJobOffers} from '../career/job_market.js';
 import {switchJob} from '../career/career_system.js';
+import {familyCompatibility} from '../career/career_taxonomy.js';
 import {setLifestyle} from '../lifestyle/lifestyle_system.js';
 import {affordableCarOptions,buyCar,affordableHomeOptions,buyHome} from '../assets/asset_system.js';
 import {marryPartner,moveInTogether,ensurePartnershipState} from '../social/partnership_system.js';
@@ -67,9 +68,9 @@ export const adultEvents=[
  },
  {
   id:'career-switch',title:'Kariyerini Değiştirme Fırsatı',minAge:22,maxAge:65,once:false,majorDecision:false,priority:78,
-  condition:s=>Array.isArray(s.pendingCareerOffers)&&s.pendingCareerOffers.length>0&&s.career?.employed,
+  condition:s=>Array.isArray(s.pendingCareerOffers)&&s.pendingCareerOffers.some(job=>familyCompatibility(s.career?.jobId,job.id)>=65)&&s.career?.employed,
   choices:s=>[
-   ...s.pendingCareerOffers.map(job=>({
+   ...s.pendingCareerOffers.filter(job=>familyCompatibility(s.career?.jobId,job.id)>=65).map(job=>({
     id:'switch:'+job.id,label:job.title+' — '+job.cityName+' — ₺'+job.salary.toLocaleString('tr-TR')+'/ay'+(job.requiresMove?' • taşınma ~₺'+job.moveCost.toLocaleString('tr-TR'):''),majorDecision:true,
     result:job.requiresMove?job.cityName+' şehrine taşınıp '+job.title+' pozisyonuna geçtin.':job.title+' pozisyonuna geçtin.',effect:next=>switchJob(next,job)
    })),
