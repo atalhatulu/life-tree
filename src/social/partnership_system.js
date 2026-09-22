@@ -1,3 +1,4 @@
+import {ensureRelationshipMemory} from './relationship_memory.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 function partnerMortalityChance(partner){
@@ -48,10 +49,23 @@ export function processPartnershipYear(state,rng){
 
  const currentRelationship=r.relationship??55;
  const compatibility=r.compatibility??60;
- const sharedLifeFactor=r.status==='married'?.08:r.status==='cohabiting'?.07:.10;
- const compatibilityGrowth=Math.max(0,(compatibility-currentRelationship)*sharedLifeFactor);
- const financeStress=(state.finance?.debt??0)>3000000?2:(state.finance?.debt??0)>750000?1:0;
- r.relationship=clamp(currentRelationship+compatibilityGrowth-financeStress);
+ const memory=ensureRelationshipMemory(state,r.id);
+ const yearsSinceInteraction=memory.lastInteractionAge==null
+  ?Math.min(4,r.yearsTogether)
+  :Math.max(0,state.player.age-memory.lastInteractionAge);
+ const sharedHousehold=['married','cohabiting'].includes(r.status);
+ const recentConnection=yearsSinceInteraction<=1;
+ const sharedLifeFactor=sharedHousehold?.035:.025;
+ const compatibilityGrowth=recentConnection
+  ?Math.max(0,(compatibility-currentRelationship)*sharedLifeFactor)
+  :0;
+ const financeStress=(state.finance?.debt??0)>3000000?2.2:(state.finance?.debt??0)>750000?1.1:0;
+ const ambitionGap=Math.abs((state.player.personality.ambition??50)-(r.personality?.ambition??50));
+ const goalFriction=ambitionGap>=45?.7:ambitionGap>=30?.3:0;
+ const neglectFriction=sharedHousehold
+  ?Math.max(0,yearsSinceInteraction-2)*.35
+  :Math.max(0,yearsSinceInteraction-1)*.45;
+ r.relationship=clamp(currentRelationship+compatibilityGrowth-financeStress-goalFriction-neglectFriction);
 
  if(r.status!=='married'&&r.yearsTogether>=2&&r.relationship<40&&rng.chance(.18)){
   entries.push({age:state.player.age,kind:'relationship',text:r.name+' ile ilişkin sona erdi.'});
