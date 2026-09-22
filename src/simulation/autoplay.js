@@ -31,14 +31,14 @@ function humanLikeChoice(game,event,choices,rng){
   const years=romance?.yearsTogether??0;
   const ageMarriageBoost=Math.max(0,age-24)*2.2;
   const durationBoost=Math.max(0,years-2)*4;
-  add('marry',(prefs.marriageDesire??50)+(romance?.relationship??50)+ageMarriageBoost+durationBoost-88);
+  add('marry',(prefs.marriageDesire??50)+(romance?.relationship??50)+ageMarriageBoost+durationBoost-82);
   add('cohabit',(prefs.partnershipDesire??50)+(romance?.relationship??50)-82-(age>=30?12:0));
   add('wait',Math.max(0,(romance?.relationshipTension??0)-25)+(age<23?8:0));
  }
  if(event.id==='marriage-after-cohabiting'){
   const age=s.player.age;
   const years=romance?.yearsTogether??0;
-  add('marry',(prefs.marriageDesire??50)+(romance?.relationship??50)-(romance?.relationshipTension??0)+Math.max(0,age-24)*2.4+Math.max(0,years-3)*3-42);
+  add('marry',(prefs.marriageDesire??50)+(romance?.relationship??50)-(romance?.relationshipTension??0)+Math.max(0,age-24)*2.6+Math.max(0,years-3)*3-38);
   add('continue',48-(prefs.marriageDesire??50)+(romance?.relationshipTension??0)-(age>=30?10:0));
  }
  if(event.id==='child-decision'){
