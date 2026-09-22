@@ -3,12 +3,12 @@ import {geneticRiskMultiplier,geneticDiseaseModifiers} from './genetic_system.js
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 const CONDITIONS=[
- {id:'hypertension',label:'Yüksek tansiyon',minAge:32,base:.0085,severity:2},
- {id:'back-pain',label:'Kronik bel ağrısı',minAge:28,base:.009,severity:1},
- {id:'metabolic',label:'Metabolik sorun',minAge:35,base:.0065,severity:2},
- {id:'anxiety',label:'Anksiyete',minAge:18,base:.005,severity:1},
- {id:'cardiac',label:'Kalp-damar hastalığı',minAge:48,base:.0048,severity:3},
- {id:'cancer',label:'Kanser',minAge:52,base:.0032,severity:3}
+ {id:'hypertension',label:'Yüksek tansiyon',minAge:32,base:.0080,severity:2},
+ {id:'back-pain',label:'Kronik bel ağrısı',minAge:28,base:.0080,severity:1},
+ {id:'metabolic',label:'Metabolik sorun',minAge:35,base:.0060,severity:2},
+ {id:'anxiety',label:'Anksiyete',minAge:18,base:.0045,severity:1},
+ {id:'cardiac',label:'Kalp-damar hastalığı',minAge:48,base:.0045,severity:3},
+ {id:'cancer',label:'Kanser',minAge:52,base:.0030,severity:3}
 ];
 
 function ageMortalityBase(age){
@@ -35,6 +35,20 @@ function annualAgingWear(age){
 
 function conditionBurden(condition){
  return progressionBurden(condition);
+}
+
+function conditionCeilingPenalty(condition){
+ const p=condition.progression;
+ const stage=p?.stage??((condition.severity??1)>=3?'severe':(condition.severity??1)>=2?'moderate':'mild');
+ const stagePenalty={mild:2,moderate:7,severe:14,critical:24}[stage]??7;
+ const statusFactor=p?.status==='remission'?.25:p?.status==='stable'?.60:1;
+ const severityBonus=Math.max(0,(condition.severity??1)-1)*1.5;
+ return (stagePenalty+severityBonus)*statusFactor;
+}
+
+function chronicHealthCeiling(conditions){
+ const totalPenalty=conditions.reduce((sum,c)=>sum+conditionCeilingPenalty(c),0);
+ return clamp(100-totalPenalty,30,100);
 }
 
 function deathCause(state,rng){
@@ -100,11 +114,11 @@ export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
  // Disease consumes reserve, but diagnosis alone should not create a runaway
  // health spiral. Fitness changes resilience rather than restoring Health.
  const diseaseLossMultiplier=clamp(1-(h.fitness-50)*.006,.75,1.20);
- let additionalLoss=Math.max(0,h.stress-45)*.014+activeBurden*.42*diseaseLossMultiplier;
+ let additionalLoss=Math.max(0,h.stress-45)*.014+activeBurden*.35*diseaseLossMultiplier;
  if(lifestyle?.food==='frugal')additionalLoss+=.20;
 
  const previousHealth=healthBeforeYear??state.player.health.current;
- const healthCeiling=clamp(100-activeBurden*6,20,100);
+ const healthCeiling=chronicHealthCeiling(h.conditions);
  const uncertainty=rng.int(-1,1)*.15;
  const yearlyLoss=Math.max(.01,wear.health+additionalLoss+uncertainty);
  state.player.health.current=Math.min(
