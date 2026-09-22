@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {Game} from '../src/core/game.js';
 import {ensurePersonalFinance,processPersonalFinanceYear} from '../src/finance/personal_finance.js';
 import {settleEstate} from '../src/finance/estate_system.js';
+import {spendingSummary} from '../src/finance/life_spending_system.js';
 
 function adult(seed='finance-v2'){
  const g=new Game(seed);
@@ -84,4 +85,19 @@ test('minimum wage baseline is 30000 TRY and entry salary floor respects it',asy
  const paid=JOBS.filter(job=>job.id!=='unemployed');
  assert.ok(paid.every(job=>job.income[0]>=30000));
  assert.equal(JOBS.find(job=>job.id==='cleaner').income[0],30000);
+});
+
+
+test('annual discretionary spending is recorded in categorized life spending ledger',()=>{
+ const g=adult('finance-spending-ledger');
+ g.state.career={employed:true,monthlyIncome:120000};
+ g.state.finance.cash=0;
+ g.state.finance.savings=0;
+ g.state.finance.lifestyle={housing:'family',food:'standard',clothing:'standard',transport:'public'};
+ processPersonalFinanceYear(g.state);
+ const summary=spendingSummary(g.state);
+ assert.ok(g.state.finance.discretionaryAnnual>0);
+ assert.equal(summary.byCategory['daily-life'],g.state.finance.discretionaryAnnual);
+ assert.equal(summary.total,g.state.finance.discretionaryAnnual);
+ assert.equal(summary.entries,1);
 });
