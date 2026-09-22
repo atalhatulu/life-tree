@@ -16,6 +16,7 @@ import {processBusinessYear} from '../career/entrepreneurship_system.js';
 import {finalizeDeath} from './death_summary.js';
 import {processLateLifeYear} from './late_age_system.js';
 import {generatePartnerMoveOpportunity} from '../world/migration_system.js';
+import {processHouseholdYear} from '../family/household_simulation.js';
 
 export function processAdultYear(state,rng){
  const entries=[];
@@ -44,6 +45,7 @@ export function processAdultYear(state,rng){
  recordCareerYear(state);
  entries.push(...processCareerDynamics(state,rng.fork('career-dynamics')));
  entries.push(...processPartnershipYear(state,rng.fork('partnership')));
+ entries.push(...processHouseholdYear(state,rng.fork('household')));
  entries.push(...processChildrenYear(state,rng.fork('children')));
  entries.push(...processDescendantLives(state,rng.fork('descendants')));
  entries.push(...processInheritance(state));
