@@ -1,3 +1,4 @@
+import {liquidFunds,spendLiquidFunds} from '../finance/liquidity.js';
 import {TURKEY_CITIES,cityById} from '../data/countries/turkey/cities.js';
 import {ensurePersonalFinance} from '../finance/personal_finance.js';
 import {archiveCareer} from '../career/career_profile.js';
@@ -35,8 +36,7 @@ export function canAffordMove(state,toCityId){
  const fromCityId=state.location?.cityId??state.origin?.cityId;
  if(fromCityId===toCityId)return true;
  const cost=movingCost(fromCityId,toCityId,relocationHouseholdSize(state));
- const cash=state.finance?.cash??0;
- return cash>=cost*.35;
+ return liquidFunds(state)>=cost*.35;
 }
 
 export function moveToCity(state,toCityId,reason='personal',options={}){
@@ -48,9 +48,8 @@ export function moveToCity(state,toCityId,reason='personal',options={}){
  const cost=Math.round(movingCost(from.cityId,to.id,relocationHouseholdSize(state))*(options.costMultiplier??1));
  ensurePersonalFinance(state);
 
- const paid=Math.min(state.finance.cash??0,cost);
- state.finance.cash=Math.max(0,(state.finance.cash??0)-paid);
- state.finance.debt=(state.finance.debt??0)+Math.max(0,cost-paid);
+ const payment=spendLiquidFunds(state,cost);
+ state.finance.debt=(state.finance.debt??0)+payment.remaining;
 
  if(state.assets?.home?.cityId&&state.assets.home.cityId!==to.id){
   state.assets.home.isPrimaryResidence=false;
