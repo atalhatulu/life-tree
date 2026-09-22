@@ -4,6 +4,31 @@ import {economy} from '../world/world_state.js';
 const STARTING_CASH_BY_CLASS={düşük:2500,orta:7500,'üst-orta':18000,yüksek:50000};
 const STUDENT_SUPPORT_BY_CLASS={düşük:3500,orta:7500,'üst-orta':11000,yüksek:17000};
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+const DEBT_RATES={consumer:.085,medical:.03,housing:.035,car:.06,emergency:.055};
+
+function ensureDebtBuckets(finance){
+ finance.debts??={consumer:0,medical:0,housing:0,car:0,emergency:0};
+ for(const key of Object.keys(DEBT_RATES))finance.debts[key]=Math.max(0,Number(finance.debts[key]??0));
+ const bucketTotal=Object.values(finance.debts).reduce((s,v)=>s+v,0);
+ if(bucketTotal===0&&(finance.debt??0)>0)finance.debts.consumer=finance.debt;
+ finance.debt=Math.round(Object.values(finance.debts).reduce((s,v)=>s+v,0));
+ return finance.debts;
+}
+
+export function addDebt(state,type,amount){
+ const f=ensurePersonalFinance(state);
+ const debts=ensureDebtBuckets(f);
+ const key=DEBT_RATES[type]!=null?type:'emergency';
+ debts[key]+=Math.max(0,Math.round(amount));
+ f.debt=Math.round(Object.values(debts).reduce((s,v)=>s+v,0));
+ return f.debt;
+}
+
+function syncDebt(f){
+ ensureDebtBuckets(f);
+ f.debt=Math.max(0,Math.round(Object.values(f.debts).reduce((s,v)=>s+v,0)));
+ return f.debt;
+}
 
 export function ensurePersonalFinance(state){
  if(state.finance){
@@ -11,6 +36,8 @@ export function ensurePersonalFinance(state){
   state.finance.financialDistressYears??=0;
   state.finance.financialDistressEvents??=0;
   state.finance.debtRestructured??=false;
+  state.finance.activitySpendingAnnual??=0;
+  ensureDebtBuckets(state.finance);
   return state.finance;
  }
  const studentAwayFromHome=Boolean(state.higherEducation?.enrolled&&state.higherEducation?.movedForUniversity);
@@ -18,6 +45,7 @@ export function ensurePersonalFinance(state){
   cash:STARTING_CASH_BY_CLASS[state.household.economicClass]??5000,
   savings:0,
   debt:0,
+  debts:{consumer:0,medical:0,housing:0,car:0,emergency:0},
   monthlyIncome:0,
   monthlyExpenses:0,
   familySupportMonthly:0,
@@ -79,24 +107,21 @@ function securedDebt(state){
 
 function serviceDebt(state,available){
  const f=state.finance;
+ ensureDebtBuckets(f);
  if(f.debt<=0||available<=0)return available;
- const payment=Math.min(f.debt,Math.round(available*.70));
- if(payment<=0)return available;
- f.debt-=payment;
- const homeDebt=Math.max(0,state.assets?.home?.remainingDebt??0);
- const carDebt=Math.max(0,state.assets?.car?.remainingDebt??0);
- const secured=homeDebt+carDebt;
- if(secured>0){
-  if(state.assets?.home?.remainingDebt){
-   const share=homeDebt/secured;
-   state.assets.home.remainingDebt=Math.max(0,Math.round(homeDebt-payment*share));
-  }
-  if(state.assets?.car?.remainingDebt){
-   const share=carDebt/secured;
-   state.assets.car.remainingDebt=Math.max(0,Math.round(carDebt-payment*share));
-  }
+ let budget=Math.min(f.debt,Math.round(available*.55));
+ const original=budget;
+ const order=['consumer','emergency','medical','car','housing'];
+ for(const key of order){
+  if(budget<=0)break;
+  const payment=Math.min(f.debts[key],budget);
+  f.debts[key]-=payment;
+  budget-=payment;
+  if(key==='housing'&&state.assets?.home)state.assets.home.remainingDebt=Math.max(0,(state.assets.home.remainingDebt??0)-payment);
+  if(key==='car'&&state.assets?.car)state.assets.car.remainingDebt=Math.max(0,(state.assets.car.remainingDebt??0)-payment);
  }
- return available-payment;
+ syncDebt(f);
+ return available-(original-budget);
 }
 
 function drawReserves(f,amount){
@@ -112,7 +137,13 @@ function drawReserves(f,amount){
 
 function discretionaryRate(state){
  const l=state.finance.lifestyle;
- let rate=.18;
+ const monthlyGross=state.career?.monthlyIncome??state.retirement?.pensionMonthly??0;
+ let rate=.22;
+ if(monthlyGross>60000)rate+=.04;
+ if(monthlyGross>100000)rate+=.05;
+ if(monthlyGross>160000)rate+=.06;
+ if(state.player.age>=30)rate+=.02;
+ if((state.children?.length??0)>0)rate+=.04;
  if(l.food==='premium')rate+=.08;
  else if(l.food==='healthy')rate+=.03;
  else if(l.food==='frugal')rate-=.05;
@@ -120,11 +151,27 @@ function discretionaryRate(state){
  if(l.transport==='car')rate+=.03;
  if(l.housing==='apartment')rate+=.03;
  if(state.retirement?.retired)rate-=.04;
- return clamp(rate,.10,.42);
+ return clamp(rate,.14,.58);
 }
 
 function cashReserveTarget(f){
- return Math.round(clamp((f.monthlyExpenses+f.ownershipCostsMonthly)*6,100000,1500000));
+ return Math.round(clamp((f.monthlyExpenses+f.ownershipCostsMonthly)*5,80000,900000));
+}
+
+function longTermSavingsCap(state,annualIncome){
+ const age=state.player.age;
+ const years=Math.max(1,age-18);
+ const targetMultiple=age<30?.7:age<40?1.5:age<50?2.5:age<60?3.5:4.5;
+ return Math.max(150000,Math.round((annualIncome||1)*targetMultiple+years*18000));
+}
+
+function lifestyleCreep(state,annualIncome){
+ const f=state.finance;
+ if(!f?.lifestyle||annualIncome<=0)return;
+ const monthly=annualIncome/12;
+ if(monthly>=90000&&f.lifestyle.food==='standard')f.lifestyle.food='healthy';
+ if(monthly>=130000&&f.lifestyle.clothing==='basic')f.lifestyle.clothing='standard';
+ if(state.player.age>=30&&monthly>=80000&&f.lifestyle.housing==='family')f.lifestyle.housing='shared';
 }
 
 function downgradeLifestyle(state){
@@ -186,8 +233,11 @@ function manageFinancialDistress(state,annualIncome,reserveTarget){
   f.debt>Math.max(1500000,annualIncome*6)&&
   (f.lastRestructureAge==null||state.player.age-f.lastRestructureAge>=5)
  ){
+  ensureDebtBuckets(f);
   const before=f.debt;
-  f.debt=Math.round(f.debt*.85);
+  f.debts.consumer=Math.round(f.debts.consumer*.75);
+  f.debts.emergency=Math.round(f.debts.emergency*.82);
+  syncDebt(f);
   f.debtRestructured=true;
   f.lastRestructureAge=state.player.age;
   actions.push('borç yeniden yapılandırıldı (₺'+Math.round(before-f.debt).toLocaleString('tr-TR')+' uzlaşma indirimi)');
@@ -212,6 +262,7 @@ export function processPersonalFinanceYear(state){
  f.discretionaryAnnual=0;
 
  if(annualNet>=0){
+  lifestyleCreep(state,annualIncome);
   f.discretionaryAnnual=Math.round(annualNet*discretionaryRate(state));
   let available=Math.max(0,annualNet-f.discretionaryAnnual);
   available=serviceDebt(state,available);
@@ -220,14 +271,26 @@ export function processPersonalFinanceYear(state){
   const toCash=Math.min(reserveNeed,available);
   f.cash+=toCash;
   available-=toCash;
-  f.savings=(f.savings??0)+available;
+  const savingsCap=longTermSavingsCap(state,annualIncome);
+  const savingsRoom=Math.max(0,savingsCap-(f.savings??0));
+  const toSavings=Math.min(savingsRoom,available);
+  f.savings=(f.savings??0)+toSavings;
+  available-=toSavings;
+  // Surplus above a realistic long-term savings target is consumed through
+  // travel, household replacement, gifts and other non-asset life spending.
+  f.activitySpendingAnnual=Math.round((f.activitySpendingAnnual??0)*.25+available);
  }else{
   const unresolved=drawReserves(f,Math.abs(annualNet));
-  if(unresolved>0)f.debt+=unresolved;
+  if(unresolved>0)addDebt(state,'emergency',unresolved);
  }
 
- const interestRate=f.debtRestructured ? .035 : .055;
- f.debt+=Math.round(f.debt*interestRate);
+ ensureDebtBuckets(f);
+ const macroCredit=economy(state).creditConditions??1;
+ for(const [key,rate] of Object.entries(DEBT_RATES)){
+  const effective=f.debtRestructured&&['consumer','emergency'].includes(key)?Math.min(rate,.045):rate;
+  f.debts[key]+=Math.round(f.debts[key]*effective*macroCredit);
+ }
+ syncDebt(f);
  const reserveTarget=cashReserveTarget(f);
  const distressActions=manageFinancialDistress(state,Math.max(0,annualIncome),reserveTarget);
 
