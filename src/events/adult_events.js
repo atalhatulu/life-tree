@@ -152,10 +152,10 @@ export const adultEvents=[
   ]
  },
  {
-  id:'relationship-commitment',title:'İlişkinin Geleceği',minAge:20,maxAge:55,once:false,majorDecision:false,priority:58,
+  id:'relationship-commitment',title:'İlişkinin Geleceği',minAge:21,maxAge:55,once:false,majorDecision:false,priority:58,
   condition:s=>{
    const r=s.social?.romance;if(!r)return false;ensurePartnershipState(s);
-   return r.status==='dating'&&r.yearsTogether>=1&&r.relationship>=48&&s.player.age>=(s.nextCommitmentAge??20)&&(s.preferences?.partnershipDesire??50)>=35;
+   return r.status==='dating'&&r.yearsTogether>=1&&r.relationship>=48&&s.player.age>=(s.nextCommitmentAge??21)&&(s.preferences?.partnershipDesire??50)>=35;
   },
   choices:[
    {id:'cohabit',label:'Birlikte yaşamayı teklif et',majorDecision:true,result:'Birlikte yaşamaya başladınız.',effect:s=>moveInTogether(s)},
