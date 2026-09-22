@@ -70,15 +70,23 @@ export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
  const baseWear=annualAgingWear(age);
  const constitution=state.player.health.constitution??60;
  const agingMultiplier=clamp(1+(60-constitution)*.0075,.70,1.25);
+ const exercisedRecently=(h.lastExerciseAge??-999)>=age-1;
+ const fitnessProtection=clamp((h.fitness-45)*.003,0,.16);
+ const exerciseProtection=exercisedRecently?.14:0;
+ const nutritionProtection=lifestyle?.food==='healthy'?.08:lifestyle?.food==='frugal'?-.04:0;
+ const healthWearMultiplier=clamp(
+  agingMultiplier*(1-fitnessProtection-exerciseProtection-nutritionProtection),
+  .62,
+  1.30
+ );
  const wear={
-  health:baseWear.health*agingMultiplier,
+  health:baseWear.health*healthWearMultiplier,
   fitness:baseWear.fitness*agingMultiplier
  };
 
  h.stress=clamp(h.stress+rng.int(-3,3)+(state.finance?.debt>500000?3:0)+(state.career?.satisfaction<35?2:0));
 
  const previousFitness=h.fitness;
- const exercisedRecently=(h.lastExerciseAge??-999)>=age-1;
  let inactivityPenalty=0;
  if(!exercisedRecently)inactivityPenalty=age>=45?0.75:age>=18?0.35:0;
  h.fitness=clamp(previousFitness-wear.fitness-inactivityPenalty);
@@ -104,7 +112,10 @@ export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
   const effectiveMinAge=Math.max(0,condition.minAge+geneticCourse.onsetAgeOffset);
   if(age<effectiveMinAge||h.conditions.some(c=>c.id===condition.id)) continue;
   const geneticMultiplier=geneticRiskMultiplier(state,condition.id);
-  const chance=condition.base*geneticMultiplier+(100-state.player.health.current)*.00025+h.stress*.00012;
+  const fitnessRiskMultiplier=clamp(1+(45-h.fitness)*.006,.72,1.28);
+  const activityRiskMultiplier=exercisedRecently?.88:1.06;
+  const chance=condition.base*geneticMultiplier*fitnessRiskMultiplier*activityRiskMultiplier+
+   (100-state.player.health.current)*.00022+h.stress*.00011;
   if(rng.chance(chance)){
    h.conditions.push({
     id:condition.id,label:condition.label,severity:condition.severity,diagnosedAtAge:age,
