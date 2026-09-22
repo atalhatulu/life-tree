@@ -14,4 +14,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: node --test tests/group5_part1.test.js tests/group5_part2.test.js tests/save_and_branch.test.js
+      - run: node --test tests/group6_part1.test.js
