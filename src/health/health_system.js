@@ -93,8 +93,10 @@ export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
  const fitnessWearMultiplier=clamp(1-(h.fitness-50)*.008,.72,1.28);
  const nutritionWearMultiplier=lifestyle?.food==='healthy'?.92:lifestyle?.food==='frugal'?1.06:1;
  const recentActivityWearMultiplier=exercisedRecently?.94:1;
+ const bodyRecovery=state.body?.recovery??70;
+ const bodyWearMultiplier=clamp(1+(60-bodyRecovery)*.004,.86,1.18);
  const healthWearMultiplier=clamp(
-  agingMultiplier*fitnessWearMultiplier*nutritionWearMultiplier*recentActivityWearMultiplier,
+  agingMultiplier*fitnessWearMultiplier*nutritionWearMultiplier*recentActivityWearMultiplier*bodyWearMultiplier,
   .55,
   1.45
  );
@@ -114,7 +116,9 @@ export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
  // Disease consumes reserve, but diagnosis alone should not create a runaway
  // health spiral. Fitness changes resilience rather than restoring Health.
  const diseaseLossMultiplier=clamp(1-(h.fitness-50)*.006,.75,1.20);
- let additionalLoss=Math.max(0,h.stress-45)*.014+activeBurden*.38*diseaseLossMultiplier;
+ const mentalWellbeing=state.mentalHealth?.wellbeing??70;
+ let additionalLoss=Math.max(0,h.stress-45)*.014+activeBurden*.38*diseaseLossMultiplier+
+  Math.max(0,35-mentalWellbeing)*.008;
  if(lifestyle?.food==='frugal')additionalLoss+=.20;
 
  const previousHealth=healthBeforeYear??state.player.health.current;
