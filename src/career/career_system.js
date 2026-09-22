@@ -2,7 +2,7 @@ import {generateJobOffers} from './job_market.js';
 import {economy} from '../world/world_state.js';
 import {moveToCity} from '../world/migration_system.js';
 import {archiveCareer,yearsInFamily} from './career_profile.js';
-import {metaFor} from './career_taxonomy.js';
+import {metaFor,familyCompatibility} from './career_taxonomy.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export function deepenCareerState(state){
@@ -78,6 +78,11 @@ function transitionReasonForSwitch(state,job){
 
 export function switchJob(state,job){
  const old=state.career;
+ if(!old?.employed)throw new Error('Aktif kariyer olmadan gönüllü kariyer değişimi yapılamaz.');
+ if(familyCompatibility(old.jobId,job.id)<65){
+  state.pendingCareerOffers=null;
+  throw new Error('Bu teklif mevcut kariyerinle artık tutarlı değil; yeniden eğitim veya ayrı bir kariyer dönüş yolu gerekir.');
+ }
  archiveCareer(state,'career-switch');
  let moveResult=null;
  if(job.requiresMove)moveResult=moveToCity(state,job.cityId,'career-switch',{housing:'shared',stress:4});
