@@ -251,7 +251,11 @@ function recordSegment(container,key,state,netWorth){
  bucket.income.push(state.finance?.monthlyIncome??state.player.monthlyIncome??0);
  bucket.netWorth.push(netWorth);
  bucket.married+=state.social?.romance?.status==='married'?1:0;
- bucket.everMarried+=(state.marriageHistory?.length??0)>0||state.social?.romance?.status==='married'?1:0;
+ const everMarried=
+  state.social?.romance?.status==='married'||
+  (state.social?.exSpouses?.length??0)>0||
+  (state.social?.deceasedPartners??[]).some(partner=>partner.status==='married');
+ bucket.everMarried+=everMarried?1:0;
  bucket.graduated+=state.higherEducation?.completed?1:0;
  bucket.employed+=state.career?.employed?1:0;
  bucket.retired+=state.retirement?.retired?1:0;
