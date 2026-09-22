@@ -9,8 +9,23 @@ const DEBT_RATES={consumer:.085,medical:.03,housing:.035,car:.06,emergency:.055}
 function ensureDebtBuckets(finance){
  finance.debts??={consumer:0,medical:0,housing:0,car:0,emergency:0};
  for(const key of Object.keys(DEBT_RATES))finance.debts[key]=Math.max(0,Number(finance.debts[key]??0));
- const bucketTotal=Object.values(finance.debts).reduce((s,v)=>s+v,0);
- if(bucketTotal===0&&(finance.debt??0)>0)finance.debts.consumer=finance.debt;
+ let bucketTotal=Object.values(finance.debts).reduce((s,v)=>s+v,0);
+ const aggregate=Math.max(0,Number(finance.debt??0));
+ if(bucketTotal===0&&aggregate>0){
+  finance.debts.consumer=aggregate;
+  bucketTotal=aggregate;
+ }else if(aggregate>bucketTotal){
+  finance.debts.emergency+=aggregate-bucketTotal;
+  bucketTotal=aggregate;
+ }else if(aggregate<bucketTotal){
+  let reduction=bucketTotal-aggregate;
+  for(const key of ['consumer','emergency','medical','car','housing']){
+   if(reduction<=0)break;
+   const take=Math.min(finance.debts[key],reduction);
+   finance.debts[key]-=take;
+   reduction-=take;
+  }
+ }
  finance.debt=Math.round(Object.values(finance.debts).reduce((s,v)=>s+v,0));
  return finance.debts;
 }
