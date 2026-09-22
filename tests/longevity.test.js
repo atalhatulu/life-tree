@@ -4,6 +4,7 @@ import {Game} from '../src/core/game.js';
 import {autoplay} from '../src/simulation/autoplay.js';
 import {validateState} from '../src/simulation/invariants.js';
 
+// Calibration guard: validates current mortality distribution after health-model changes.
 test('300 random lives remain valid through age 100 or natural death',()=>{
  let deaths=0;
  let summaries=0;
