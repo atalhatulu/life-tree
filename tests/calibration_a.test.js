@@ -67,3 +67,19 @@ test('calibrated health still preserves state invariants',()=>{
  autoplay(g,{toAge:70,policy:'human-like'});
  assert.deepEqual(validateState(g.state),[]);
 });
+
+
+test('same-year family loss is visible to mental-health processing',()=>{
+ const g=new Game('same-year-grief');
+ g.state.player.age=45;
+ g.state.year=2071;
+ g.state.healthProfile={conditions:[],stress:35,fitness:50,lastCheckupAge:null,riskExposure:{}};
+ const m=ensureMentalHealth(g.state);
+ g.state.parents.mother.alive=false;
+ g.state.parents.mother.deathYear=g.state.year;
+ const before=m.strain;
+ const entries=processMentalHealthYear(g.state,new RNG('same-year-grief-rng'));
+ assert.ok(m.strain>before+4);
+ assert.ok(entries.some(e=>e.kind==='mental-health'));
+ assert.ok(m.episodes.some(e=>e.type==='grief'));
+});
