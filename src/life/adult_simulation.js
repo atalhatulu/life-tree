@@ -16,6 +16,7 @@ import {processBusinessYear} from '../career/entrepreneurship_system.js';
 import {finalizeDeath} from './death_summary.js';
 import {processLateLifeYear} from './late_age_system.js';
 import {generatePartnerMoveOpportunity} from '../world/migration_system.js';
+import {processMentalHealthYear} from '../health/mental_health_system.js';
 
 export function processAdultYear(state,rng){
  const entries=[];
@@ -61,6 +62,7 @@ export function processAdultYear(state,rng){
   if(!transitionPending||age>=20) entries.push(...processPersonalFinanceYear(state));
  }
 
+ entries.push(...processMentalHealthYear(state,rng.fork('mental-health')));
  entries.push(...processHealthYear(state,rng.fork('health'),{healthBeforeYear:healthBeforeLifestyle}));
  if(!state.player.alive)finalizeDeath(state);
  return entries;
