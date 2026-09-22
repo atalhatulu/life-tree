@@ -955,6 +955,22 @@ const summary={
   finalConfidence:distribution(report.world.finalConfidence)
  },
 
+ military:{
+  eligiblePct:pct(report.military.eligible,valid),
+  completedPct:pct(report.military.completed,Math.max(1,report.military.eligible)),
+  standardCount:report.military.standard,
+  paidCount:report.military.paid,
+  deferredCount:report.military.deferred,
+  completionAges:distribution(report.military.completionAges),
+  paidFees:distribution(report.military.paidFees)
+ },
+
+ care:{
+  parentCarePct:pct(report.care.parentCareLives,valid),
+  modes:report.care.modes,
+  monthlyCosts:distribution(report.care.monthlyCosts)
+ },
+
  pacing:{
   adultMajorDecisions:distribution(report.pacing.adultMajorDecisions),
   adjacentMajorDecisionLivesPct:pct(report.pacing.adjacentMajorDecisionLives,valid),
