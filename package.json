@@ -14,7 +14,6 @@
     "trace": "node src/cli/trace.js",
     "branch": "node src/cli/branch.js",
     "showcase": "node src/cli/showcase.js",
-    "start": "python3 -m http.server 8080",
-    "export-lives": "node src/cli/export_lives.js"
+    "start": "python3 -m http.server 8080"
   }
 }
