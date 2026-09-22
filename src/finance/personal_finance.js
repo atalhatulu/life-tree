@@ -40,8 +40,8 @@ export function addDebt(state,type,amount){
 }
 
 function syncDebt(f){
- ensureDebtBuckets(f);
- f.debt=Math.max(0,Math.round(Object.values(f.debts).reduce((s,v)=>s+v,0)));
+ f.debts??={consumer:0,medical:0,housing:0,car:0,emergency:0};
+ f.debt=Math.max(0,Math.round(Object.values(f.debts).reduce((s,v)=>s+(Number(v)||0),0)));
  return f.debt;
 }
 
