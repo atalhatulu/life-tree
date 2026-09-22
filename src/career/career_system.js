@@ -36,6 +36,12 @@ export function processCareerDynamics(state,rng){
  deepenCareerState(state);
 
  c.companyFit=clamp(c.companyFit+rng.int(-3,3)+(c.degreeRelated?1:0));
+ if(c.sector==='public')c.stability=clamp(c.stability+1);
+ if(c.sector==='self-employed'){
+  const swing=rng.int(-10,14);
+  c.monthlyIncome=Math.max(0,Math.round(c.monthlyIncome*(1+swing/100)));
+  state.player.monthlyIncome=c.monthlyIncome;
+ }
  c.network=clamp(c.network+rng.int(-2,2)+(state.player.personality.sociability>65?1:0));
  c.satisfaction=clamp(c.satisfaction+rng.int(-4,4)+(c.degreeRelated?1:0)+(c.companyFit-50)*.02);
  c.stability=clamp(c.stability+rng.int(-3,3)+(c.performance>65?2:-1)+(c.network-50)*.01);
@@ -55,7 +61,8 @@ export function processCareerDynamics(state,rng){
 
  const macro=economy(state);
  const marketRisk=Math.max(0,(1-macro.laborMarket)*.08);
- const firingChance=Math.min(.22,(c.performance<35?.10:c.stability<30?.06:.008)+marketRisk);
+ const sectorRisk=c.sector==='public'?.35:c.sector==='self-employed'?1.35:1;
+ const firingChance=Math.min(.24,((c.performance<35?.10:c.stability<30?.06:.008)+marketRisk)*sectorRisk);
  if(!promotedThisYear&&rng.chance(firingChance)){
   entries.push({age:state.player.age,kind:'career',paceBlock:true,text:c.title+' işinden çıkarıldın.'});
   archiveCareer(state,'fired');
@@ -106,7 +113,8 @@ export function switchJob(state,job){
   cityName:job.cityName??state.location?.cityName,
   level:Math.max(1,Math.min(3,1+Math.floor(familyYears/6))),
   satisfaction:55,
-  stability:60,
+  stability:job.sectorStability??60,
+  sector:job.sector??'private',
   enteredAtAge:state.player.age,
   transitionReason:job.transitionReason??'career-switch',
   previousJobs:[...(old?.previousJobs??[]),old?{title:old.title,years:old.years}:null].filter(Boolean)
