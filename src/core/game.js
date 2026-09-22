@@ -12,7 +12,8 @@ import {processAdultYear} from '../life/adult_simulation.js';
 import {performActivity,availableActivities} from '../life/activity_system.js';
 import {EventEngine} from '../events/event_engine.js';
 import {parseSave} from './save_system.js';
-import {createDecisionSnapshot,restoreDecisionSnapshot} from '../timeline/snapshot.js';
+import {createDecisionSnapshot,restoreDecisionSnapshot,snapshotRng} from '../timeline/snapshot.js';
+import {ensureStateSchema} from './state_schema.js';
 import {childhoodEvents} from '../events/childhood_events.js';
 import {adolescenceEvents} from '../events/adolescence_events.js';
 import {adultEvents} from '../events/adult_events.js';
@@ -35,6 +36,7 @@ export class Game{
   this.state.social={friends:[],romance:null};
   this.state.actions={remaining:0,max:3};
   this.state.world=createWorldState(2026);
+  ensureStateSchema(this.state);
   this.events=new EventEngine([...childhoodEvents,...adolescenceEvents,...adultEvents,...lateLifeEvents,...parentingEvents,...lateAgeEvents]);
   this.activeEventId=null;
  }
@@ -42,7 +44,7 @@ export class Game{
  static fromSave(payloadOrText){
   const payload=parseSave(payloadOrText);
   const game=new Game(payload.seedText);
-  game.state=structuredClone(payload.state);
+  game.state=ensureStateSchema(structuredClone(payload.state));
   game.rng.seed=payload.rng.seed>>>0;
   game.rng.state=payload.rng.state>>>0;
   game.activeEventId=payload.activeEventId??null;
@@ -51,7 +53,12 @@ export class Game{
 
  static fromDecisionSnapshot(seedText,snapshot){
   const game=new Game(seedText);
-  game.state=restoreDecisionSnapshot(snapshot);
+  game.state=ensureStateSchema(restoreDecisionSnapshot(snapshot));
+  const rng=snapshotRng(snapshot);
+  if(rng){
+   game.rng.seed=rng.seed;
+   game.rng.state=rng.state;
+  }
   return game;
  }
 
@@ -97,7 +104,7 @@ export class Game{
   if(!selected)throw new Error('Unknown or unavailable choice: '+choiceId);
 
   const isMajor=Boolean(selected.majorDecision??event.majorDecision);
-  const snapshot=isMajor?createDecisionSnapshot(this.state,event,availableChoices):null;
+  const snapshot=isMajor?createDecisionSnapshot(this.state,event,availableChoices,{seed:this.rng.seed,state:this.rng.state}):null;
 
   const choiceRng=this.rng.fork('choice-'+this.state.year+'-'+event.id+'-'+choiceId);
   const resolved=this.events.resolve(this.state,event,choiceId,choiceRng);
@@ -114,9 +121,21 @@ export class Game{
  branchFromNode(nodeIndex,choiceId){
   const node=this.state.lifeTree?.nodes?.[nodeIndex];
   if(!node?.snapshot)throw new Error('This Life Tree node has no branch snapshot.');
+  if(choiceId===node.choiceId)throw new Error('Branch choice must differ from the original decision.');
   const branched=Game.fromDecisionSnapshot(this.seedText,node.snapshot);
   const event=branched.events.events.find(candidate=>candidate.id===node.eventId);
   if(!event)throw new Error('Decision event no longer exists: '+node.eventId);
+  const branchId='branch-'+(this.state.lifeTree.nextBranchId??1);
+  this.state.lifeTree.nextBranchId=(this.state.lifeTree.nextBranchId??1)+1;
+  branched.state.lifeTree.currentBranchId=branchId;
+  branched.state.lifeTree.branches.push({
+   id:branchId,
+   parentNodeIndex:nodeIndex,
+   eventId:node.eventId,
+   originalChoiceId:node.choiceId,
+   alternateChoiceId:choiceId,
+   createdAtAge:this.state.player.age
+  });
   branched.makeChoice(event,choiceId);
   return branched;
  }
