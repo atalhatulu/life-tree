@@ -27,18 +27,25 @@ function humanLikeChoice(game,event,choices,rng){
   add('focus-self',55-(prefs.partnershipDesire??50)+(stress>65?20:0));
  }
  if(event.id==='relationship-commitment'){
-  add('marry',(prefs.marriageDesire??50)+(romance?.relationship??50)-95);
-  add('cohabit',(prefs.partnershipDesire??50)+(romance?.relationship??50)-80);
-  add('wait',Math.max(0,(romance?.relationshipTension??0)-25));
+  const age=s.player.age;
+  const years=romance?.yearsTogether??0;
+  const ageMarriageBoost=Math.max(0,age-24)*2.2;
+  const durationBoost=Math.max(0,years-2)*4;
+  add('marry',(prefs.marriageDesire??50)+(romance?.relationship??50)+ageMarriageBoost+durationBoost-82);
+  add('cohabit',(prefs.partnershipDesire??50)+(romance?.relationship??50)-82-(age>=30?12:0));
+  add('wait',Math.max(0,(romance?.relationshipTension??0)-25)+(age<23?8:0));
  }
  if(event.id==='marriage-after-cohabiting'){
-  add('marry',(prefs.marriageDesire??50)+(romance?.relationship??50)-(romance?.relationshipTension??0)-55);
-  add('wait',55-(prefs.marriageDesire??50)+(romance?.relationshipTension??0));
+  const age=s.player.age;
+  const years=romance?.yearsTogether??0;
+  add('marry',(prefs.marriageDesire??50)+(romance?.relationship??50)-(romance?.relationshipTension??0)+Math.max(0,age-24)*2.6+Math.max(0,years-3)*3-38);
+  add('continue',48-(prefs.marriageDesire??50)+(romance?.relationshipTension??0)-(age>=30?10:0));
  }
  if(event.id==='child-decision'){
-  const readiness=(prefs.parenthoodDesire??50)+(romance?.preferences?.parenthoodDesire??50)+(romance?.relationship??50)-debt/100000;
-  add('have-child',readiness-100+(liquid>250000?18:0));
-  add('wait-child',120-readiness+(stress>60?20:0));
+  const childCount=s.children?.length??0;
+  const readiness=(prefs.parenthoodDesire??50)+(romance?.preferences?.parenthoodDesire??50)+(romance?.relationship??50)-debt/100000-childCount*16;
+  add('have-child',readiness-104+(liquid>250000?15:0)-(childCount>=2?15:0));
+  add('wait-child',118-readiness+(stress>60?20:0)+childCount*8);
  }
  if(event.id==='buy-car'){
   add('skip-car',debt>0?45:0);

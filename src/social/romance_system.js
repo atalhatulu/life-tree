@@ -12,9 +12,9 @@ function assignPartnerWork(person,rng){
 
 function partnerPreferences(person,rng){
  return {
-  partnershipDesire:clamp(Math.round(42+(person.personality?.sociability??50)*.28+rng.int(-12,12))),
-  marriageDesire:clamp(Math.round(32+(person.personality?.patience??50)*.22+rng.int(-14,14))),
-  parenthoodDesire:clamp(Math.round(38+(person.personality?.patience??50)*.18+rng.int(-16,16))),
+  partnershipDesire:clamp(Math.round(44+(person.personality?.sociability??50)*.28+rng.int(-12,12))),
+  marriageDesire:clamp(Math.round(38+(person.personality?.patience??50)*.24+rng.int(-12,12))),
+  parenthoodDesire:clamp(Math.round(34+(person.personality?.patience??50)*.17+rng.int(-18,18))),
   riskTolerance:clamp(Math.round(35+(person.personality?.ambition??50)*.30+rng.int(-12,12))),
   hometownAttachment:clamp(rng.int(28,82))
  };
