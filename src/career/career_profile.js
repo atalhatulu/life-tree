@@ -28,6 +28,8 @@ export function archiveCareer(state,reason='change'){
  const c=state.career;
  if(!c?.jobId)return;
  const profile=ensureCareerProfile(state);
+ const duplicate=profile.recentJobs[0];
+ if(duplicate?.jobId===c.jobId&&duplicate?.leftAtAge===state.player.age&&duplicate?.reason===reason)return;
  profile.recentJobs.unshift({
   jobId:c.jobId,
   title:c.title,
