@@ -51,6 +51,8 @@ export function processPartnershipYear(state,rng){
 
  if(r.status!=='married'&&r.yearsTogether>=2&&r.relationship<40&&rng.chance(.18)){
   entries.push({age:state.player.age,kind:'relationship',text:r.name+' ile ilişkin sona erdi.'});
+  state.social.exPartners??=[];
+  state.social.exPartners.push({...r,endedAtAge:state.player.age});
   state.social.romance=null;
   return entries;
  }
