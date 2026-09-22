@@ -25,12 +25,12 @@ function annualAgingWear(age){
  if(age<18)return {health:0,fitness:0};
  if(age<30)return {health:.02,fitness:.10};
  if(age<45)return {health:.07,fitness:.25};
- if(age<60)return {health:.28,fitness:.65};
- if(age<70)return {health:.85,fitness:2.1};
- if(age<80)return {health:1.65,fitness:3.6};
- if(age<90)return {health:2.80,fitness:5.3};
- if(age<100)return {health:4.20,fitness:6.7};
- return {health:6.0,fitness:8.2};
+ if(age<60)return {health:.35,fitness:.65};
+ if(age<70)return {health:1.15,fitness:2.1};
+ if(age<80)return {health:2.25,fitness:3.6};
+ if(age<90)return {health:3.80,fitness:5.3};
+ if(age<100)return {health:5.60,fitness:6.7};
+ return {health:7.4,fitness:8.2};
 }
 
 function conditionBurden(condition){
@@ -95,21 +95,20 @@ export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
  h.fitness=clamp(previousFitness-wear.fitness-inactivityPenalty);
 
  const activeBurden=h.conditions.reduce((sum,condition)=>sum+conditionBurden(condition),0);
- let delta=(constitution-60)*.02+(h.fitness-50)*.035-(h.stress-40)*.02;
- if(lifestyle?.food==='healthy')delta+=.55;
- if(lifestyle?.food==='frugal')delta-=.35;
- delta-=activeBurden*.62;
+ // Positive lifestyle factors protect the reserve through the wear multiplier
+ // and disease risk; they do not manufacture Health points. Negative causes can
+ // still accelerate loss.
+ let additionalLoss=Math.max(0,h.stress-45)*.018+activeBurden*.52;
+ if(lifestyle?.food==='frugal')additionalLoss+=.25;
 
  const previousHealth=healthBeforeYear??state.player.health.current;
  const healthCeiling=clamp(100-activeBurden*6,20,100);
- // Health can recover modestly when underlying causes are favorable, but no
- // action grants Health directly. Fitness, nutrition, constitution, stress and
- // disease burden determine the yearly reserve change; aging wear is then paid.
- const simulatedHealth=Math.min(
+ const uncertainty=rng.int(-1,1)*.18;
+ const yearlyLoss=Math.max(.01,wear.health+additionalLoss+uncertainty);
+ state.player.health.current=Math.min(
   healthCeiling,
-  clamp(previousHealth+delta+rng.int(-1,1))
+  clamp(previousHealth-yearlyLoss)
  );
- state.player.health.current=clamp(simulatedHealth-wear.health);
 
  for(const condition of CONDITIONS){
   const geneticCourse=geneticDiseaseModifiers(state,condition.id);
