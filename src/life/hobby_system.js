@@ -1,3 +1,4 @@
+import {liquidFunds,spendLiquidFunds} from '../finance/liquidity.js';
 import {HOBBY_ACTIVITIES,hobbyById} from './hobby_catalog.js';
 import {applyFitnessTraining} from '../health/physical_activity_system.js';
 import {growTrait} from '../character/personality_dynamics.js';
@@ -7,10 +8,10 @@ const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 const costFor=(state,hobby)=>Math.round(hobby.cost*(economy(state).costOfLiving??1));
 
 export function availableHobbies(state){
- const cash=state.finance?.cash??0;
+ const available=liquidFunds(state);
  return HOBBY_ACTIVITIES
   .map(h=>({...h,cost:costFor(state,h)}))
-  .filter(h=>h.cost<=cash);
+  .filter(h=>h.cost<=available);
 }
 
 export function performHobby(state,id,rng){
@@ -19,8 +20,8 @@ export function performHobby(state,id,rng){
  const hobby=hobbyById(id);
  if(!hobby)throw new Error('Geçersiz hobi.');
  const cost=costFor(state,hobby);
- if(cost>(state.finance?.cash??0))throw new Error('Bu hobi etkinliğini karşılayacak nakdin yok.');
- if(cost>0)state.finance.cash-=cost;
+ if(cost>liquidFunds(state))throw new Error('Bu hobi etkinliğini karşılayacak likit kaynağın yok.');
+ if(cost>0)spendLiquidFunds(state,cost);
 
  state.player.interests??={};
  const current=state.player.interests[hobby.interest]??0;
