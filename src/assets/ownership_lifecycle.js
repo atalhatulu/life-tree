@@ -36,7 +36,7 @@ function assetWear(state,asset,type,rng){
 
 function amortizeDebt(asset){
  if(!asset?.remainingDebt)return;
- const annualRate=asset.id?.includes('home')?.055:.11;
+ const annualRate=asset.assetType==='home'?.055:.11;
  const payment=Math.max(0,Math.round(asset.remainingDebt*annualRate));
  asset.remainingDebt=Math.max(0,asset.remainingDebt-payment);
 }
