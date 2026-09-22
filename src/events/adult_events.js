@@ -152,20 +152,20 @@ export const adultEvents=[
   ]
  },
  {
-  id:'relationship-commitment',title:'İlişkinin Geleceği',minAge:22,maxAge:55,once:false,majorDecision:false,priority:58,
+  id:'relationship-commitment',title:'İlişkinin Geleceği',minAge:20,maxAge:55,once:false,majorDecision:false,priority:58,
   condition:s=>{
    const r=s.social?.romance;if(!r)return false;ensurePartnershipState(s);
-   return r.status==='dating'&&r.yearsTogether>=2&&r.relationship>=46&&s.player.age>=(s.nextCommitmentAge??21)&&(s.preferences?.partnershipDesire??50)>=35;
+   return r.status==='dating'&&r.yearsTogether>=1&&r.relationship>=48&&s.player.age>=(s.nextCommitmentAge??20)&&(s.preferences?.partnershipDesire??50)>=35;
   },
   choices:[
    {id:'cohabit',label:'Birlikte yaşamayı teklif et',majorDecision:true,result:'Birlikte yaşamaya başladınız.',effect:s=>moveInTogether(s)},
-   {id:'marry',label:'Evlilik teklif et',majorDecision:true,condition:s=>s.social.romance.relationship>=56&&(s.preferences?.marriageDesire??50)>=30,result:'Evlendiniz.',effect:s=>marryPartner(s)},
+   {id:'marry',label:'Evlilik teklif et',majorDecision:true,condition:s=>s.social.romance.relationship>=54&&(s.preferences?.marriageDesire??50)>=28,result:'Evlendiniz.',effect:s=>marryPartner(s)},
    {id:'wait',label:'İlişkiyi olduğu gibi sürdür',result:'Şimdilik büyük bir adım atmamayı seçtin.',effect:s=>{s.social.romance.relationship=Math.min(100,s.social.romance.relationship+1);s.nextCommitmentAge=s.player.age+2;}}
   ]
  },
  {
-  id:'marriage-after-cohabiting',title:'Evlilik Kararı',minAge:21,maxAge:60,once:false,majorDecision:false,priority:57,
-  condition:s=>s.social?.romance?.status==='cohabiting'&&s.social.romance.yearsTogether>=2&&s.social.romance.relationship>=50&&s.player.age>=(s.nextMarriageAge??21)&&(s.preferences?.marriageDesire??50)>=30,
+  id:'marriage-after-cohabiting',title:'Evlilik Kararı',minAge:20,maxAge:60,once:false,majorDecision:false,priority:57,
+  condition:s=>s.social?.romance?.status==='cohabiting'&&s.social.romance.yearsTogether>=2&&s.social.romance.relationship>=48&&s.player.age>=(s.nextMarriageAge??20)&&(s.preferences?.marriageDesire??50)>=28,
   choices:[
    {id:'marry',label:'Evlen',majorDecision:true,result:'Evlendiniz.',effect:s=>marryPartner(s)},
    {id:'continue',label:'Birlikte yaşamaya devam et',result:'Resmî evlilik olmadan birlikte yaşamaya devam ettiniz.',effect:s=>{s.social.romance.relationship=Math.min(100,s.social.romance.relationship+1);s.nextMarriageAge=s.player.age+2;}}
@@ -175,13 +175,13 @@ export const adultEvents=[
   id:'child-decision',title:'Aileyi Büyütmek',minAge:21,maxAge:47,once:false,majorDecision:false,priority:62,
   condition:s=>{
    const r=s.social?.romance;
-   return Boolean(r&&['cohabiting','married'].includes(r.status)&&(s.children?.length??0)<3&&r.relationship>=42&&s.player.age>=(s.nextChildDecisionAge??21)&&parenthoodReadiness(s)>=35);
+   return Boolean(r&&['cohabiting','married'].includes(r.status)&&(s.children?.length??0)<3&&r.relationship>=42&&s.player.age>=(s.nextChildDecisionAge??21)&&parenthoodReadiness(s)>=40);
   },
   choices:[
    {
     id:'have-child',label:'Çocuk sahibi olmayı deneyin',majorDecision:true,
     result:s=>s.lastParenthoodAttempt?.success?s.lastParenthoodAttempt.childName+' dünyaya geldi.':'Bu yıl çocuk sahibi olamadınız; daha sonra tekrar deneyebilirsiniz.',
-    effect:(s,rng)=>{attemptChild(s,rng.fork('child-attempt'));s.nextChildDecisionAge=s.player.age+(s.lastParenthoodAttempt?.success?2:1);}
+    effect:(s,rng)=>{attemptChild(s,rng.fork('child-attempt'));s.nextChildDecisionAge=s.player.age+(s.lastParenthoodAttempt?.success?3:1);}
    },
    {id:'wait-child',label:'Şimdilik bekle',result:'Çocuk kararını ertelediniz.',effect:s=>{s.nextChildDecisionAge=s.player.age+1;}}
   ]
