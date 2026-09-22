@@ -20,7 +20,7 @@ export function buyCar(state,id){
  const down=Math.round(option.price*.35);
  spendLiquidFunds(state,down);
  state.finance.debt+=option.price-down;
- ensureAssets(state).car={...option,purchasedAtAge:state.player.age,remainingDebt:option.price-down};
+ ensureAssets(state).car={...option,assetType:'car',purchasedAtAge:state.player.age,remainingDebt:option.price-down,condition:100,maintenanceSpent:0};
  state.finance.lifestyle.transport='car';
  return option;
 }
@@ -40,7 +40,7 @@ export function buyHome(state,id){
  const down=Math.round(option.price*.2);
  spendLiquidFunds(state,down);
  state.finance.debt+=option.price-down;
- ensureAssets(state).home={...option,purchasedAtAge:state.player.age,remainingDebt:option.price-down};
+ ensureAssets(state).home={...option,assetType:'home',purchasedAtAge:state.player.age,remainingDebt:option.price-down,condition:100,maintenanceSpent:0};
  state.finance.lifestyle.housing='owned';
  return option;
 }
