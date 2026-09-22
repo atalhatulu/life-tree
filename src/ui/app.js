@@ -1,9 +1,14 @@
 import { Game } from '../core/game.js';
-import { autoplay } from '../simulation/autoplay.js';
+import { autoplay, humanLikeChoice, activityOrder } from '../simulation/autoplay.js';
+import { RNG } from '../core/rng.js';
 
 let game;
 let pendingEvent = null;
 let activityMessage = '';
+let autoLifeRunning = false;
+let autoLifeToken = 0;
+let autoLifeRng = null;
+const sleep = (ms) => new Promise(resolve=>setTimeout(resolve,ms));
 
 const $ = (selector) => document.querySelector(selector);
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, value));
@@ -171,13 +176,10 @@ function renderEvent() {
       card.innerHTML=`<h3>Hayat sona erdi</h3><p><strong>${game.state.player.age} yaş</strong> • ${d.cause??'Bilinmeyen neden'}</p><p>Net worth: <strong>${money(netWorth())}</strong> • Çocuk: <strong>${game.state.children?.length??0}</strong></p><p>Kariyer: <strong>${game.state.career?.title??game.state.player.job??'—'}</strong> • ${game.state.career?.levelTitle??'—'}</p><p>Büyük karar: <strong>${game.state.lifeTree?.nodes?.length??0}</strong></p>`;
     }else card.innerHTML='';
     $('#ageUp').disabled=dead;
-    $('#sim5').disabled=dead;
-    $('#sim10').disabled=dead;
+    $('#autoLife').disabled=false;
     return;
   }
   $('#ageUp').disabled=true;
-  $('#sim5').disabled=true;
-  $('#sim10').disabled=true;
   card.classList.remove('hidden');
   card.innerHTML=`<h3>${pendingEvent.title}</h3><p>${pendingEvent.majorDecision?'Bu seçim Life Tree üzerinde bir dönüm noktası olarak kaydedilecek.':'Bu yıl hayatında bir seçim yapman gerekiyor.'}</p><div class="choice-list">${game.eventChoices(pendingEvent).map(choice=>`<button class="choice-button" data-choice="${choice.id}">${choice.label}</button>`).join('')}</div>`;
   card.querySelectorAll('[data-choice]').forEach(button=>button.addEventListener('click',()=>{game.makeChoice(pendingEvent,button.dataset.choice);pendingEvent=null;render();}));
@@ -202,8 +204,124 @@ function render(){
   renderTimeline();renderRelationships();renderActivities();renderAssets();renderCareer();renderLifeTree();renderEvent();
 }
 
+
+function autoDelay(mult=1){ return Number($('#autoSpeed')?.value??420)*mult; }
+function setAutoStatus(text){
+  let el=document.querySelector('.auto-status');
+  if(!text){el?.remove();return;}
+  if(!el){el=document.createElement('div');el.className='auto-status';document.querySelector('.phone-frame').appendChild(el);}
+  el.textContent=text;
+}
+async function showScreen(id,label,token,mult=.75){
+  if(token!==autoLifeToken||!autoLifeRunning)return false;
+  switchScreen(id); setAutoStatus(label); render();
+  await sleep(autoDelay(mult));
+  return token===autoLifeToken&&autoLifeRunning;
+}
+async function pulse(selector,token,mult=.55){
+  const el=$(selector);
+  if(!el)return;
+  el.classList.add('auto-focus');
+  await sleep(autoDelay(mult));
+  el.classList.remove('auto-focus');
+}
+async function autoLifeLoop(token){
+  autoLifeRng??=new RNG(game.seedText+':ui-auto-life');
+  while(autoLifeRunning&&token===autoLifeToken&&game.state.player.alive){
+    pendingEvent=game.ageOneYear();
+    switchScreen('lifeScreen');
+    render();
+    setAutoStatus(game.state.player.age+' yaş • yeni yıl');
+    await pulse('#ageUp',token,.45);
+    await sleep(autoDelay(.55));
+    if(!autoLifeRunning||token!==autoLifeToken||!game.state.player.alive)break;
+
+    if(pendingEvent){
+      const choices=game.eventChoices(pendingEvent);
+      const chosen=humanLikeChoice(game,pendingEvent,choices,autoLifeRng.fork('event-'+game.state.year));
+      render();
+      setAutoStatus('Karar: '+pendingEvent.title);
+      if(chosen){
+        const button=document.querySelector('[data-choice="'+CSS.escape(chosen.id)+'"]');
+        button?.classList.add('auto-focus');
+        await sleep(autoDelay(.9));
+        button?.classList.remove('auto-focus');
+        if(autoLifeRunning&&token===autoLifeToken){
+          game.makeChoice(pendingEvent,chosen.id);
+          pendingEvent=null;
+          render();
+        }
+      }
+      await sleep(autoDelay(.5));
+    }
+
+    if(!game.state.player.alive)break;
+
+    const order=activityOrder(game,'human-like',autoLifeRng.fork('activities-'+game.state.year));
+    if(order.length&&game.state.actions.remaining>0){
+      if(!await showScreen('activitiesScreen','Aktiviteler',token,.55))break;
+      for(const id of order){
+        if(game.state.actions.remaining<=0||!autoLifeRunning||token!==autoLifeToken)break;
+        if(!game.availableActivities().some(x=>x.id===id))continue;
+        const btn=document.querySelector('[data-activity="'+CSS.escape(id)+'"]');
+        btn?.classList.add('auto-focus');
+        setAutoStatus('Aktivite: '+(btn?.textContent??id));
+        await sleep(autoDelay(.6));
+        btn?.classList.remove('auto-focus');
+        try{activityMessage=game.performActivity(id);}catch{}
+        render();
+        await sleep(autoDelay(.45));
+      }
+    }
+
+    if(game.state.player.age>=18){
+      if(!await showScreen('careerScreen','Kariyer',token,.55))break;
+      if(!await showScreen('assetsScreen','Para & varlıklar',token,.55))break;
+      if(game.state.social?.romance||(game.state.children?.length??0)>0){
+        if(!await showScreen('relationshipsScreen','İlişkiler',token,.55))break;
+      }
+    }
+    if((game.state.lifeTree?.nodes?.length??0)>0&&game.state.player.age%8===0){
+      if(!await showScreen('treeScreen','Life Tree',token,.5))break;
+    }
+    switchScreen('lifeScreen'); render(); setAutoStatus('Hayat akıyor…');
+    await sleep(autoDelay(.65));
+  }
+  if(token===autoLifeToken){
+    autoLifeRunning=false;
+    $('#autoLife').classList.remove('running');
+    $('#autoLife').textContent=game.state.player.alive?'▶ AUTO LIFE':'↻ HAYAT BİTTİ';
+    setAutoStatus(game.state.player.alive?'Auto Life durdu':'Hayat sona erdi');
+    switchScreen('lifeScreen'); render();
+    if(!game.state.player.alive)setTimeout(()=>setAutoStatus(''),1600);
+  }
+}
+function toggleAutoLife(){
+  if(!game.state.player.alive){newLife();return;}
+  if(autoLifeRunning){
+    autoLifeRunning=false;autoLifeToken++;
+    $('#autoLife').classList.remove('running');
+    $('#autoLife').textContent='▶ AUTO LIFE';
+    setAutoStatus('Duraklatıldı');
+    return;
+  }
+  pendingEvent=null;
+  autoLifeRunning=true;
+  autoLifeToken++;
+  autoLifeRng=new RNG(game.seedText+':ui-auto-life:'+game.state.player.age);
+  $('#autoLife').classList.add('running');
+  $('#autoLife').textContent='⏸ DURAKLAT';
+  autoLifeLoop(autoLifeToken);
+}
+
 function switchScreen(id){document.querySelectorAll('.screen-panel').forEach(panel=>panel.classList.toggle('active',panel.id===id));document.querySelectorAll('.nav-item').forEach(button=>button.classList.toggle('active',button.dataset.screen===id));}
-function newLife(seed=$('#seedInput').value.trim()||String(Date.now())){game=new Game(seed);pendingEvent=null;activityMessage='';switchScreen('lifeScreen');render();}
+function newLife(seed=$('#seedInput').value.trim()||String(Date.now())){
+  autoLifeRunning=false;autoLifeToken++;setAutoStatus('');
+  game=new Game(seed);pendingEvent=null;activityMessage='';autoLifeRng=null;
+  $('#autoLife')?.classList.remove('running');
+  if($('#autoLife'))$('#autoLife').textContent='▶ AUTO LIFE';
+  switchScreen('lifeScreen');render();
+}
 
 $('#newLife').addEventListener('click',()=>newLife());
 $('#applySeed').addEventListener('click',()=>newLife());
@@ -215,15 +333,5 @@ $('#ageUp').addEventListener('click',()=>{
   render();
 });
 
-function fastForward(years){
-  if(pendingEvent||!game.state.player.alive)return;
-  activityMessage='';
-  const target=Math.min(100,game.state.player.age+years);
-  autoplay(game,{toAge:target,policy:'human-like'});
-  pendingEvent=game.pendingEvent();
-  render();
-}
-$('#sim5').addEventListener('click',()=>fastForward(5));
-$('#sim10').addEventListener('click',()=>fastForward(10));
 document.querySelectorAll('.nav-item').forEach(button=>button.addEventListener('click',()=>switchScreen(button.dataset.screen)));
 newLife('life-tree-demo');
