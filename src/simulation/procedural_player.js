@@ -102,14 +102,16 @@ function bestPhysicalPlan(game,policy,rng){
 function bestHobbyPlan(game,policy,rng){
  const options=game.availableHobbies();
  if(!options.length)return null;
- const stress=game.state.healthProfile?.stress??20;
+ const state=game.state;
+ const monthlyIncome=Math.max(12000,state.finance?.monthlyIncome??12000);
  const ranked=options.map(hobby=>{
-  const interest=game.state.player.interests?.[hobby.interest]??0;
-  const monthlyIncome=Math.max(12000,game.state.finance?.monthlyIncome??12000);
-  const costPressure=hobby.cost/Math.max(1000,monthlyIncome*.10);
-  const frugalPenalty=costPressure*(policy==='frugal'?1.5:.6);
-  const recent=recentCount(game.state,'hobby',hobby.id,4);
-  const utility=1.3+interest*.018+Math.max(0,stress-35)*.025-frugalPenalty-Math.min(3.0,recent*.45)+rng.int(-2,2)*.12;
+  const interest=state.player.interests?.[hobby.interest]??0;
+  const interestScore=Math.sqrt(Math.max(0,interest)/100)*1.35;
+  const recent=recentCount(state,'hobby',hobby.id,5);
+  const novelty=recent===0?1.15:Math.max(-2.4,.35-recent*.58);
+  const costPressure=hobby.cost/Math.max(1200,monthlyIncome*.12);
+  const frugalPenalty=policy==='frugal'?Math.min(1.5,costPressure*.7):Math.min(.35,costPressure*.18);
+  const utility=1+interestScore+novelty-frugalPenalty+rng.int(-2,2)*.10;
   return {id:hobby.id,utility,frequencyWeight:hobby.frequencyWeight??1};
  });
  return weightedCandidate(rng,ranked);
