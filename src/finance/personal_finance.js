@@ -187,10 +187,25 @@ function manageFinancialDistress(state,annualIncome,reserveTarget){
   (f.lastRestructureAge==null||state.player.age-f.lastRestructureAge>=5)
  ){
   const before=f.debt;
-  f.debt=Math.round(f.debt*.85);
+  const affordableDebt=Math.max(250000,annualIncome*3.5);
+  const settlementTarget=Math.max(affordableDebt,Math.round(f.debt*.70));
+  f.debt=Math.min(f.debt,Math.round(settlementTarget));
   f.debtRestructured=true;
   f.lastRestructureAge=state.player.age;
   actions.push('borç yeniden yapılandırıldı (₺'+Math.round(before-f.debt).toLocaleString('tr-TR')+' uzlaşma indirimi)');
+ }
+
+ if(
+  f.financialDistressYears>=8&&!state.assets?.home&&!state.assets?.car&&
+  f.debt>Math.max(500000,annualIncome*4)&&
+  (f.cash??0)+(f.savings??0)<reserveTarget*.25
+ ){
+  const before=f.debt;
+  const sustainable=Math.max(150000,annualIncome*2.5);
+  f.debt=Math.min(f.debt,Math.round(sustainable));
+  f.debtRestructured=true;
+  f.insolvencyResolved=true;
+  actions.push('uzun süreli ödeme güçlüğü sonrası borç ödeme kapasitesine göre uzlaştırıldı (₺'+Math.round(before-f.debt).toLocaleString('tr-TR')+' indirildi)');
  }
  return actions;
 }
@@ -226,7 +241,7 @@ export function processPersonalFinanceYear(state){
   if(unresolved>0)f.debt+=unresolved;
  }
 
- const interestRate=f.debtRestructured ? .035 : .055;
+ const interestRate=f.insolvencyResolved ? .02 : f.debtRestructured ? .035 : .055;
  f.debt+=Math.round(f.debt*interestRate);
  const reserveTarget=cashReserveTarget(f);
  const distressActions=manageFinancialDistress(state,Math.max(0,annualIncome),reserveTarget);
