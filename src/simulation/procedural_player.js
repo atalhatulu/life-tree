@@ -53,6 +53,7 @@ function bestSocialPlan(game,policy,rng){
  const picked=weightedCandidate(rng,targetCandidates);
  if(!picked)return null;
  const target=picked.target;
+ const targetNeed=picked.utility;
  const current=relationshipValue(state,target);
  const plans=[];
  for(const activity of game.availableSocialActivities(target.id)){
@@ -65,7 +66,10 @@ function bestSocialPlan(game,policy,rng){
   const visibleExpected=activity.baseRelationship+learned*2+scored.repetition;
   const recent=recentCount(state,'social-activity',activity.id,4);
   const varietyPenalty=Math.min(2.8,recent*.35);
-  const utility=visibleExpected*.40-frugalPenalty-varietyPenalty+rng.int(-2,2)*.12;
+  const partnerContinuity=target.kind==='partner'
+   ?Math.max(0,68-current)*.06+Math.min(1.4,targetNeed*.18)
+   :0;
+  const utility=visibleExpected*.40+targetNeed*.42+partnerContinuity-frugalPenalty-varietyPenalty+rng.int(-2,2)*.12;
   plans.push({
    targetId:target.id,
    activityId:activity.id,
