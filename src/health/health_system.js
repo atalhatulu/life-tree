@@ -133,7 +133,12 @@ export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
 
   const excess=Math.max(0,nextExposure-condition.threshold);
   const agePressure=Math.max(0,age-effectiveMinAge)*.00035;
-  const chance=Math.min(.095,condition.base*.65*geneticMultiplier+excess*.00075+agePressure+(100-state.player.health.current)*.00008);
+  const conditionAgeBonus=
+   condition.id==='hypertension'&&age>=50?.004:
+   condition.id==='metabolic'&&age>=55?.003:
+   condition.id==='cardiac'&&age>=60?.004:0;
+  const comorbidityBonus=condition.id==='cardiac'&&h.conditions.some(c=>c.id==='hypertension'||c.id==='metabolic')?.005:0;
+  const chance=Math.min(.105,condition.base*.65*geneticMultiplier+excess*.00075+agePressure+conditionAgeBonus+comorbidityBonus+(100-state.player.health.current)*.00008);
   if(rng.chance(chance)){
    h.conditions.push({
     id:condition.id,label:condition.label,severity:condition.severity,diagnosedAtAge:age,
