@@ -8,7 +8,10 @@ export const lateLifeEvents=[
   id:'parent-elder-care',
   title:'Ebeveyn Bakımı',
   minAge:28,maxAge:80,once:false,majorDecision:false,priority:118,
-  condition:s=>Boolean(s.parentCare?.pendingParentId)&&!s.parentCare?.active,
+  condition:s=>Boolean(
+   s.parentCare?.pendingParentId&&!s.parentCare?.active&&
+   [s.parents?.mother,s.parents?.father].some(p=>p?.alive&&p.id===s.parentCare.pendingParentId)
+  ),
   choices:s=>[
    {id:'family-parent-care',label:'Bakımı büyük ölçüde ben üstleneyim',majorDecision:true,result:'Ebeveyninin bakımını ağırlıklı olarak sen üstlendin.',effect:next=>setParentCareMode(next,'family')},
    ...((s.siblings??[]).some(x=>x.alive&&x.age>=22)?[{id:'shared-parent-care',label:'Kardeşlerle bakım yükünü paylaş',majorDecision:true,result:'Bakım sorumluluğunu kardeşlerinle paylaştın.',effect:next=>setParentCareMode(next,'sibling-share')}]:[]),
