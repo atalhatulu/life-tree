@@ -78,7 +78,7 @@ function recurringOwnershipCosts(state){
 function partnerContribution(state){
  const r=state.social?.romance;
  if(!r||!['cohabiting','married'].includes(r.status))return 0;
- return Math.round((r.monthlyIncome??0)*.55);
+ return Math.round((r.monthlyIncome??0)*(r.householdContributionRate??.55));
 }
 
 function securedDebt(state){
