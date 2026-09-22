@@ -3,6 +3,7 @@ import {economy} from '../world/world_state.js';
 import {moveToCity} from '../world/migration_system.js';
 import {archiveCareer,yearsInFamily} from './career_profile.js';
 import {metaFor,familyCompatibility} from './career_taxonomy.js';
+import {humanCapitalFor,promotionChance,salaryGrowthRate} from './human_capital.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export function deepenCareerState(state){
@@ -21,11 +22,13 @@ export function processCareerDynamics(state,rng){
 
  c.satisfaction=clamp(c.satisfaction+rng.int(-5,4)+(c.degreeRelated?1:0));
  c.stability=clamp(c.stability+rng.int(-4,4)+(c.performance>65?2:-1));
+ const capital=humanCapitalFor(state,c.jobId);
+ c.humanCapital=capital.score;
 
  let promotedThisYear=false;
- if(c.performance>78&&c.years>=2&&rng.chance(.20)){
+ if(c.performance>70&&c.years>=2&&rng.chance(promotionChance(state))){
   c.level+=1;
-  c.monthlyIncome=Math.round(c.monthlyIncome*1.12);
+  c.monthlyIncome=Math.round(c.monthlyIncome*(1+.07+salaryGrowthRate(state)));
   state.player.monthlyIncome=c.monthlyIncome;
   c.stability=clamp(c.stability+8);
   promotedThisYear=true;
