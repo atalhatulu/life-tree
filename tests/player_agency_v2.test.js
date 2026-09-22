@@ -94,3 +94,27 @@ test('committed cohabiting couples can reach parenthood decision',()=>{
  const event=adultEvents.find(event=>event.id==='child-decision');
  assert.equal(event.condition(g.state),true);
 });
+
+
+test('paid hobbies can use accessible savings when cash is zero',()=>{
+ const g=adult('hobby-savings');
+ g.state.finance.cash=0;
+ g.state.finance.savings=5000;
+ g.state.actions={remaining:3,max:3};
+ const options=g.availableHobbies();
+ assert.ok(options.some(h=>h.id==='reading'));
+ const before=g.state.finance.savings;
+ g.performHobby('reading');
+ assert.ok(g.state.finance.savings<before);
+});
+
+test('moderate parenthood desire no longer hard-blocks child decision eligibility',()=>{
+ const g=adult('parenthood-gate');
+ g.state.player.age=30;
+ g.state.preferences={parenthoodDesire:30};
+ g.state.social.romance={status:'cohabiting',relationship:70};
+ g.state.children=[];
+ g.state.nextChildDecisionAge=29;
+ const event=g.events.events.find(e=>e.id==='child-decision');
+ assert.equal(event.condition(g.state),true);
+});
