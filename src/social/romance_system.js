@@ -28,7 +28,8 @@ export function createRomanticInterest(state,rng,id){
  person.cityId=state.location?.cityId??state.origin?.cityId;
  person.cityName=state.location?.cityName??state.origin?.cityName;
  person.preferences=partnerPreferences(person,rng.fork('preferences'));
- person.relationshipTension=rng.int(4,14);
+ person.relationshipTension=rng.int(3,10);
+ person.startedAtAge=state.player.age;
  person.relationshipState='stable';
  person.lastQualityTimeAge=null;
  assignPartnerWork(person,rng.fork('work'));
