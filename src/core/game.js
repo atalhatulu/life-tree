@@ -26,6 +26,7 @@ import {lateAgeEvents} from '../events/late_age_events.js';
 import {createWorldState,processWorldYear} from '../world/world_state.js';
 import {processGeneticHealthYear} from '../health/genetic_system.js';
 import {processDiseaseProgressionYear} from '../health/disease_progression.js';
+import {decisionContext} from '../life/decision_context.js';
 
 export class Game{
  constructor(seed=String(Date.now())){
@@ -109,6 +110,7 @@ export class Game{
   this.state=resolved.state;
   this.state.history.push({age:this.state.player.age,eventId:event.id,choiceId,result:resolved.result,kind:'choice'});
   if(resolved.decision){
+   resolved.decision.context=decisionContext(this.state,event,selected);
    resolved.decision.snapshot=snapshot;
    this.state.lifeTree.nodes.push(resolved.decision);
   }
