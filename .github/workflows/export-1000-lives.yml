@@ -1,0 +1,27 @@
+name: export-1000-lives
+
+on:
+  push:
+    branches:
+      - feature/player-agency-daily-life
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Export 1000 lives
+        run: npm run export-lives -- --lives 1000 --to-age 100 --policy random --seed-prefix ci-audit --out artifacts/1000-lives
+      - name: Upload full life archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: life-tree-1000-lives
+          path: artifacts/1000-lives
+          retention-days: 14
