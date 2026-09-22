@@ -1,6 +1,22 @@
 import {settleEstate} from '../finance/estate_system.js';
 import {buildLifeRecap} from './life_recap.js';
 
+function lifeHighlights(state,recap){
+ const highlights=[];
+ if(recap.education.university)highlights.push({kind:'education',text:recap.education.university+' eğitimini tamamladı.'});
+ const careerTitles=recap.work.history.map(x=>x.title).filter(Boolean);
+ if(careerTitles.length)highlights.push({kind:'career',text:'Kariyer yolu: '+careerTitles.join(' → ')+'.'});
+ const currentOrLast=recap.relationships.at(-1);
+ if(currentOrLast)highlights.push({kind:'relationship',text:currentOrLast.name+' ile '+currentOrLast.years+' yıllık bir ilişki geçmişi oldu.'});
+ if(recap.family.children.length)highlights.push({kind:'family',text:recap.family.children.length+' çocuk ve '+recap.family.grandchildren+' torunla bir aile kurdu.'});
+ if(recap.origin.migrations.length)highlights.push({kind:'migration',text:recap.origin.migrations.length+' kez şehir değiştirdi; son olarak '+recap.origin.currentCity+' şehrinde yaşadı.'});
+ if(state.business)highlights.push({kind:'business',text:'Hayatının bir döneminde kendi işini kurdu.'});
+ if(recap.health.conditions.length)highlights.push({kind:'health',text:'Sağlık geçmişinde '+recap.health.conditions.join(', ')+' yer aldı.'});
+ const decisionHighlights=recap.decisions.slice(-5).map(d=>({kind:'decision',age:d.age,text:d.age+' yaşında '+d.title+': '+d.choice}));
+ return [...highlights,...decisionHighlights].slice(0,10);
+}
+
+
 export function buildDeathSummary(state){
  const estate=settleEstate(state);
  const recap=buildLifeRecap(state);
@@ -37,6 +53,7 @@ export function buildDeathSummary(state){
   estatePlan:estate.plan,
   majorDecisions:tree.length,
   healthConditions:state.healthProfile?.conditions?.map(c=>c.label)??[],
+  highlights,
   recap
  };
 }
