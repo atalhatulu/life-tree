@@ -27,9 +27,9 @@ function annualAgingWear(age){
  if(age<45)return {health:.07,fitness:.25};
  if(age<60)return {health:.35,fitness:.65};
  if(age<70)return {health:1.55,fitness:2.1};
- if(age<80)return {health:3.10,fitness:3.6};
- if(age<90)return {health:4.40,fitness:5.3};
- if(age<100)return {health:5.80,fitness:6.7};
+ if(age<80)return {health:3.35,fitness:3.6};
+ if(age<90)return {health:4.80,fitness:5.3};
+ if(age<100)return {health:6.10,fitness:6.7};
  return {health:7.4,fitness:8.2};
 }
 
@@ -114,7 +114,7 @@ export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
  // Disease consumes reserve, but diagnosis alone should not create a runaway
  // health spiral. Fitness changes resilience rather than restoring Health.
  const diseaseLossMultiplier=clamp(1-(h.fitness-50)*.006,.75,1.20);
- let additionalLoss=Math.max(0,h.stress-45)*.014+activeBurden*.35*diseaseLossMultiplier;
+ let additionalLoss=Math.max(0,h.stress-45)*.014+activeBurden*.38*diseaseLossMultiplier;
  if(lifestyle?.food==='frugal')additionalLoss+=.20;
 
  const previousHealth=healthBeforeYear??state.player.health.current;
