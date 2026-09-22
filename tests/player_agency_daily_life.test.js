@@ -95,7 +95,6 @@ test('procedural player spends real action slots through public action APIs',()=
  assert.ok(g.state.history.length>0,'procedural player must use public Game actions so history matches real play');
 });
 
-
 test('selected hobby improves its own interest and physical hobbies improve fitness',()=>{
  const g=adult('hobby-causal');
  g.state.player.interests.koşu=20;
@@ -119,7 +118,6 @@ test('procedural social choice respects affordability and preferences through re
  assert.ok(g.state.finance.cash>=0);
 });
 
-
 test('NPC preference becomes known only after sharing that activity',()=>{
  const g=adult('preference-learning');
  g.state.parents.mother.preferencesProfile.food.pizza=2;
@@ -127,7 +125,6 @@ test('NPC preference becomes known only after sharing that activity',()=>{
  performSocialActivity(g.state,'mother','pizza',{int:()=>0});
  assert.equal(knownPreference(g.state,'mother','food','pizza'),2);
 });
-
 
 test('cohabiting partner is not penalized for one quiet year without explicit activity',()=>{
  const g=adult('cohabiting-maintenance');
@@ -143,7 +140,6 @@ test('cohabiting partner is not penalized for one quiet year without explicit ac
  assert.equal(g.state.social.romance.relationship,72);
 });
 
-
 test('compatible dating relationship deepens over time without random bonus',()=>{
  const g=adult('compatible-growth');
  g.state.social.romance={
@@ -155,7 +151,6 @@ test('compatible dating relationship deepens over time without random bonus',()=
  processPartnershipYear(g.state,rng);
  assert.ok(g.state.social.romance.relationship>50);
 });
-
 
 test('higher fitness preserves more health reserve at the same age without direct healing',()=>{
  const fit=adult('fitness-protection-high');
@@ -200,4 +195,46 @@ test('higher fitness slows chronic disease progression under otherwise identical
   fit.state.healthProfile.conditions[0].progression.score<
   unfit.state.healthProfile.conditions[0].progression.score
  );
+});
+
+test('fitness protects against chronic disease reserve loss without healing health',()=>{
+ const fit=adult('burden-fit');
+ const unfit=adult('burden-unfit');
+ for(const g of [fit,unfit]){
+  g.state.player.age=62;
+  g.state.player.health.current=72;
+  g.state.player.health.constitution=60;
+  g.state.healthProfile.stress=48;
+  g.state.healthProfile.lastExerciseAge=40;
+  g.state.healthProfile.conditions=[{
+   id:'hypertension',label:'Yüksek tansiyon',severity:2,diagnosedAtAge:55,
+   progression:{score:55,stage:'severe',status:'active',stableYears:0,complicationCount:0,lastProgressionAge:61},
+   geneticCourse:{progressionMultiplier:1,complicationMultiplier:1,initialProgressionBonus:0}
+  }];
+  g.state.finance.lifestyle={food:'standard'};
+ }
+ fit.state.healthProfile.fitness=75;
+ unfit.state.healthProfile.fitness=35;
+ const rng={int:()=>0,chance:()=>false,fork:()=>({chance:()=>false})};
+ processHealthYear(fit.state,rng,{healthBeforeYear:72});
+ processHealthYear(unfit.state,rng,{healthBeforeYear:72});
+ assert.ok(fit.state.player.health.current>unfit.state.player.health.current);
+ assert.ok(fit.state.player.health.current<72,'fitness must protect reserve, not heal it');
+});
+
+test('ordinary baseline stress does not independently inflate disease onset risk',()=>{
+ const g=adult('baseline-stress-onset');
+ g.state.player.age=50;
+ g.state.player.health.current=90;
+ g.state.healthProfile.fitness=60;
+ g.state.healthProfile.stress=40;
+ g.state.healthProfile.conditions=[];
+ let highestChance=0;
+ const rng={
+  int:()=>0,
+  chance:p=>{highestChance=Math.max(highestChance,p); return false;},
+  fork:()=>({chance:()=>false})
+ };
+ processHealthYear(g.state,rng,{healthBeforeYear:90});
+ assert.ok(highestChance<0.02,'baseline stress should not add a large unconditional disease hazard');
 });
