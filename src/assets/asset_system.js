@@ -1,3 +1,4 @@
+import {TURKEY_2026_ECONOMY} from '../data/countries/turkey/economy.js';
 import {liquidFunds,spendLiquidFunds} from '../finance/liquidity.js';
 import {TURKEY_2026_ECONOMY} from '../data/countries/turkey/economy.js';
 import {locationProfile} from '../data/countries/turkey/profile.js';
@@ -31,7 +32,7 @@ export function affordableHomeOptions(state){
  const city=locationProfile(state);
  return TURKEY_2026_ECONOMY.assets.homes
   .map(home=>({...home,price:Math.round(home.price*city.housing),cityId:city.id,cityName:city.name}))
-  .filter(home=>available>=home.price*.2&&income>=35000*city.wage);
+  .filter(home=>available>=home.price*.2&&income>=TURKEY_2026_ECONOMY.netMinimumWage*1.2*city.wage);
 }
 
 export function buyHome(state,id){
