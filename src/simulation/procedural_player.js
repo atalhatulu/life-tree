@@ -104,10 +104,14 @@ function bestPhysicalPlan(game,policy,rng){
   const intensityFit=Math.max(0,activity.minCapacity-capacity)*.2;
   const preference=state.player.preferencesProfile?.activities?.[activity.preferenceKey]??0;
   const recent=recentCount(state,'physical-activity',activity.id,3);
+  const gainValue=activity.fitnessGain*(.10+trainingNeed*.34);
+  const recoveryPenalty=activity.intensity>=3
+   ?recent*.24+Math.max(0,state.player.age-50)*.012+Math.max(0,58-capacity)*.025
+   :recent*.10;
   return {
    id:activity.id,
-   frequencyWeight:activity.id==='walk'?1.25:activity.id==='run'?.75:1,
-   utility:need+activity.fitnessGain*.40+preference*.40-frugalPenalty-intensityFit-Math.min(2,recent*.28)+rng.int(-2,2)*.10
+   frequencyWeight:activity.id==='walk'?1.30:activity.id==='run'?.52:1,
+   utility:need+gainValue+preference*.40-frugalPenalty-intensityFit-recoveryPenalty-Math.min(1.6,recent*.18)+rng.int(-2,2)*.10
   };
  });
  return weightedCandidate(rng,ranked);
@@ -120,12 +124,14 @@ function bestHobbyPlan(game,policy,rng){
  const monthlyIncome=Math.max(12000,state.finance?.monthlyIncome??12000);
  const ranked=options.map(hobby=>{
   const interest=state.player.interests?.[hobby.interest]??0;
-  const interestScore=Math.sqrt(Math.max(0,interest)/100)*1.35;
+  const interestScore=Math.sqrt(Math.max(0,interest)/100)*1.05;
   const recent=recentCount(state,'hobby',hobby.id,5);
-  const novelty=recent===0?1.15:Math.max(-2.4,.35-recent*.58);
+  const novelty=recent===0?1.55:Math.max(-2.6,.25-recent*.62);
+  const habitSaturation=interest>75?Math.min(.9,(interest-75)*.03):0;
   const costPressure=hobby.cost/Math.max(1200,monthlyIncome*.12);
   const frugalPenalty=policy==='frugal'?Math.min(1.5,costPressure*.7):Math.min(.35,costPressure*.18);
-  const utility=1+interestScore+novelty-frugalPenalty+rng.int(-2,2)*.10;
+  const physicalOverlap=hobby.id==='running'&&recentCount(state,'physical-activity','run',3)>0?.55:0;
+  const utility=1+interestScore+novelty-frugalPenalty-habitSaturation-physicalOverlap+rng.int(-2,2)*.10;
   return {id:hobby.id,utility,frequencyWeight:hobby.frequencyWeight??1};
  });
  return weightedCandidate(rng,ranked);
