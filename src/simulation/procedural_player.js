@@ -110,7 +110,7 @@ function bestHobbyPlan(game,policy,rng){
   const frugalPenalty=costPressure*(policy==='frugal'?1.5:.6);
   const recent=recentCount(game.state,'hobby',hobby.id,4);
   const utility=1.3+interest*.018+Math.max(0,stress-35)*.025-frugalPenalty-Math.min(3.0,recent*.45)+rng.int(-2,2)*.12;
-  return {id:hobby.id,utility,frequencyWeight:hobby.id==='running'?.32:1};
+  return {id:hobby.id,utility,frequencyWeight:hobby.frequencyWeight??1};
  });
  return weightedCandidate(rng,ranked);
 }
