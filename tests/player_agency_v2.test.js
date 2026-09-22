@@ -5,6 +5,7 @@ import {processHealthYear} from '../src/health/health_system.js';
 import {ensurePersonalFinance} from '../src/finance/personal_finance.js';
 import {affordableCarOptions,affordableHomeOptions,buyCar,buyHome} from '../src/assets/asset_system.js';
 import {chooseProceduralEventChoice} from '../src/simulation/procedural_decision_agent.js';
+import {adultEvents} from '../src/events/adult_events.js';
 
 function adult(seed='agency-v2'){
  const g=new Game(seed);
@@ -81,4 +82,15 @@ test('procedural child decision follows desire, relationship and financial secur
  low.state.finance.monthlyIncome=18000;
  const lowMock={state:low.state,eventChoices:()=>choices};
  assert.equal(chooseProceduralEventChoice(lowMock,event,'random',maxWeightRng()).id,'wait-child');
+});
+
+
+test('committed cohabiting couples can reach parenthood decision',()=>{
+ const g=adult('cohabiting-parenthood');
+ g.state.player.age=30;
+ g.state.preferences={parenthoodDesire:70};
+ g.state.children=[];
+ g.state.social.romance={status:'cohabiting',relationship:75};
+ const event=adultEvents.find(event=>event.id==='child-decision');
+ assert.equal(event.condition(g.state),true);
 });
