@@ -1,6 +1,7 @@
 import {Game} from '../core/game.js';
 import {autoplay} from '../simulation/autoplay.js';
 import {buildLifeRecap} from '../life/life_recap.js';
+import {historyText} from '../life/history_text.js';
 
 function arg(name,fallback){
  const index=process.argv.indexOf('--'+name);
@@ -44,7 +45,7 @@ for(const item of visibleHistory){
   lastAge=item.age;
   console.log('\n['+lastAge+' yaş]');
  }
- console.log(' - '+(item.result??item.text??item.eventId??'olay'));
+ console.log(' - '+historyText(item));
 }
 
 if(game.state.lifeTree.nodes.length){
