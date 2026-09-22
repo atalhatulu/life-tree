@@ -27,9 +27,9 @@ function recentLossCount(state){
 }
 
 function statusFromStrain(strain){
- if(strain>=78)return 'crisis';
- if(strain>=62)return 'distressed';
- if(strain>=42)return 'strained';
+ if(strain>=76)return 'crisis';
+ if(strain>=58)return 'distressed';
+ if(strain>=36)return 'strained';
  return 'stable';
 }
 
@@ -82,7 +82,7 @@ export function processMentalHealthYear(state,rng){
  if(m.status==='stable')m.recoveryYears=(m.recoveryYears??0)+1;
  else m.recoveryYears=0;
 
- state.healthProfile.stress=clamp((state.healthProfile.stress??20)+(m.status==='crisis'?4:m.status==='distressed'?2:m.status==='strained'?1:-1));
+ state.healthProfile.stress=clamp((state.healthProfile.stress??20)+(m.status==='crisis'?4:m.status==='distressed'?2:m.status==='strained'?1:0));
  return entries;
 }
 
