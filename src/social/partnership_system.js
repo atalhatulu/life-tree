@@ -145,8 +145,8 @@ export function processPartnershipYear(state,rng){
    endRelationship(state,r,{divorce:true});
    return entries;
   }
-  if(r.marriageYears>=2&&r.relationship<66&&r.relationshipTension>32&&(r.conflictYears??0)>=2){
-   const chance=Math.min(.74,.10+(66-r.relationship)*.012+(r.relationshipTension-32)*.0065+(r.conflictYears??0)*.04);
+  if(r.marriageYears>=2&&r.relationship<68&&r.relationshipTension>29&&(r.conflictYears??0)>=2){
+   const chance=Math.min(.76,.115+(68-r.relationship)*.012+(r.relationshipTension-29)*.0065+(r.conflictYears??0)*.042);
    if(rng.fork('divorce').chance(chance)){
     entries.push({age:state.player.age,kind:'relationship',paceBlock:true,text:r.name+' ile evliliğiniz boşanmayla sona erdi.'});
     endRelationship(state,r,{divorce:true});
