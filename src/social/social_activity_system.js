@@ -69,7 +69,7 @@ export function scoreSocialActivity(state,targetId,activityId){
  const memory=ensureRelationshipMemory(state,targetId);
  const repetition=repetitionPenalty(memory,activityId);
  const current=relationshipValue(state,target);
- const saturation=current>=85?.55:current>=70?.75:1;
+ const saturation=current>=95?.12:current>=88?.22:current>=80?.38:current>=70?.62:1;
  const expectedDelta=(activity.baseRelationship+preference*2+socialSkillModifier(state)+repetition)*saturation;
  return {target,activity,cost,preference,repetition,current,expectedDelta};
 }
