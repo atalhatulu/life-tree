@@ -15,14 +15,24 @@ function money(v){return '₺'+Math.round(v??0).toLocaleString('tr-TR');}
 function text(v){return v==null||v===''?'—':String(v);}
 function csv(v){return '"'+String(v??'').replaceAll('"','""')+'"';}
 function inc(obj,key,by=1){obj[key]=(obj[key]??0)+by;}
+function historyText(value){
+ if(value==null||value==='')return null;
+ if(typeof value==='string'||typeof value==='number'||typeof value==='boolean')return String(value);
+ if(typeof value==='object'){
+  if(typeof value.text==='string')return value.text;
+  try{return JSON.stringify(value);}
+  catch{return '[unserializable]';}
+ }
+ return String(value);
+}
 function safeHistoryLine(item){
  const parts=[
   item.eventId&&('event='+item.eventId),
   item.choiceId&&('choice='+item.choiceId),
   item.activityId&&('activity='+item.activityId),
   item.hobbyId&&('hobby='+item.hobbyId),
-  item.text,
-  item.result
+  historyText(item.text),
+  historyText(item.result)
  ].filter(Boolean);
  return '- **'+text(item.age)+' yaş** · '+text(item.kind)+' · '+(parts.length?parts.join(' · '):'kayıt');
 }
