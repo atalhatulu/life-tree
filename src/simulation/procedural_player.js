@@ -50,7 +50,16 @@ function bestSocialPlan(game,policy,rng){
   const utility=kindNeed+Math.max(0,72-current)*.10+Math.min(5,yearsSince)*.55;
   targetCandidates.push({target,utility,frequencyWeight:1});
  }
- const picked=weightedCandidate(rng,targetCandidates);
+ const urgentPartner=targetCandidates
+  .filter(x=>x.target.kind==='partner')
+  .sort((a,b)=>b.utility-a.utility)
+  .find(x=>{
+   const memory=ensureRelationshipMemory(state,x.target.id);
+   const yearsSince=memory.lastInteractionAge==null?2:Math.max(0,state.player.age-memory.lastInteractionAge);
+   const current=relationshipValue(state,x.target);
+   return current<62||yearsSince>=2;
+  });
+ const picked=urgentPartner??weightedCandidate(rng,targetCandidates);
  if(!picked)return null;
  const target=picked.target;
  const targetNeed=picked.utility;
