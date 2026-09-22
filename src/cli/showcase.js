@@ -2,6 +2,7 @@ import {Game} from '../core/game.js';
 import {autoplay} from '../simulation/autoplay.js';
 import {buildLifeRecap} from '../life/life_recap.js';
 import {pacingSummary} from '../life/pacing_system.js';
+import {historyText} from '../life/history_text.js';
 
 const seeds=['pacing-life-a','pacing-life-b','pacing-life-c'];
 
@@ -33,6 +34,6 @@ for(const seed of seeds){
 
  console.log('STORY');
  for(const item of game.state.history.filter(x=>!['activity','finance'].includes(x.kind))){
-  console.log(' - '+item.age+' '+(item.result??item.text??item.eventId??'event'));
+  console.log(' - '+item.age+' '+historyText(item));
  }
 }
