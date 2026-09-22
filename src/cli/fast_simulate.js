@@ -5,6 +5,7 @@ import {validateState} from '../simulation/invariants.js';
 import {auditCareerTransitions,careerTransitionCount} from '../career/career_audit.js';
 import {geneticSummary} from '../health/genetic_system.js';
 import {physicalCapacity} from '../health/physical_capacity.js';
+import {auditContentDensity,CONTENT_AGE_BANDS} from '../simulation/content_density.js';
 
 function arg(name,fallback){
  const index=process.argv.indexOf('--'+name);
@@ -213,7 +214,8 @@ const report={
 
  events:{
   historyKinds:{},eventIds:{},choiceIds:{},eventChoicePairs:{},activities:{},
-  ageByEvent:{},ageByActivity:{},historyRows:[]
+  ageByEvent:{},ageByActivity:{},historyRows:[],
+  contentDensity:Object.fromEntries(CONTENT_AGE_BANDS.map(b=>[b.id,[]]))
  },
 
  longitudinal:{
@@ -586,6 +588,8 @@ for(let i=0;i<lives;i++){
   }
  }
  report.events.historyRows.push(state.history?.length??0);
+ const density=auditContentDensity(state);
+ for(const band of CONTENT_AGE_BANDS)report.events.contentDensity[band.id].push(density[band.id].densityPct);
 
  // Correlation row: one row per valid life
  report.correlations.rows.push({
@@ -913,7 +917,8 @@ const summary={
   activities:report.events.activities,
   eventAgeDistributions:averageAgeMap(report.events.ageByEvent),
   activityAgeDistributions:averageAgeMap(report.events.ageByActivity),
-  historyRowsPerLife:distribution(report.events.historyRows)
+  historyRowsPerLife:distribution(report.events.historyRows),
+  contentDensityByAgeBand:Object.fromEntries(Object.entries(report.events.contentDensity).map(([k,v])=>[k,distribution(v)]))
  },
 
  longitudinal:summarizeLongitudinal(),
