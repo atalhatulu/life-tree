@@ -276,10 +276,25 @@ export function processPersonalFinanceYear(state){
 
  if(annualNet>=0){
   f.discretionaryAnnual=Math.round(annualNet*discretionaryRate(state));
+  const dailyLife=Math.round(f.discretionaryAnnual*.55);
+  const experiences=Math.round(f.discretionaryAnnual*.25);
+  const durableGoods=Math.max(0,f.discretionaryAnnual-dailyLife-experiences);
   recordSpending(state,{
    category:'daily-life',
-   amount:f.discretionaryAnnual,
-   label:'Yıllık isteğe bağlı yaşam harcamaları',
+   amount:dailyLife,
+   label:'Günlük yaşam ve küçük kişisel harcamalar',
+   source:'annual-budget'
+  });
+  recordSpending(state,{
+   category:'experiences',
+   amount:experiences,
+   label:'Gezi, eğlence ve deneyim harcamaları',
+   source:'annual-budget'
+  });
+  recordSpending(state,{
+   category:'durable-goods',
+   amount:durableGoods,
+   label:'Elektronik, eşya ve dayanıklı tüketim',
    source:'annual-budget'
   });
   let available=Math.max(0,annualNet-f.discretionaryAnnual);
