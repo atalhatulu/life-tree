@@ -38,6 +38,7 @@ test('financial and career pressure can accumulate burnout',()=>{
  const before=processMentalHealthYear(g.state).length;
  assert.equal(before,0);
  assert.ok(g.state.mentalHealth.burnout>0);
+ processMentalHealthYear(g.state);
  assert.ok(g.state.mentalHealth.wellbeing<70);
 });
 
