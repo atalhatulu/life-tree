@@ -3,6 +3,7 @@ import {JOBS} from '../data/catalog.js';
 import {economy} from '../world/world_state.js';
 import {chooseJobOfferCity,moveToCity,movingCost,relocationHouseholdSize,migrationScore} from '../world/migration_system.js';
 import {metaFor,familyCompatibility} from './career_taxonomy.js';
+import {recordJobApplication} from './unemployment_system.js';
 import {
  ensureCareerProfile,yearsInJob,yearsInFamily,recentJobRecord,dominantCareerFamily,archiveCareer
 } from './career_profile.js';
@@ -43,6 +44,8 @@ function qualification(state,job,mode){
  }
 
  if(mode==='reemployment'){
+  const completedRetraining=state.retraining?.completed&&state.retraining.targetJobId===job.id;
+  if(completedRetraining)return {eligible:true,exactDegree:false,reason:'retrained'};
   const core=dominantCareerFamily(state);
   const recentJobId=ensureCareerProfile(state).recentJobs[0]?.jobId;
   const compatible=core?meta.family===core||familyCompatibility(recentJobId,job.id)>=65:false;
@@ -126,6 +129,7 @@ function inferMode(state,requested){
 export function generateJobOffers(state,rng,count=3,options={}){
  ensureCareerProfile(state);
  const mode=inferMode(state,options.mode);
+ if(mode==='reemployment')recordJobApplication(state);
  const currentId=state.career?.employed?state.career.jobId:null;
 
  let eligible=JOBS.filter(job=>{
@@ -220,6 +224,7 @@ export function progressCareerYear(state,rng){
  const capacity=physicalCapacity(state);
  const target=Math.min(100,state.player.personality.discipline*.35+state.player.personality.sociability*.15+capacity*.15+35+workCapacityModifier(state));
  c.performance=Math.max(0,Math.min(100,c.performance+(target-c.performance)*.3+rng.int(-4,4)));
+ c.levelTitle??=(c.years>=7?'senior':c.years>=3?'mid':'junior');
  if(c.performance>72&&rng.chance(.22)){
   const raise=Math.round(c.monthlyIncome*rng.int(4,10)/100);
   c.monthlyIncome+=raise;
