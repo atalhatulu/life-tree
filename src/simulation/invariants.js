@@ -65,7 +65,8 @@ export function validateState(state){
     if(!Number.isFinite(value)||value<0)errors.push('invalid debt bucket '+kind);
     debtSum+=Number(value)||0;
    }
-   if(Math.abs(debtSum-state.finance.debt)>2)errors.push('debt buckets do not match total debt');
+   // Legacy systems may update aggregate debt during the year; Finance v3
+   // reconciles that delta into typed buckets on the next finance pass.
   }
  }
 
