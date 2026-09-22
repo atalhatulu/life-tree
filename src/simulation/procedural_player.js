@@ -42,8 +42,9 @@ function bestSocialPlan(game,policy,rng){
   const memory=ensureRelationshipMemory(state,target.id);
   const yearsSince=memory.lastInteractionAge==null?2:Math.max(0,state.player.age-memory.lastInteractionAge);
   const status=target.kind==='partner'?state.social?.romance?.status:null;
+  const partnerNeed=current<62?3.6:current<75?2.5:current<88?1.45:.75;
   const kindNeed=target.kind==='partner'
-   ?(status==='married'||status==='cohabiting'?3.4:2.8)
+   ?partnerNeed+(status==='married'||status==='cohabiting'?.25:0)
    :target.kind==='child'?2.6
     :target.kind==='family'?1.1
      :.9;
