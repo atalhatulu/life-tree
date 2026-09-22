@@ -42,13 +42,13 @@ export function processSocialYear(state,rng){
   const movedAway=friend.cityId&&(state.location?.cityId??state.origin?.cityId)!==friend.cityId;
   const longBond=(friend.yearsKnown??0)>=8?1:0;
   let drift=rng.fork('rel-'+friend.id).int(-2,1)+longBond;
-  if(yearsSinceContact>=2)drift-=1;
-  if(yearsSinceContact>=4)drift-=2;
-  if(movedAway)drift-=1;
+  if(yearsSinceContact>=3)drift-=1;
+  if(yearsSinceContact>=6)drift-=1;
+  if(movedAway&&yearsSinceContact>=2)drift-=1;
   friend.relationship=clamp(friend.relationship+drift);
   friend.closeFriend=Boolean((friend.closeFriend&&friend.relationship>=55)||(friend.relationship>=78&&(friend.yearsKnown??0)>=4));
 
-  if(friend.relationship<18&&!friend.closeFriend){
+  if(friend.relationship<12&&!friend.closeFriend){
    state.social.formerFriends??=[];
    state.social.formerFriends.push({...friend,endedAtAge:state.player.age});
    entries.push({age:state.player.age,kind:'social',text:friend.name+' ile zaman içinde uzaklaştınız.'});
@@ -61,7 +61,7 @@ export function processSocialYear(state,rng){
  const age=state.player.age;
  const adultPenalty=age>=60?.28:age>=19?.58:1;
  const cap=3+Math.floor(state.player.personality.sociability/22)+(age>=19?1:0);
- const chance=(0.13+state.player.personality.sociability/280)*adultPenalty;
+ const chance=(0.11+state.player.personality.sociability/320)*adultPenalty;
 
  if(state.social.friends.length<cap&&rng.chance(chance)){
   const id='friend-'+state.year+'-'+((state.social.friendsCreated??0)+1);
