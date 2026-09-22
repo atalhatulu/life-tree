@@ -10,13 +10,27 @@ function assignPartnerWork(person,rng){
  person.monthlyIncome=rng.int(job.income[0],Math.max(job.income[0],Math.round(job.income[1]*.7)));
 }
 
+function partnerPreferences(person,rng){
+ return {
+  partnershipDesire:clamp(Math.round(42+(person.personality?.sociability??50)*.28+rng.int(-12,12))),
+  marriageDesire:clamp(Math.round(32+(person.personality?.patience??50)*.22+rng.int(-14,14))),
+  parenthoodDesire:clamp(Math.round(38+(person.personality?.patience??50)*.18+rng.int(-16,16))),
+  riskTolerance:clamp(Math.round(35+(person.personality?.ambition??50)*.30+rng.int(-12,12))),
+  hometownAttachment:clamp(rng.int(28,82))
+ };
+}
+
 export function createRomanticInterest(state,rng,id){
  const sex=rng.chance(.5)?'female':'male';
- const person=createPersonBase({id,name:rng.pick(FIRST_NAMES[sex]),surname:rng.pick(SURNAMES),sex,age:Math.max(14,state.player.age+rng.int(-1,1)),rng});
+ const person=createPersonBase({id,name:rng.pick(FIRST_NAMES[sex]),surname:rng.pick(SURNAMES),sex,age:Math.max(14,state.player.age+rng.int(-2,2)),rng});
  person.role='romantic_interest';
- person.relationship=rng.int(42,70);
+ person.relationship=rng.int(46,68);
  person.cityId=state.location?.cityId??state.origin?.cityId;
  person.cityName=state.location?.cityName??state.origin?.cityName;
+ person.preferences=partnerPreferences(person,rng.fork('preferences'));
+ person.relationshipTension=rng.int(4,14);
+ person.relationshipState='stable';
+ person.lastQualityTimeAge=null;
  assignPartnerWork(person,rng.fork('work'));
  return person;
 }
@@ -31,14 +45,15 @@ export function processRomanceYear(state,rng){
  const partner=state.social.romance;
  partner.age+=1;
 
- // Ergenlikte ilişki daha basit bir modelle akar.
- // Yetişkinlikte ilişki kalitesi, uyumluluk, finansal baskı ve ölüm
- // partnership_system tarafından yönetilir.
+ // Ergenlik ilişkileri yetişkin partner sisteminden daha hafif tutulur.
  if(age<=18){
-  partner.relationship=clamp(partner.relationship+rng.int(-6,5));
-  if(partner.relationship<25&&rng.chance(.28)){
+  partner.relationship=clamp(partner.relationship+rng.int(-5,4)-1);
+  if(partner.relationship<25&&rng.chance(.32)){
    entries.push({age,kind:'relationship',text:partner.name+' ile ilişkin sona erdi.'});
+   state.social.exPartners??=[];
+   state.social.exPartners.push({...partner,status:'ended'});
    state.social.romance=null;
+   state.nextDatingAge=19;
   }
  }
  return entries;
