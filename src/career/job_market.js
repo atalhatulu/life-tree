@@ -171,7 +171,7 @@ export function generateJobOffers(state,rng,count=3,options={}){
  }
 
  let offers=eligible.map(job=>buildOffer(state,rng,job,mode));
- offers=offers.filter(offer=>!offer.requiresMove||offer.relocationScore>=32);
+ offers=offers.filter(offer=>offer.transitionReason==='retrained'||!offer.requiresMove||offer.relocationScore>=32);
 
  if(mode==='career-switch'){
   offers=offers.filter(offer=>{
