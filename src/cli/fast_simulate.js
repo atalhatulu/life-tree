@@ -113,7 +113,7 @@ const report={
 
  population:{
   sex:{},birthCities:{},finalCities:{},childhoodClasses:{},siblingCounts:{},
-  guardianTypes:{},orphaned:0
+  guardianTypes:{},orphaned:0,everMoved:0,hometownAtEnd:0,neverLeftHometown:0
  },
 
  traits:{
@@ -171,8 +171,10 @@ const report={
  },
 
  migration:{
-  moves:[],returnHomeLives:0,reasons:{},routes:{},moveAges:[],costs:[],
-  universityMoves:0,partnerMoves:0,careerMoves:0
+  moves:[],movers:0,returnHomeLives:0,reasons:{},routes:{},moveAges:[],costs:[],
+  firstMoveAges:[],lastMoveAges:[],finalResidenceYears:[],moveAgeBuckets:{},
+  originDepartures:{},destinationArrivals:{},movesBySex:{},returnHomeBySex:{},
+  universityMoves:0,partnerMoves:0,careerMoves:0,jobMoves:0
  },
 
  health:{
@@ -449,17 +451,40 @@ for(let i=0;i<lives;i++){
  // Migration
  const moves=state.migrationHistory??[];
  report.migration.moves.push(moves.length);
+ const sex=state.player.sex??'unknown';
+ const originCity=state.origin?.cityName??'unknown';
+ const finalCity=state.location?.cityName??originCity;
+ if(moves.length){
+  report.migration.movers++;
+  report.population.everMoved++;
+  const ages=moves.map(move=>move.age).filter(Number.isFinite);
+  if(ages.length){
+   report.migration.firstMoveAges.push(Math.min(...ages));
+   report.migration.lastMoveAges.push(Math.max(...ages));
+  }
+ }else if(finalCity===originCity){
+  report.population.neverLeftHometown++;
+ }
+ if(finalCity===originCity)report.population.hometownAtEnd++;
+ if(state.location?.sinceYear!=null)report.migration.finalResidenceYears.push(Math.max(0,state.year-state.location.sinceYear));
  let returned=false;
  for(const move of moves){
-  inc(report.migration.reasons,move.reason??'unknown');
+  const reason=move.reason??'unknown';
+  inc(report.migration.reasons,reason);
   inc(report.migration.routes,(move.fromCityName??'?')+' -> '+(move.toCityName??'?'));
+  inc(report.migration.originDepartures,move.fromCityName??'?');
+  inc(report.migration.destinationArrivals,move.toCityName??'?');
+  inc(report.migration.movesBySex,sex);
+  inc(report.migration.moveAgeBuckets,ageBucket(move.age??0));
   report.migration.moveAges.push(move.age??0);
   report.migration.costs.push(move.cost??0);
-  if(move.reason==='return-home')returned=true;
-  if(move.reason==='partner-job')report.migration.partnerMoves++;
-  if(move.reason==='career-switch')report.migration.careerMoves++;
+  if(reason==='return-home')returned=true;
+  if(reason==='partner-job')report.migration.partnerMoves++;
+  if(reason==='career-switch')report.migration.careerMoves++;
+  if(reason==='job')report.migration.jobMoves++;
+  if(reason==='university')report.migration.universityMoves++;
  }
- if(returned)report.migration.returnHomeLives++;
+ if(returned){report.migration.returnHomeLives++;inc(report.migration.returnHomeBySex,sex);}
 
  // Health
  report.health.finalHealth.push(state.player.health.current??0);
@@ -692,8 +717,12 @@ const summary={
 
  population:{
   sex:report.population.sex,
+  sexPct:Object.fromEntries(Object.entries(report.population.sex).map(([k,v])=>[k,pct(v,valid)])),
   birthCities:report.population.birthCities,
   finalCities:report.population.finalCities,
+  everMovedPct:pct(report.population.everMoved,valid),
+  hometownAtEndPct:pct(report.population.hometownAtEnd,valid),
+  neverLeftHometownPct:pct(report.population.neverLeftHometown,valid),
   childhoodClasses:report.population.childhoodClasses,
   siblingCounts:report.population.siblingCounts,
   orphanedPct:pct(report.population.orphaned,valid),
@@ -823,14 +852,25 @@ const summary={
 
  migration:{
   moves:distribution(report.migration.moves),
+  moverPct:pct(report.migration.movers,valid),
   returnHomePct:pct(report.migration.returnHomeLives,valid),
+  returnHomeAmongMoversPct:pct(report.migration.returnHomeLives,report.migration.movers),
   reasons:report.migration.reasons,
   routes:report.migration.routes,
   moveAges:distribution(report.migration.moveAges),
+  firstMoveAges:distribution(report.migration.firstMoveAges),
+  lastMoveAges:distribution(report.migration.lastMoveAges),
+  finalResidenceYears:distribution(report.migration.finalResidenceYears),
+  moveAgeBuckets:report.migration.moveAgeBuckets,
   costs:distribution(report.migration.costs),
+  originDepartures:report.migration.originDepartures,
+  destinationArrivals:report.migration.destinationArrivals,
+  movesBySex:report.migration.movesBySex,
+  returnHomeBySex:report.migration.returnHomeBySex,
   universityMoves:report.migration.universityMoves,
   partnerMoves:report.migration.partnerMoves,
-  careerMoves:report.migration.careerMoves
+  careerMoves:report.migration.careerMoves,
+  jobMoves:report.migration.jobMoves
  },
 
  health:{
