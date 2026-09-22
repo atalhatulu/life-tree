@@ -7,8 +7,40 @@ import {marryPartner,moveInTogether,ensurePartnershipState} from '../social/part
 import {createRomanticInterest} from '../social/romance_system.js';
 import {attemptChild,parenthoodReadiness} from '../family/parenting_system.js';
 import {resolvePartnerMove,returnHome,canConsiderReturnHome,deferReturnHome} from '../world/migration_system.js';
+import {refreshMilitaryEligibility,completeMilitaryService,deferMilitaryService,paidMilitaryFee} from '../life/military_service.js';
 
 export const adultEvents=[
+ {
+  id:'military-service-decision',title:'Askerlik Hizmeti',minAge:20,maxAge:40,once:false,majorDecision:false,priority:132,
+  condition:s=>{
+   const m=refreshMilitaryEligibility(s);
+   return m.eligible&&m.status==='pending'&&s.player.age>=(s.nextMilitaryDecisionAge??20);
+  },
+  choices:s=>[
+   {
+    id:'standard-service',
+    label:'6 aylık temel askerlik hizmetini tamamla',
+    majorDecision:true,
+    result:'Askerlik hizmetini tamamladın.',
+    effect:next=>completeMilitaryService(next,'standard')
+   },
+   {
+    id:'paid-service',
+    label:'Bedelli askerlik — ₺'+paidMilitaryFee(s).toLocaleString('tr-TR'),
+    majorDecision:true,
+    condition:next=>((next.finance?.cash??0)+(next.finance?.savings??0))>=paidMilitaryFee(next),
+    result:'Bedelli askerlik kapsamında temel eğitimini tamamladın.',
+    effect:next=>completeMilitaryService(next,'paid')
+   },
+   {
+    id:'defer-service',
+    label:'Şimdilik ertele',
+    condition:next=>next.player.age<35,
+    result:'Askerlik kararını bir süre erteledin.',
+    effect:next=>deferMilitaryService(next,next.higherEducation?.enrolled?2:1)
+   }
+  ]
+ },
  {
   id:'partner-job-relocation',title:'Eşinin Kariyeri İçin Taşınma',minAge:23,maxAge:58,once:false,majorDecision:false,priority:84,
   condition:s=>Boolean(s.pendingPartnerMove&&s.social?.romance&&['cohabiting','married'].includes(s.social.romance.status)),
