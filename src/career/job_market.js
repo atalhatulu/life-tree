@@ -185,6 +185,9 @@ export function generateJobOffers(state,rng,count=3,options={}){
 
  if(mode==='reemployment'){
   offers.sort((a,b)=>{
+   const aRetrained=a.transitionReason==='retrained'?1:0;
+   const bRetrained=b.transitionReason==='retrained'?1:0;
+   if(aRetrained!==bRetrained)return bRetrained-aRetrained;
    const aPrior=yearsInJob(state,a.id)>0?1:0;
    const bPrior=yearsInJob(state,b.id)>0?1:0;
    if(aPrior!==bPrior)return bPrior-aPrior;
