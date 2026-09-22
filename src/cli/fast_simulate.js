@@ -168,6 +168,8 @@ const report={
   childFunnel:{
    partnerLives:0,cohabitingOrMarriedLives:0,ageEligibleLives:0,relationshipEligibleLives:0,
    desireEligibleLives:0,cooldownEligibleLives:0,underChildCapLives:0,everEligibleLives:0,
+   windowPartnerLives:0,windowCohabitingLives:0,windowRelationshipLives:0,
+   windowDesireLives:0,windowCooldownLives:0,
    eventShownLives:0,haveChildChoiceLives:0,birthLives:0,
    partnerYears:0,cohabitingOrMarriedYears:0,ageEligibleYears:0,relationshipEligibleYears:0,
    desireEligibleYears:0,cooldownEligibleYears:0,underChildCapYears:0,eligibleYears:0,
@@ -325,6 +327,13 @@ function recordChildFunnelYear(state,meta){
   ['cooldownEligible',stages.cooldownEligible],
   ['underChildCap',stages.underChildCap]
  ];
+ if(stages.ageEligible){
+  if(stages.partner)markLifeStage(state,'windowPartner');
+  if(stages.cohabitingOrMarried)markLifeStage(state,'windowCohabiting');
+  if(stages.cohabitingOrMarried&&stages.relationshipEligible)markLifeStage(state,'windowRelationship');
+  if(stages.cohabitingOrMarried&&stages.relationshipEligible&&stages.desireEligible)markLifeStage(state,'windowDesire');
+  if(stages.cohabitingOrMarried&&stages.relationshipEligible&&stages.desireEligible&&stages.cooldownEligible)markLifeStage(state,'windowCooldown');
+ }
  for(const [key,passed] of stageMap){
   if(!passed)continue;
   funnel[key+'Years']++;
@@ -567,7 +576,7 @@ for(let i=0;i<lives;i++){
  }
 
  const funnelLives=state.__fastSimChildFunnelLives??{};
- for(const key of ['partner','cohabitingOrMarried','ageEligible','relationshipEligible','desireEligible','cooldownEligible','underChildCap','everEligible','eventShown','haveChildChoice']){
+ for(const key of ['partner','cohabitingOrMarried','ageEligible','relationshipEligible','desireEligible','cooldownEligible','underChildCap','windowPartner','windowCohabiting','windowRelationship','windowDesire','windowCooldown','everEligible','eventShown','haveChildChoice']){
   if(funnelLives[key])report.relationships.childFunnel[key+'Lives']++;
  }
  if((state.children?.length??0)>0){
@@ -994,9 +1003,14 @@ const summary={
    eventShownLivesPct:pct(report.relationships.childFunnel.eventShownLives,valid),
    haveChildChoiceLivesPct:pct(report.relationships.childFunnel.haveChildChoiceLives,valid),
    birthLivesPct:pct(report.relationships.childFunnel.birthLives,valid),
-   cohabitingAmongPartnerPct:pct(report.relationships.childFunnel.cohabitingOrMarriedLives,report.relationships.childFunnel.partnerLives),
-   relationshipAmongCohabitingPct:pct(report.relationships.childFunnel.relationshipEligibleLives,report.relationships.childFunnel.cohabitingOrMarriedLives),
-   desireAmongCohabitingPct:pct(report.relationships.childFunnel.desireEligibleLives,report.relationships.childFunnel.cohabitingOrMarriedLives),
+   reproductiveWindowFunnel:{
+    partnerPct:pct(report.relationships.childFunnel.windowPartnerLives,valid),
+    cohabitingAmongPartnerPct:pct(report.relationships.childFunnel.windowCohabitingLives,report.relationships.childFunnel.windowPartnerLives),
+    relationshipAmongCohabitingPct:pct(report.relationships.childFunnel.windowRelationshipLives,report.relationships.childFunnel.windowCohabitingLives),
+    desireAmongRelationshipPct:pct(report.relationships.childFunnel.windowDesireLives,report.relationships.childFunnel.windowRelationshipLives),
+    cooldownAmongDesirePct:pct(report.relationships.childFunnel.windowCooldownLives,report.relationships.childFunnel.windowDesireLives),
+    fullyEligibleAmongCooldownPct:pct(report.relationships.childFunnel.everEligibleLives,report.relationships.childFunnel.windowCooldownLives)
+   },
    eventShownAmongEligiblePct:pct(report.relationships.childFunnel.eventShownLives,report.relationships.childFunnel.everEligibleLives),
    haveChildChoiceAmongShownPct:pct(report.relationships.childFunnel.haveChildChoiceLives,report.relationships.childFunnel.eventShownLives),
    birthAmongHaveChildChoicePct:pct(report.relationships.childFunnel.birthLives,report.relationships.childFunnel.haveChildChoiceLives),
