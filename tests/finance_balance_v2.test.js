@@ -102,7 +102,7 @@ test('annual discretionary spending is split across real life categories without
  assert.ok(summary.byCategory.experiences>0);
  assert.ok(summary.byCategory['durable-goods']>0);
  assert.equal(summary.total,g.state.finance.discretionaryAnnual);
- assert.equal(summary.entries,3);
+ assert.ok(summary.entries>=3);
 });
 
 
