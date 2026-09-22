@@ -63,6 +63,10 @@ export function processPartnershipYear(state,rng){
  const ambitionGap=Math.abs((state.player.personality.ambition??50)-(r.personality?.ambition??50));
  const goalFriction=ambitionGap>=45?.7:ambitionGap>=30?.3:0;
  const compatibilityEquilibrium=Math.max(0,currentRelationship-(compatibility+5))*.10;
+ const neglectStrain=Math.max(0,yearsSinceInteraction-(sharedHousehold?2:1))*.45;
+ const compatibilityStrain=Math.max(0,70-compatibility)*.035;
+ const annualStrain=financeStress*.55+goalFriction*.75+neglectStrain+compatibilityStrain;
+ r.strain=clamp((r.strain??0)*.72+annualStrain,0,10);
  // Explicit neglect decay is handled once by relationship_maintenance.js.
  // Very high scores also need continuing positive experiences to stay far
  // above the couple's underlying compatibility.
@@ -78,11 +82,17 @@ export function processPartnershipYear(state,rng){
 
  if(r.status==='married'){
   r.marriageYears=(r.marriageYears??0)+1;
-  if(r.relationship<25&&rng.chance(.18)){
-   entries.push({age:state.player.age,kind:'relationship',text:r.name+' ile evliliğiniz sona erdi.'});
+  const sustainedStrain=(r.strain??0)>=2.1;
+  const strainedMarriage=r.marriageYears>=3&&r.relationship<72&&sustainedStrain;
+  const divorceChance=strainedMarriage
+   ?Math.min(.16,.025+(72-r.relationship)*.006+Math.max(0,(r.strain??0)-2.1)*.025)
+   :r.relationship<25?.18:0;
+  if(divorceChance>0&&rng.chance(divorceChance)){
+   entries.push({age:state.player.age,kind:'relationship',paceBlock:true,text:r.name+' ile uzun süredir biriken sorunlar nedeniyle evliliğiniz sona erdi.'});
    state.social.exSpouses??=[];
-   state.social.exSpouses.push({...r});
+   state.social.exSpouses.push({...r,endedAtAge:state.player.age});
    state.social.romance=null;
+   state.nextDatingAge=state.player.age+2;
   }
  }
  return entries;
