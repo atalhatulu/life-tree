@@ -115,7 +115,9 @@ test('500 random lives remain valid through age 80 or death',()=>{
   }
   if(g.state.retirement?.retired)retirees++;
  }
- assert.ok(deaths>50);
+ // Health v2 deliberately reduced premature chronic-disease mortality.
+ // Keep a broad regression floor so ordinary mortality cannot silently disappear.
+ assert.ok(deaths>15,'too few deaths before age 80: '+deaths);
  assert.equal(summaries,deaths);
  assert.ok(retirees>0);
 });
