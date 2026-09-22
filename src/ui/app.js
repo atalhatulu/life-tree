@@ -338,10 +338,36 @@ async function pulse(selector,token,mult=.55){
   await sleep(autoDelay(mult));
   el.classList.remove('auto-focus');
 }
+function chooseAutoYearMoment(moment,rng){
+  const ids=moment.choices.map(x=>x.id);
+  const s=game.state;
+  if(ids.includes('save')&&(s.finance?.debt??0)>250000)return 'save';
+  if(ids.includes('study')&&(s.education?.performance??50)<65)return 'study';
+  if(ids.includes('friends')&&(s.social?.friends?.length??0)<2)return 'friends';
+  if(ids.includes('rest')&&(s.healthProfile?.stress??0)>55)return 'rest';
+  if(ids.includes('social')&&s.social?.romance)return 'social';
+  if(ids.includes('cinema')&&(s.finance?.cash??0)>1500)return 'cinema';
+  if(ids.includes('meal')&&(s.finance?.cash??0)>2500)return 'meal';
+  if(ids.includes('shopping')&&(s.finance?.cash??0)>5000)return 'shopping';
+  return rng.pick(ids);
+}
+function autoResolveLeisure(kind,rng){
+  const companions=livingCompanions();
+  let companion=companions.find(x=>x.type==='partner')
+    ??companions.find(x=>x.type==='friend')
+    ??companions[0];
+  const cash=game.state.finance?.cash??0;
+  const def=LEISURE[kind];
+  let tier=0;
+  if(cash>def.costs[2]*8)tier=2;
+  else if(cash>def.costs[1]*5)tier=1;
+  applyLeisure(kind,companion.id,tier);
+}
 async function autoLifeLoop(token){
   autoLifeRng??=new RNG(game.seedText+':ui-auto-life');
   while(autoLifeRunning&&token===autoLifeToken&&game.state.player.alive){
     pendingEvent=game.ageOneYear();
+    if(!pendingEvent&&game.state.player.alive)yearMoment=makeYearMoment();
     switchScreen('lifeScreen');
     render();
     setAutoStatus(game.state.player.age+' yaş • yeni yıl');
@@ -366,6 +392,25 @@ async function autoLifeLoop(token){
         }
       }
       await sleep(autoDelay(.5));
+    }else if(yearMoment){
+      const moment=yearMoment;
+      const picked=chooseAutoYearMoment(moment,autoLifeRng.fork('moment-'+game.state.year));
+      setAutoStatus('Yıllık seçim: '+moment.title);
+      render();
+      const btn=document.querySelector('[data-moment="'+CSS.escape(picked)+'"]');
+      btn?.classList.add('auto-focus');
+      await sleep(autoDelay(.8));
+      btn?.classList.remove('auto-focus');
+      if(autoLifeRunning&&token===autoLifeToken){
+        applyYearMoment(picked);
+        if(leisurePicker){
+          const leisure=leisurePicker;
+          await showScreen('activitiesScreen','Plan: '+LEISURE[leisure].label,token,.45);
+          if(autoLifeRunning&&token===autoLifeToken)autoResolveLeisure(leisure,autoLifeRng.fork('leisure-'+game.state.year));
+          render();
+          await sleep(autoDelay(.5));
+        }
+      }
     }
 
     if(!game.state.player.alive)break;
