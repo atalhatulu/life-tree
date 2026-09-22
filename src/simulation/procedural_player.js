@@ -161,7 +161,7 @@ export function proceduralActionPlan(game,policy,rng){
  if(physical)candidates.push({
   type:'physical',
   id:physical.id,
-  utility:physical.utility+policyBias(policy,'physical')*2.35
+  utility:physical.utility+policyBias(policy,'physical')*2.55
  });
 
  const hobby=bestHobbyPlan(game,policy,rng.fork('hobby'));
