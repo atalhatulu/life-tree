@@ -14,4 +14,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: node --test tests/group3_part1.test.js tests/group3_part2.test.js tests/disease_progression.test.js tests/physical_capacity.test.js
+      - run: node --test tests/group4_part1.test.js tests/group4_part2.test.js tests/career_coherence.test.js tests/adult.test.js
