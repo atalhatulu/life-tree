@@ -1,7 +1,7 @@
 import {RNG} from '../core/rng.js';
 import {assertValidState} from './invariants.js';
 
-function humanLikeChoice(game,event,choices,rng){
+export function humanLikeChoice(game,event,choices,rng){
  const s=game.state;
  const has=id=>choices.find(c=>c.id===id);
  const score=new Map(choices.map(c=>[c.id,rng.int(0,8)]));
@@ -109,7 +109,7 @@ function shuffled(ids,rng){
  return out;
 }
 
-function activityOrder(game,policy,rng){
+export function activityOrder(game,policy,rng){
  const age=game.state.player.age;
  if(policy==='random') return shuffled(game.availableActivities().map(a=>a.id),rng);
  if(policy==='human-like'){
