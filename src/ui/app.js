@@ -176,13 +176,10 @@ function renderEvent() {
       card.innerHTML=`<h3>Hayat sona erdi</h3><p><strong>${game.state.player.age} yaş</strong> • ${d.cause??'Bilinmeyen neden'}</p><p>Net worth: <strong>${money(netWorth())}</strong> • Çocuk: <strong>${game.state.children?.length??0}</strong></p><p>Kariyer: <strong>${game.state.career?.title??game.state.player.job??'—'}</strong> • ${game.state.career?.levelTitle??'—'}</p><p>Büyük karar: <strong>${game.state.lifeTree?.nodes?.length??0}</strong></p>`;
     }else card.innerHTML='';
     $('#ageUp').disabled=dead;
-    $('#sim5').disabled=dead;
-    $('#sim10').disabled=dead;
+    $('#autoLife').disabled=false;
     return;
   }
   $('#ageUp').disabled=true;
-  $('#sim5').disabled=true;
-  $('#sim10').disabled=true;
   card.classList.remove('hidden');
   card.innerHTML=`<h3>${pendingEvent.title}</h3><p>${pendingEvent.majorDecision?'Bu seçim Life Tree üzerinde bir dönüm noktası olarak kaydedilecek.':'Bu yıl hayatında bir seçim yapman gerekiyor.'}</p><div class="choice-list">${game.eventChoices(pendingEvent).map(choice=>`<button class="choice-button" data-choice="${choice.id}">${choice.label}</button>`).join('')}</div>`;
   card.querySelectorAll('[data-choice]').forEach(button=>button.addEventListener('click',()=>{game.makeChoice(pendingEvent,button.dataset.choice);pendingEvent=null;render();}));
