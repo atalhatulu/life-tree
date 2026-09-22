@@ -13,11 +13,14 @@ function mortalityChance(person){
 export function processSocialYear(state,rng){
  const entries=[];
  state.social??={friends:[]};
+ state.social.friends??=[];
  if(state.player.age<7)return entries;
 
  const survivors=[];
  for(const friend of state.social.friends){
   friend.age+=1;
+  friend.yearsKnown=(friend.yearsKnown??0)+1;
+  friend.lastContactAge??=state.player.age-1;
   if(friend.health){
    const agePenalty=friend.age>=70?2:friend.age>=55?1:0;
    friend.health.current=clamp(friend.health.current+rng.fork('health-'+friend.id).int(-2,1)-agePenalty);
@@ -35,20 +38,36 @@ export function processSocialYear(state,rng){
    continue;
   }
 
-  friend.relationship=clamp(friend.relationship+rng.fork('rel-'+friend.id).int(-4,4));
+  const yearsSinceContact=Math.max(0,state.player.age-(friend.lastContactAge??state.player.age));
+  const movedAway=friend.cityId&&(state.location?.cityId??state.origin?.cityId)!==friend.cityId;
+  const longBond=(friend.yearsKnown??0)>=8?1:0;
+  let drift=rng.fork('rel-'+friend.id).int(-2,1)+longBond;
+  if(yearsSinceContact>=2)drift-=1;
+  if(yearsSinceContact>=4)drift-=2;
+  if(movedAway)drift-=1;
+  friend.relationship=clamp(friend.relationship+drift);
+  friend.closeFriend=Boolean((friend.closeFriend&&friend.relationship>=55)||(friend.relationship>=78&&(friend.yearsKnown??0)>=4));
+
+  if(friend.relationship<18&&!friend.closeFriend){
+   state.social.formerFriends??=[];
+   state.social.formerFriends.push({...friend,endedAtAge:state.player.age});
+   entries.push({age:state.player.age,kind:'social',text:friend.name+' ile zaman içinde uzaklaştınız.'});
+   continue;
+  }
   survivors.push(friend);
  }
  state.social.friends=survivors;
 
  const age=state.player.age;
- const adultPenalty=age>=60?.30:age>=19?.55:1;
- const cap=2+Math.floor(state.player.personality.sociability/25)+(age>=19?1:0);
- const chance=(0.16+state.player.personality.sociability/250)*adultPenalty;
+ const adultPenalty=age>=60?.28:age>=19?.58:1;
+ const cap=3+Math.floor(state.player.personality.sociability/22)+(age>=19?1:0);
+ const chance=(0.13+state.player.personality.sociability/280)*adultPenalty;
 
  if(state.social.friends.length<cap&&rng.chance(chance)){
-  const id='friend-'+state.year+'-'+state.social.friends.length;
+  const id='friend-'+state.year+'-'+((state.social.friendsCreated??0)+1);
   const friend=createFriend(state,rng.fork(id),id);
   state.social.friends.push(friend);
+  state.social.friendsCreated=(state.social.friendsCreated??0)+1;
   entries.push({age,kind:'social',text:friend.name+' '+friend.surname+' ile arkadaş oldun.'});
  }
  return entries;
