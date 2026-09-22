@@ -36,26 +36,42 @@ function weightedCandidate(rng,candidates){
 function bestSocialPlan(game,policy,rng){
  const state=game.state;
  const targets=game.socialTargets();
- const plans=[];
+ const targetCandidates=[];
  for(const target of targets){
   const current=relationshipValue(state,target);
   const memory=ensureRelationshipMemory(state,target.id);
   const yearsSince=memory.lastInteractionAge==null?2:Math.max(0,state.player.age-memory.lastInteractionAge);
-  const need=Math.max(0,70-current)*.08+Math.min(4,yearsSince)*.9+
-   (target.kind==='partner'?1.8:target.kind==='child'?1.4:0);
-  for(const activity of game.availableSocialActivities(target.id)){
-   const scored=scoreSocialActivity(state,target.id,activity.id);
-   if(!scored)continue;
-   const monthlyIncome=Math.max(12000,state.finance?.monthlyIncome??12000);
-   const costPressure=activity.cost/Math.max(1000,monthlyIncome*.12);
-   const frugalPenalty=costPressure*(policy==='frugal'?1.8:.9);
-   const learned=knownPreference(state,target.id,activity.preferenceKind,activity.preferenceKey)??0;
-   const visibleExpected=activity.baseRelationship+learned*2+scored.repetition;
-   const recent=recentCount(state,'social-activity',activity.id,4);
-   const varietyPenalty=Math.min(2.8,recent*.35);
-   const utility=need+visibleExpected*.40-frugalPenalty-varietyPenalty+rng.int(-2,2)*.12;
-   plans.push({targetId:target.id,activityId:activity.id,utility,frequencyWeight:activity.frequencyWeight??1});
-  }
+  const status=target.kind==='partner'?state.social?.romance?.status:null;
+  const kindNeed=target.kind==='partner'
+   ?(status==='married'||status==='cohabiting'?3.4:2.8)
+   :target.kind==='child'?2.6
+    :target.kind==='family'?1.1
+     :.9;
+  const utility=kindNeed+Math.max(0,72-current)*.10+Math.min(5,yearsSince)*.55;
+  targetCandidates.push({target,utility,frequencyWeight:1});
+ }
+ const picked=weightedCandidate(rng,targetCandidates);
+ if(!picked)return null;
+ const target=picked.target;
+ const current=relationshipValue(state,target);
+ const plans=[];
+ for(const activity of game.availableSocialActivities(target.id)){
+  const scored=scoreSocialActivity(state,target.id,activity.id);
+  if(!scored)continue;
+  const monthlyIncome=Math.max(12000,state.finance?.monthlyIncome??12000);
+  const costPressure=activity.cost/Math.max(1000,monthlyIncome*.12);
+  const frugalPenalty=costPressure*(policy==='frugal'?1.8:.9);
+  const learned=knownPreference(state,target.id,activity.preferenceKind,activity.preferenceKey)??0;
+  const visibleExpected=activity.baseRelationship+learned*2+scored.repetition;
+  const recent=recentCount(state,'social-activity',activity.id,4);
+  const varietyPenalty=Math.min(2.8,recent*.35);
+  const utility=visibleExpected*.40-frugalPenalty-varietyPenalty+rng.int(-2,2)*.12;
+  plans.push({
+   targetId:target.id,
+   activityId:activity.id,
+   utility,
+   frequencyWeight:activity.frequencyWeight??1
+  });
  }
  return weightedCandidate(rng,plans);
 }
