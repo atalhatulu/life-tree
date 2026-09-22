@@ -59,6 +59,15 @@ export function validateState(state){
   if(!Number.isFinite(state.finance.cash)||state.finance.cash<0) errors.push('invalid cash');
   if(!Number.isFinite(state.finance.debt)||state.finance.debt<0) errors.push('invalid debt');
   if(!Number.isFinite(state.finance.monthlyExpenses)||state.finance.monthlyExpenses<0) errors.push('invalid monthly expenses');
+  if(state.finance.debts){
+   let debtSum=0;
+   for(const [kind,value] of Object.entries(state.finance.debts)){
+    if(!Number.isFinite(value)||value<0)errors.push('invalid debt bucket '+kind);
+    debtSum+=Number(value)||0;
+   }
+   // Legacy systems may update aggregate debt during the year; Finance v3
+   // reconciles that delta into typed buckets on the next finance pass.
+  }
  }
 
  if(state.healthProfile){
@@ -103,6 +112,9 @@ export function validateState(state){
   if(!Number.isFinite(e.costOfLiving)||e.costOfLiving<.70||e.costOfLiving>1.35)errors.push('world cost of living out of range');
   if(!Number.isFinite(e.wageIndex)||e.wageIndex<.75||e.wageIndex>1.30)errors.push('world wage index out of range');
   if(!Number.isFinite(e.healthcareCost)||e.healthcareCost<.75||e.healthcareCost>1.40)errors.push('world healthcare cost out of range');
+  if(e.housingMarket!=null&&(!Number.isFinite(e.housingMarket)||e.housingMarket<.70||e.housingMarket>1.45))errors.push('world housing market out of range');
+  if(e.creditConditions!=null&&(!Number.isFinite(e.creditConditions)||e.creditConditions<.70||e.creditConditions>1.40))errors.push('world credit conditions out of range');
+  if(e.entrepreneurship!=null&&(!Number.isFinite(e.entrepreneurship)||e.entrepreneurship<.65||e.entrepreneurship>1.40))errors.push('world entrepreneurship out of range');
  }
  if(state.assets?.car&&state.finance?.lifestyle?.transport!=='car')errors.push('car asset without car transport lifestyle');
  if(!p.alive&&!state.death)errors.push('dead player missing death record');

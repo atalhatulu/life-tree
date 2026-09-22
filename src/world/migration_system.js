@@ -1,6 +1,7 @@
 import {TURKEY_CITIES,cityById} from '../data/countries/turkey/cities.js';
 import {ensurePersonalFinance} from '../finance/personal_finance.js';
 import {archiveCareer} from '../career/career_profile.js';
+import {economy} from './world_state.js';
 
 function cloneLocation(location){return location?structuredClone(location):null;}
 
@@ -14,13 +15,20 @@ export function movingCost(fromCityId,toCityId,householdSize=1){
 
 export function chooseJobOfferCity(state,rng){
  const current=cityById(state.location?.cityId??state.origin?.cityId);
- if(rng.chance(.62))return current;
+ const lastMoveAge=state.migrationHistory?.at(-1)?.age;
+ const recentMove=lastMoveAge!=null&&state.player.age-lastMoveAge<3;
+ const children=(state.children??[]).filter(c=>c.age<18).length;
+ const attachment=state.preferences?.hometownAttachment??50;
+ const settleBias=(recentMove?.16:0)+(children>0?.10:0)+(attachment>=70?.08:0);
+ if(rng.chance(Math.min(.84,.58+settleBias)))return current;
 
  const alternatives=TURKEY_CITIES.filter(city=>city.id!==current.id);
- return rng.weighted(alternatives.map(city=>({
-  value:city,
-  weight:Math.max(.2,city.weight*city.jobs*(city.wage/Math.max(.75,city.cost)))
- })));
+ return rng.weighted(alternatives.map(city=>{
+  const realWage=city.wage/Math.max(.72,city.cost);
+  const hometownBonus=city.id===state.origin?.cityId?1+(attachment-50)/120:1;
+  const largeHouseholdPenalty=children>0&&city.housing>1.12?.72:1;
+  return {value:city,weight:Math.max(.12,city.weight*city.jobs*realWage*hometownBonus*largeHouseholdPenalty)};
+ }));
 }
 
 export function relocationHouseholdSize(state){
@@ -31,12 +39,34 @@ export function relocationHouseholdSize(state){
  return size;
 }
 
+export function migrationScore(state,toCityId,{newMonthlyIncome=null,reason='personal'}={}){
+ const from=cityById(state.location?.cityId??state.origin?.cityId);
+ const to=cityById(toCityId);
+ if(from.id===to.id)return 100;
+ const household=relocationHouseholdSize(state);
+ const attachment=state.preferences?.hometownAttachment??50;
+ const currentIncome=state.career?.monthlyIncome??0;
+ const targetIncome=newMonthlyIncome??currentIncome;
+ const currentReal=currentIncome/Math.max(.75,from.cost);
+ const targetReal=targetIncome/Math.max(.75,to.cost);
+ let score=50+(targetReal-currentReal)/Math.max(1000,currentReal||targetReal||1)*28;
+ score+=(to.jobs-from.jobs)*10;
+ score-=(to.housing-from.housing)*12;
+ score-=(household-1)*2.5;
+ const lastAge=state.migrationHistory?.at(-1)?.age;
+ if(lastAge!=null&&state.player.age-lastAge<3)score-=16;
+ if(to.id===state.origin?.cityId)score+=(attachment-50)*.28;
+ else score-=(attachment-50)*.10;
+ if(reason==='partner-job')score+=3;
+ return Math.max(0,Math.min(100,score));
+}
+
 export function canAffordMove(state,toCityId){
  const fromCityId=state.location?.cityId??state.origin?.cityId;
  if(fromCityId===toCityId)return true;
  const cost=movingCost(fromCityId,toCityId,relocationHouseholdSize(state));
- const cash=state.finance?.cash??0;
- return cash>=cost*.35;
+ const liquid=(state.finance?.cash??0)+(state.finance?.savings??0)*.25;
+ return liquid>=cost*.50;
 }
 
 export function moveToCity(state,toCityId,reason='personal',options={}){
@@ -50,7 +80,11 @@ export function moveToCity(state,toCityId,reason='personal',options={}){
 
  const paid=Math.min(state.finance.cash??0,cost);
  state.finance.cash=Math.max(0,(state.finance.cash??0)-paid);
- state.finance.debt=(state.finance.debt??0)+Math.max(0,cost-paid);
+ if(cost-paid>0){
+  state.finance.debts??={consumer:0,medical:0,housing:0,car:0,emergency:0};
+  state.finance.debts.emergency=(state.finance.debts.emergency??0)+Math.max(0,cost-paid);
+  state.finance.debt=Object.values(state.finance.debts).reduce((s,v)=>s+v,0);
+ }
 
  if(state.assets?.home?.cityId&&state.assets.home.cityId!==to.id){
   state.assets.home.isPrimaryResidence=false;
@@ -129,7 +163,7 @@ export function generatePartnerMoveOpportunity(state,rng){
  if(state.pendingPartnerMove)return state.pendingPartnerMove;
  if(state.player.age<23||state.player.age>58)return null;
  if(state.player.age<(state.nextPartnerMoveAge??23))return null;
- if(!rng.chance(.065))return null;
+ if(!rng.chance(.052))return null;
 
  const current=cityById(state.location?.cityId??state.origin?.cityId);
  const candidates=TURKEY_CITIES.filter(city=>city.id!==current.id);
@@ -143,6 +177,8 @@ export function generatePartnerMoveOpportunity(state,rng){
   currentIncome,
   Math.round(currentIncome*(city.wage/current.wage)*(rng.int(102,126)/100))
  );
+ const score=migrationScore(state,city.id,{newMonthlyIncome:targetIncome,reason:'partner-job'});
+ if(score<48)return null;
 
  state.pendingPartnerMove={
   cityId:city.id,
@@ -151,7 +187,8 @@ export function generatePartnerMoveOpportunity(state,rng){
   previousCityName:current.name,
   partnerJob:partner.job,
   oldIncome:currentIncome,
-  newIncome:targetIncome
+  newIncome:targetIncome,
+  migrationScore:score
  };
  return state.pendingPartnerMove;
 }
@@ -185,6 +222,8 @@ export function canConsiderReturnHome(state){
  if(state.player.age<28||state.player.age>70)return false;
  if(state.player.age<(state.nextReturnHomeAge??28))return false;
  if((state.preferences?.hometownAttachment??50)<58)return false;
+ const lastMoveAge=state.migrationHistory?.at(-1)?.age;
+ if(lastMoveAge!=null&&state.player.age-lastMoveAge<3)return false;
  const yearsAway=state.year-(state.location.sinceYear??state.year);
  return yearsAway>=3;
 }

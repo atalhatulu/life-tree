@@ -1,5 +1,6 @@
 import {activityEfficiency,capacityBand} from '../health/physical_capacity.js';
 import {growTrait} from '../character/personality_dynamics.js';
+import {payDownDebt} from '../finance/personal_finance.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export const ACTIVITY_DEFS=[
@@ -14,8 +15,29 @@ export const ACTIVITY_DEFS=[
  {id:'budget',label:'Bütçeni gözden geçir',minAge:20,condition:s=>Boolean(s.finance)}
 ];
 
+function activityMemory(state,id){
+ state.activityMemory??={};
+ state.activityMemory[id]??={uses:0,lastAge:null,streak:0};
+ return state.activityMemory[id];
+}
+function repeatEfficiency(state,id){
+ const m=activityMemory(state,id);
+ if(m.lastAge===state.player.age)return .55;
+ if(m.lastAge===state.player.age-1&&m.streak>=3)return .78;
+ return 1;
+}
+function recordUse(state,id){
+ const m=activityMemory(state,id);
+ m.streak=m.lastAge===state.player.age-1?m.streak+1:1;
+ m.lastAge=state.player.age;
+ m.uses+=1;
+}
 export function availableActivities(state){
- return ACTIVITY_DEFS.filter(a=>state.player.age>=a.minAge&&(!a.condition||a.condition(state)));
+ return ACTIVITY_DEFS.filter(a=>{
+  if(state.player.age<a.minAge|| (a.condition&&!a.condition(state)))return false;
+  if(a.id==='checkup'&&state.healthProfile?.lastCheckupAge!=null&&state.player.age-state.healthProfile.lastCheckupAge<2)return false;
+  return true;
+ });
 }
 
 export function performActivity(state,id,rng){
@@ -24,6 +46,7 @@ export function performActivity(state,id,rng){
  const def=ACTIVITY_DEFS.find(a=>a.id===id);
  if(!def||state.player.age<def.minAge||(def.condition&&!def.condition(state)))throw new Error('Bu aktivite şu anda kullanılamıyor.');
  let result='';
+ const repeat=repeatEfficiency(state,id);
 
  if(id==='study'){
   if(state.higherEducation?.enrolled){
@@ -46,12 +69,15 @@ export function performActivity(state,id,rng){
  }
  if(id==='exercise'){
   const efficiency=activityEfficiency(state);
-  const healthGain=Math.max(0,Math.round(rng.int(1,3)*efficiency));
-  const fitnessGain=Math.max(1,Math.round(rng.int(2,5)*efficiency));
+  const healthGain=Math.max(0,Math.round(rng.int(1,3)*efficiency*repeat));
+  const fitnessGain=Math.max(1,Math.round(rng.int(2,5)*efficiency*repeat));
   state.player.health.current=clamp(state.player.health.current+healthGain);
   state.player.appearance.build=clamp(state.player.appearance.build+Math.round(rng.int(0,2)*efficiency));
   if(state.healthProfile)state.healthProfile.fitness=clamp(state.healthProfile.fitness+fitnessGain);
-  result=capacityBand(state)==='critical'
+  if(activityMemory(state,'exercise').streak>=5&&rng.chance(.08)){
+   state.player.health.current=clamp(state.player.health.current-2);
+   result='Düzenli egzersiz sırasında küçük bir zorlanma yaşadın.';
+  }else result=capacityBand(state)==='critical'
    ?'Hafif egzersiz yapabildin; fiziksel durumun yoğun antrenmanı sınırladı.'
    :'Egzersiz yaptın ve fiziksel durumuna yatırım yaptın.';
  }
@@ -73,8 +99,14 @@ export function performActivity(state,id,rng){
  }
  if(id==='work-hard'){
   const efficiency=activityEfficiency(state);
-  state.career.performance=clamp(state.career.performance+Math.max(1,Math.round(rng.int(3,6)*efficiency)));
+  state.career.performance=clamp(state.career.performance+Math.max(1,Math.round(rng.int(3,6)*efficiency*repeat)));
   state.career.satisfaction=clamp((state.career.satisfaction??50)-rng.int(0,2));
+  const m=activityMemory(state,'work-hard');
+  if(m.streak>=4){
+   state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
+   state.healthProfile.stress=clamp(state.healthProfile.stress+5);
+   state.career.satisfaction=clamp((state.career.satisfaction??50)-3);
+  }
   if(efficiency<.7){
    state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
    state.healthProfile.stress=clamp(state.healthProfile.stress+3);
@@ -99,11 +131,12 @@ export function performActivity(state,id,rng){
   if(state.finance.debt>0&&state.finance.cash>10000){
    const payment=Math.min(state.finance.debt,Math.round(state.finance.cash*.20));
    state.finance.cash-=payment;
-   state.finance.debt-=payment;
+   payDownDebt(state,payment);
    result='Bütçeni düzenleyip borcunun bir kısmını kapattın.';
   }else result='Bütçeni gözden geçirip finansal planını güncelledin.';
  }
 
+ recordUse(state,id);
  state.actions.remaining-=1;
  return result;
 }

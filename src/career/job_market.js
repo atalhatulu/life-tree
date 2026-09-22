@@ -1,7 +1,7 @@
 import {physicalCapacity,workCapacityModifier} from '../health/physical_capacity.js';
 import {JOBS} from '../data/catalog.js';
 import {economy} from '../world/world_state.js';
-import {chooseJobOfferCity,moveToCity,movingCost,relocationHouseholdSize} from '../world/migration_system.js';
+import {chooseJobOfferCity,moveToCity,movingCost,relocationHouseholdSize,migrationScore} from '../world/migration_system.js';
 import {metaFor,familyCompatibility} from './career_taxonomy.js';
 import {
  ensureCareerProfile,yearsInJob,yearsInFamily,recentJobRecord,dominantCareerFamily,archiveCareer
@@ -99,6 +99,7 @@ function buildOffer(state,rng,job,mode){
  const currentCityId=state.location?.cityId??state.origin?.cityId;
  const requiresMove=city.id!==currentCityId;
  const moveCost=requiresMove?movingCost(currentCityId,city.id,relocationHouseholdSize(state)):0;
+ const relocationScore=requiresMove?migrationScore(state,city.id,{newMonthlyIncome:salary,reason:mode==='career-switch'?'career-switch':'job'}):100;
  const recent=recentJobRecord(state,job.id);
  const pingPongPenalty=recent&&recent.reason!=='fired'&&state.player.age-recent.leftAtAge<5?40:0;
 
@@ -110,7 +111,7 @@ function buildOffer(state,rng,job,mode){
   related:q.exactDegree||q.reason==='adjacent-degree'||q.reason==='adjacent-family',
   experienceYears,
   cityId:city.id,cityName:city.name,
-  requiresMove,moveCost,
+  requiresMove,moveCost,relocationScore,
   score:fit+chance*.55+Math.min(25,experienceYears*3)+(q.exactDegree?25:0)-transitionPenalty-pingPongPenalty+(city.id===currentCityId?4:0)
  };
 }
@@ -143,6 +144,7 @@ export function generateJobOffers(state,rng,count=3,options={}){
  }
 
  let offers=eligible.map(job=>buildOffer(state,rng,job,mode));
+ offers=offers.filter(offer=>!offer.requiresMove||offer.relocationScore>=32);
 
  if(mode==='career-switch'){
   offers=offers.filter(offer=>{
