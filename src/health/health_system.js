@@ -100,7 +100,7 @@ export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
  // Disease consumes reserve, but diagnosis alone should not create a runaway
  // health spiral. Fitness changes resilience rather than restoring Health.
  const diseaseLossMultiplier=clamp(1-(h.fitness-50)*.006,.75,1.20);
- let additionalLoss=Math.max(0,h.stress-45)*.014+activeBurden*.28*diseaseLossMultiplier;
+ let additionalLoss=Math.max(0,h.stress-45)*.014+activeBurden*.42*diseaseLossMultiplier;
  if(lifestyle?.food==='frugal')additionalLoss+=.20;
 
  const previousHealth=healthBeforeYear??state.player.health.current;
