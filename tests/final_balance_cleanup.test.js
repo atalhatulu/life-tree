@@ -120,3 +120,45 @@ test('same career exit cannot be archived twice in the same year',()=>{
  archiveCareer(g.state,'career-switch');
  assert.equal(g.state.careerProfile.recentJobs.filter(x=>x.jobId==='developer'&&x.leftAtAge===32&&x.reason==='career-switch').length,1);
 });
+
+
+test('sustained financial and goal strain can make a weak marriage vulnerable without instant divorce',()=>{
+ const g=adult('marriage-strain');
+ g.state.player.age=40;
+ g.state.finance.debt=3500000;
+ g.state.social.romance={
+  id:'partner-strain',name:'Ece',surname:'Kaya',alive:true,age:40,status:'married',
+  relationship:68,compatibility:62,yearsTogether:10,marriageYears:5,
+  strain:2.4,health:{current:85},personality:{ambition:10},
+  preferencesProfile:{food:{},activities:{}}
+ };
+ g.state.player.personality.ambition=90;
+ g.state.relationshipMemories={'partner-strain':{
+  interactions:4,lastInteractionAge:37,recentActivities:[],positiveImpact:8,negativeImpact:2,knownPreferences:{}
+ }};
+ let seenChance=0;
+ const rng={int:()=>0,chance:p=>{seenChance=Math.max(seenChance,p);return false;},fork:()=>({chance:()=>false})};
+ processPartnershipYear(g.state,rng);
+ assert.ok(g.state.social.romance.strain>2.4);
+ assert.ok(seenChance>0,'sustained strain should create a bounded divorce risk');
+ assert.ok(g.state.social.romance,'a single strained year should not force divorce deterministically');
+});
+
+test('healthy low-strain marriage does not receive arbitrary divorce risk',()=>{
+ const g=adult('marriage-stable');
+ g.state.social.romance={
+  id:'partner-stable',name:'Ece',surname:'Kaya',alive:true,age:32,status:'married',
+  relationship:86,compatibility:86,yearsTogether:8,marriageYears:5,
+  strain:0,health:{current:90},personality:{ambition:g.state.player.personality.ambition},
+  preferencesProfile:{food:{},activities:{}}
+ };
+ g.state.relationshipMemories={'partner-stable':{
+  interactions:5,lastInteractionAge:32,recentActivities:['tea'],positiveImpact:15,negativeImpact:0,knownPreferences:{}
+ }};
+ const chances=[];
+ const rng={int:()=>0,chance:p=>{chances.push(p);return false;},fork:()=>({chance:()=>false})};
+ processPartnershipYear(g.state,rng);
+ assert.ok(g.state.social.romance);
+ assert.ok((g.state.social.romance.strain??0)<1);
+ assert.ok(!chances.some(p=>p>=.025&&p<=.16),'healthy marriage should not get divorce RNG merely for existing');
+});
