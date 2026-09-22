@@ -59,10 +59,16 @@ function renderRelationships() {
     personCard(grandparents.paternal.grandmother, 'Babaanne'),
     personCard(grandparents.paternal.grandfather, 'Baba tarafından dede')
   ];
+  const romance= social.romance
+    ? `<div class="section-divider">Partner</div><article class="summary-card"><h3>${social.romance.name??'Partner'}</h3><p>Durum: <strong>${social.romance.status??'dating'}</strong> • İlişki: <strong>${Math.round(social.romance.relationship??0)}/100</strong></p><p>Birlikte: ${social.romance.yearsTogether??0} yıl • Gerilim: ${Math.round(social.romance.relationshipTension??0)}/100</p></article>`
+    : '<div class="section-divider">Partner</div><div class="empty-state compact">Aktif partner yok.</div>';
+  const kids=(game.state.children??[]).length
+    ? `<div class="section-divider">Çocuklar</div>${game.state.children.map((child,i)=>`<article class="summary-card"><h3>${child.name??('Çocuk '+(i+1))}</h3><p>${child.age??0} yaş • ${child.educationPlan??child.education?.plan??'eğitim planı oluşuyor'}</p></article>`).join('')}`
+    : '';
   const friends = social.friends.length
     ? `<div class="section-divider">Arkadaşlar</div>${social.friends.map(f=>personCard(f,'Arkadaş')).join('')}`
-    : '<div class="empty-state compact">Henüz yakın bir arkadaşın yok.</div>';
-  $('#relationships').innerHTML = family.join('') + friends;
+    : '<div class="section-divider">Arkadaşlar</div><div class="empty-state compact">Henüz yakın bir arkadaşın yok.</div>';
+  $('#relationships').innerHTML = family.join('') + romance + kids + friends;
 }
 
 function renderActivities() {
