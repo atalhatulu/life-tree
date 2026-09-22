@@ -97,6 +97,7 @@ function bestPhysicalPlan(game,policy,rng){
  const fitness=state.healthProfile?.fitness??50;
  const capacity=physicalCapacity(state);
  const need=Math.max(0,75-fitness)*.09+Math.max(0,65-capacity)*.03;
+ const trainingNeed=Math.max(0,Math.min(1,(75-fitness)/35));
  const ranked=options.map(activity=>{
   const monthlyIncome=Math.max(12000,state.finance?.monthlyIncome??12000);
   const costPressure=activity.cost/Math.max(1000,monthlyIncome*.10);
