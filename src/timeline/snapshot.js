@@ -7,19 +7,15 @@ function stripForSnapshot(state){
  const snapshot=structuredClone(state);
  const historyLength=snapshot.history?.length??0;
  const priorNodes=(snapshot.lifeTree?.nodes??[]).map(cloneNodeWithoutSnapshot);
-
- // History is not required to resume simulation logic. Keeping only its
- // length makes snapshots much smaller while preserving chronology metadata.
  snapshot.history=[];
- snapshot.lifeTree={nodes:priorNodes};
-
+ snapshot.lifeTree={...(snapshot.lifeTree??{}),nodes:priorNodes};
  return {state:snapshot,historyLength,priorNodes};
 }
 
-export function createDecisionSnapshot(state,event,choices){
+export function createDecisionSnapshot(state,event,choices,rngSnapshot=null){
  const compact=stripForSnapshot(state);
  return {
-  version:1,
+  version:2,
   age:state.player.age,
   year:state.year,
   eventId:event.id,
@@ -27,6 +23,7 @@ export function createDecisionSnapshot(state,event,choices){
   availableChoices:choices.map(choice=>({id:choice.id,label:choice.label})),
   historyLength:compact.historyLength,
   priorNodes:compact.priorNodes,
+  rng:rngSnapshot?{seed:rngSnapshot.seed>>>0,state:rngSnapshot.state>>>0}:null,
   state:compact.state
  };
 }
@@ -34,7 +31,13 @@ export function createDecisionSnapshot(state,event,choices){
 export function restoreDecisionSnapshot(snapshot){
  if(!snapshot?.state)throw new Error('Invalid decision snapshot.');
  const state=structuredClone(snapshot.state);
- state.lifeTree??={nodes:[]};
+ state.lifeTree??={nodes:[],branches:[],nextBranchId:1};
  state.lifeTree.nodes=(snapshot.priorNodes??state.lifeTree.nodes??[]).map(cloneNodeWithoutSnapshot);
+ state.lifeTree.branches??=[];
+ state.lifeTree.nextBranchId??=1;
  return state;
+}
+
+export function snapshotRng(snapshot){
+ return snapshot?.rng?{seed:snapshot.rng.seed>>>0,state:snapshot.rng.state>>>0}:null;
 }
