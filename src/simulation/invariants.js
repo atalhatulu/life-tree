@@ -5,6 +5,9 @@ export function validateState(state){
  const errors=[];
  const p=state.player;
  const validCityIds=new Set(TURKEY_CITIES.map(city=>city.id));
+ if(state.schemaVersion!=null&&state.schemaVersion!==2)errors.push('unsupported state schema version: '+state.schemaVersion);
+ if(!Array.isArray(state.history))errors.push('history must be an array');
+ if(!Array.isArray(state.lifeTree?.nodes))errors.push('life tree nodes must be an array');
  if(state.country?.id==='TR'){
   if(!validCityIds.has(state.origin?.cityId))errors.push('invalid origin city: '+state.origin?.cityId);
   if(!validCityIds.has(state.location?.cityId))errors.push('invalid current city: '+state.location?.cityId);
@@ -45,6 +48,8 @@ export function validateState(state){
 
  const partner=state.social?.romance;
  if(partner){
+  if(partner.alive===false)errors.push('dead partner still active romance');
+  if(partner.status==='divorced'||partner.status==='ended')errors.push('ended partner still active romance');
   if(!bounded(partner.relationship)) errors.push('romance relationship out of range');
   if(partner.compatibility!=null&&!bounded(partner.compatibility))errors.push('partner compatibility out of range');
   if(!Number.isFinite(partner.monthlyIncome)||partner.monthlyIncome<0)errors.push('invalid partner income');
@@ -54,6 +59,21 @@ export function validateState(state){
  if(state.career?.performance!=null&&!bounded(state.career.performance)) errors.push('career performance out of range');
  if(state.career?.satisfaction!=null&&!bounded(state.career.satisfaction)) errors.push('career satisfaction out of range');
  if(state.career?.stability!=null&&!bounded(state.career.stability)) errors.push('career stability out of range');
+ if(state.career?.employed&&state.unemployment?.longTerm)errors.push('employed player marked long-term unemployed');
+ if(state.career?.employed&&state.unemployedSinceAge!=null)errors.push('employed player has unemployment start age');
+ if(state.retraining){
+  if(!Number.isInteger(state.retraining.requiredYears)||state.retraining.requiredYears<1)errors.push('invalid retraining duration');
+  if(!Number.isInteger(state.retraining.yearsCompleted)||state.retraining.yearsCompleted<0)errors.push('invalid retraining progress');
+  if(state.retraining.yearsCompleted>state.retraining.requiredYears)errors.push('retraining progress exceeds requirement');
+  if(state.retraining.completed&&state.retraining.yearsCompleted<state.retraining.requiredYears)errors.push('retraining completed too early');
+ }
+ if(state.militaryService){
+  const m=state.militaryService;
+  if(!['pending','deferred','completed','not-applicable'].includes(m.status))errors.push('invalid military status');
+  if(m.status==='completed'&&!['standard','paid'].includes(m.mode))errors.push('completed military service missing mode');
+  if(m.mode==='standard'&&m.serviceMonths!==6)errors.push('invalid standard military duration');
+  if(m.mode==='paid'&&m.serviceMonths!==1)errors.push('invalid paid military duration');
+ }
 
  if(state.finance){
   if(!Number.isFinite(state.finance.cash)||state.finance.cash<0) errors.push('invalid cash');
@@ -83,8 +103,12 @@ export function validateState(state){
   if(!['stable','strained','distressed','crisis'].includes(state.mentalHealth.status))errors.push('invalid mental health status');
  }
 
+ const childIds=new Set();
  for(const child of state.children??[]){
+  if(childIds.has(child.id))errors.push('duplicate child id: '+child.id);
+  childIds.add(child.id);
   if(child.age<0||child.age>p.age)errors.push('invalid child age');
+  if(p.age-child.age<14)errors.push('parent-child age gap below 14');
   if(!bounded(child.health.current))errors.push('child health out of range');
   if(!bounded(child.relationship??70))errors.push('child relationship out of range');
  }
@@ -125,6 +149,18 @@ export function validateState(state){
   if(e.entrepreneurship!=null&&(!Number.isFinite(e.entrepreneurship)||e.entrepreneurship<.65||e.entrepreneurship>1.40))errors.push('world entrepreneurship out of range');
  }
  if(state.assets?.car&&state.finance?.lifestyle?.transport!=='car')errors.push('car asset without car transport lifestyle');
+ if(state.assets?.home&&state.finance?.lifestyle?.housing!=='owned')errors.push('home asset without owned housing lifestyle');
+ if(!state.social?.romance&&(state.finance?.partnerContributionMonthly??0)>0)errors.push('partner contribution without active partner');
+ const branchIds=new Set();
+ for(const branch of state.lifeTree?.branches??[]){
+  if(!branch.id||branchIds.has(branch.id))errors.push('invalid or duplicate life tree branch id');
+  branchIds.add(branch.id);
+  if(branch.originalChoiceId===branch.alternateChoiceId)errors.push('life tree branch does not change choice');
+ }
+ for(const node of state.lifeTree?.nodes??[]){
+  if(!Number.isFinite(node.age)||node.age<0)errors.push('invalid life tree node age');
+  if(!node.eventId||!node.choiceId)errors.push('incomplete life tree node');
+ }
  if(!p.alive&&!state.death)errors.push('dead player missing death record');
  if(!p.alive&&!state.deathSummary)errors.push('dead player missing death summary');
  return errors;
