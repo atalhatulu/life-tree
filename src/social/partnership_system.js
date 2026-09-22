@@ -8,15 +8,69 @@ function partnerMortalityChance(partner){
  return Math.min(.22,.026+(age-70)*.006+(100-health)*.00025);
 }
 
+function preferenceGap(state,r,key){
+ return Math.abs((state.preferences?.[key]??50)-(r.preferences?.[key]??50));
+}
+
+function relationshipStress(state,r){
+ let stress=0;
+ const debt=state.finance?.debt??0;
+ const income=(state.career?.monthlyIncome??state.retirement?.pensionMonthly??0)*12;
+ if(debt>Math.max(750000,income*2))stress+=3;
+ else if(debt>Math.max(250000,income))stress+=1;
+ if(state.player.age>=23&&!state.career?.employed&&!state.retirement?.retired&&!state.higherEducation?.enrolled)stress+=2;
+ if((state.healthProfile?.stress??0)>=70)stress+=2;
+ else if((state.healthProfile?.stress??0)>=50)stress+=1;
+ stress+=Math.min(2,(state.children?.filter(c=>c.age<18).length??0)*.55);
+ const latestMove=state.migrationHistory?.at(-1);
+ if(latestMove?.age===state.player.age)stress+=1.5;
+ if(preferenceGap(state,r,'parenthoodDesire')>=30)stress+=1.5;
+ if(preferenceGap(state,r,'hometownAttachment')>=35)stress+=1;
+ if(Math.abs((state.player.personality?.ambition??50)-(r.personality?.ambition??50))>=35)stress+=1;
+ return stress;
+}
+
+function endRelationship(state,r,{divorce=false}={}){
+ if(divorce){
+  r.status='divorced';
+  r.divorcedAtAge=state.player.age;
+  state.social.exSpouses??=[];
+  state.social.exSpouses.push({...r});
+  state.lastDivorceAge=state.player.age;
+  if(state.healthProfile)state.healthProfile.stress=clamp(state.healthProfile.stress+12);
+  for(const child of state.children??[]){
+   child.relationship=clamp((child.relationship??70)-4);
+   child.parenting??={};
+   child.parenting.emotionalSecurity=clamp((child.parenting.emotionalSecurity??70)-8);
+  }
+ }else{
+  r.status='ended';
+  state.social.exPartners??=[];
+  state.social.exPartners.push({...r});
+  if(state.healthProfile)state.healthProfile.stress=clamp(state.healthProfile.stress+6);
+ }
+ state.social.romance=null;
+ state.nextDatingAge=state.player.age+2;
+ state.datingAttempts=Math.max(0,(state.datingAttempts??0)-2);
+}
+
 export function ensurePartnershipState(state){
  if(state.social?.romance){
   const r=state.social.romance;
   r.status??='dating';
   r.yearsTogether??=0;
+  r.relationshipTension??=10;
+  r.relationshipState??='stable';
+  r.preferences??={
+   partnershipDesire:55,marriageDesire:45,parenthoodDesire:50,riskTolerance:50,hometownAttachment:50
+  };
   r.compatibility??=clamp(Math.round(
-   100-Math.abs((state.player.personality.sociability??50)-(r.personality?.sociability??50))*.35-
-   Math.abs((state.player.personality.ambition??50)-(r.personality?.ambition??50))*.25
-  ),25,95);
+   92-
+   Math.abs((state.player.personality.sociability??50)-(r.personality?.sociability??50))*.28-
+   Math.abs((state.player.personality.ambition??50)-(r.personality?.ambition??50))*.20-
+   preferenceGap(state,r,'parenthoodDesire')*.14-
+   preferenceGap(state,r,'hometownAttachment')*.08
+  ),30,95);
  }
 }
 
@@ -46,24 +100,57 @@ export function processPartnershipYear(state,rng){
   return entries;
  }
 
- const financeStress=(state.finance?.debt??0)>750000?3:0;
- const compatibility=(r.compatibility??60)-50;
- const delta=Math.round(compatibility*.03)-financeStress+rng.int(-4,4);
+ const stress=relationshipStress(state,r);
+ const qualityTime=r.lastQualityTimeAge===state.player.age-1?1:0;
+ const compatibility=r.compatibility??60;
+ const mismatch=Math.max(0,70-compatibility)/10;
+ r.relationshipTension=clamp(
+  (r.relationshipTension??10)*.72+stress*3.2+mismatch*1.4-qualityTime*7+rng.int(-2,3)
+ );
+ const committed=r.status==='cohabiting'||r.status==='married';
+ const conflictChance=Math.min(.30,(committed?.075:.035)+stress*(committed?.016:.008)+Math.max(0,72-compatibility)*(committed?.005:.0025));
+ if(r.yearsTogether>=2&&rng.fork('relationship-conflict').chance(conflictChance)){
+  r.relationshipTension=clamp(r.relationshipTension+rng.int(committed?9:6,committed?19:13));
+  r.relationship=clamp(r.relationship-rng.int(committed?3:2,committed?7:5));
+  entries.push({age:state.player.age,kind:'relationship',text:r.name+' ile aranızda bir süredir biriken bir anlaşmazlık yaşandı.'});
+ }
+ const delta=Math.round(
+  (committed?-1.1:-.45)+(compatibility-70)*.06+qualityTime*(committed?2.7:2.2)-stress*(committed?.72:.35)-(r.relationshipTension??0)/(committed?25:34)+rng.int(-3,3)
+ );
  r.relationship=clamp((r.relationship??55)+delta);
 
- if(r.status!=='married'&&r.yearsTogether>=2&&r.relationship<40&&rng.chance(.18)){
-  entries.push({age:state.player.age,kind:'relationship',text:r.name+' ile ilişkin sona erdi.'});
-  state.social.romance=null;
+ if(r.relationship>=72&&r.relationshipTension<30)r.relationshipState='stable';
+ else if(r.relationship>=45&&r.relationshipTension<60)r.relationshipState='strained';
+ else r.relationshipState='conflict';
+ r.conflictYears=r.relationshipState==='conflict'?(r.conflictYears??0)+1:Math.max(0,(r.conflictYears??0)-1);
+
+ if(r.status!=='married'&&r.yearsTogether>=1&&r.relationship<=18&&r.relationshipTension>=80){
+  entries.push({age:state.player.age,kind:'relationship',paceBlock:true,text:r.name+' ile ilişkin sona erdi.'});
+  endRelationship(state,r);
   return entries;
+ }
+ if(r.status!=='married'&&r.yearsTogether>=2&&r.relationship<42&&r.relationshipTension>45){
+  const chance=Math.min(.72,.12+(42-r.relationship)*.018+(r.relationshipTension-45)*.008);
+  if(rng.fork('breakup').chance(chance)){
+   entries.push({age:state.player.age,kind:'relationship',paceBlock:true,text:r.name+' ile ilişkin sona erdi.'});
+   endRelationship(state,r);
+   return entries;
+  }
  }
 
  if(r.status==='married'){
   r.marriageYears=(r.marriageYears??0)+1;
-  if(r.relationship<25&&rng.chance(.18)){
-   entries.push({age:state.player.age,kind:'relationship',text:r.name+' ile evliliğiniz sona erdi.'});
-   state.social.exSpouses??=[];
-   state.social.exSpouses.push({...r});
-   state.social.romance=null;
+  if(r.marriageYears>=2&&r.relationship<=15&&r.relationshipTension>=85){
+   entries.push({age:state.player.age,kind:'relationship',paceBlock:true,text:r.name+' ile evliliğiniz boşanmayla sona erdi.'});
+   endRelationship(state,r,{divorce:true});
+   return entries;
+  }
+  if(r.marriageYears>=2&&r.relationship<55&&r.relationshipTension>45&&(r.conflictYears??0)>=2){
+   const chance=Math.min(.68,.13+(55-r.relationship)*.014+(r.relationshipTension-45)*.007+(r.conflictYears??0)*.025);
+   if(rng.fork('divorce').chance(chance)){
+    entries.push({age:state.player.age,kind:'relationship',paceBlock:true,text:r.name+' ile evliliğiniz boşanmayla sona erdi.'});
+    endRelationship(state,r,{divorce:true});
+   }
   }
  }
  return entries;
@@ -75,7 +162,8 @@ export function marryPartner(state){
  r.status='married';
  r.marriedAtAge=state.player.age;
  r.marriageYears=0;
- r.relationship=clamp(r.relationship+8);
+ r.relationship=clamp(r.relationship+4);
+ r.relationshipTension=clamp((r.relationshipTension??10)-5);
  return r;
 }
 
@@ -84,5 +172,6 @@ export function moveInTogether(state){
  if(!r) throw new Error('Aktif ilişkin yok.');
  r.status=r.status==='married'?'married':'cohabiting';
  if(state.finance?.lifestyle?.housing==='family') state.finance.lifestyle.housing='shared';
- r.relationship=clamp(r.relationship+4);
+ r.relationship=clamp(r.relationship+2);
+ r.relationshipTension=clamp((r.relationshipTension??10)-2);
 }

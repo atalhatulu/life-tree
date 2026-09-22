@@ -58,7 +58,13 @@ export function performActivity(state,id,rng){
  if(id==='socialize'){
   state.social??={friends:[]};
   state.player.personality.sociability=growTrait(state.player.personality.sociability,2);
-  if(state.social.friends.length){const f=rng.pick(state.social.friends);f.relationship=clamp(f.relationship+4);result=f.name+' ile vakit geçirdin.';} else result='İnsanlarla vakit geçirip daha sosyal olmaya çalıştın.';
+  if(state.social.friends.length){
+   const f=rng.pick(state.social.friends);
+   f.relationship=clamp(f.relationship+7);
+   f.lastContactAge=state.player.age;
+   f.closeFriend=Boolean((f.closeFriend&&f.relationship>=55)||(f.relationship>=78&&(f.yearsKnown??0)>=4));
+   result=f.name+' ile vakit geçirdin.';
+  } else result='İnsanlarla vakit geçirip daha sosyal olmaya çalıştın.';
  }
  if(id==='hobby'){
   const interests=Object.entries(state.player.interests).sort((a,b)=>b[1]-a[1]);
@@ -76,7 +82,9 @@ export function performActivity(state,id,rng){
   }else result='İşine ekstra emek verdin.';
  }
  if(id==='date'){
-  state.social.romance.relationship=clamp(state.social.romance.relationship+rng.int(3,6));
+  state.social.romance.relationship=clamp(state.social.romance.relationship+rng.int(3,5));
+  state.social.romance.relationshipTension=clamp((state.social.romance.relationshipTension??10)-rng.int(4,8));
+  state.social.romance.lastQualityTimeAge=state.player.age;
   result=state.social.romance.name+' ile kaliteli zaman geçirdin.';
  }
  if(id==='checkup'){
