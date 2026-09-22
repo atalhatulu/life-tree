@@ -16,6 +16,12 @@ jobs:
           node-version: 22
       - run: npm test
       - run: npm run fast-sim -- --lives 1000 --to-age 100 --policy random --seed-prefix ci-audit
+      - run: node src/cli/dump_lives.js --lives 1000 --to-age 100 --policy random --seed-prefix ci-audit --out artifacts/life-tree-1000-lives
+      - uses: actions/upload-artifact@v4
+        with:
+          name: life-tree-1000-lives
+          path: artifacts/life-tree-1000-lives
+          compression-level: 9
       - run: npm run simulate -- --lives 300 --to-age 100 --policy random
       - run: npm run trace -- --seed editorial-life --policy random --to-age 100
       - run: npm run showcase
