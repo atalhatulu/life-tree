@@ -18,8 +18,9 @@ function choiceWeight(state,event,choice){
  const fitness=state.healthProfile?.fitness??50;
 
  if(event.id==='first-romance'||event.id==='adult-dating'){
-  if(choice.id==='approach'||choice.id==='meet')return .4+(prefs.partnershipDesire??50)/35+(state.player.personality.sociability??50)/70;
-  return .8+(100-(prefs.partnershipDesire??50))/45;
+  const earlyAdultBoost=age<=34 ? .65 : age<=42 ? .25 : 0;
+  if(choice.id==='approach'||choice.id==='meet')return .5+(prefs.partnershipDesire??50)/35+(state.player.personality.sociability??50)/70+earlyAdultBoost;
+  return .7+(100-(prefs.partnershipDesire??50))/50+(age>42 ? .25 : 0);
  }
  if(event.id==='relationship-commitment'){
   if(choice.id==='marry')return .3+(prefs.marriageDesire??50)/28+rel(state)/70+(cash>500000?.4:0);
