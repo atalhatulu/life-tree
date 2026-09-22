@@ -17,7 +17,7 @@ test('YKS score is deterministic and bounded',()=>{
 test('university applications carry YKS and build preference list',()=>{
  const g=new Game('yks-preferences');
  g.state.player.age=19;
- g.state.education.graduationReadiness=70;
+ g.state.education={stage:'graduated',graduationReadiness:70,performance:72,aptitude:68,quality:65};
  const offers=generateUniversityApplications(g.state,new RNG('apps'),4);
  assert.ok(offers.length>0);
  assert.ok(offers.every(x=>Number.isFinite(x.yksScore)));
@@ -27,7 +27,7 @@ test('university applications carry YKS and build preference list',()=>{
 test('university admission assigns funding and housing plan',()=>{
  const g=new Game('university-funding');
  g.state.player.age=19;
- g.state.education.graduationReadiness=95;
+ g.state.education={stage:'graduated',graduationReadiness:95,performance:90,aptitude:88,quality:80};
  g.state.pendingUniversityApplications=generateUniversityApplications(g.state,new RNG('funding-apps'),3);
  for(const offer of g.state.pendingUniversityApplications)offer.admissionChance=100;
  const result=applyUniversityProgram(g.state,{int:()=>1,fork:()=>new RNG('funding-choice')},g.state.pendingUniversityApplications[0].id);
