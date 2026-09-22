@@ -1,5 +1,6 @@
 import { Game } from '../core/game.js';
 import { decisionContext } from '../life/decision_context.js';
+import { historyText } from '../life/history_text.js';
 
 let game;
 let pendingEvent = null;
@@ -69,13 +70,6 @@ function actionResultText(result) {
   if (typeof result === 'string') return result;
   if (result?.text) return result.text;
   return 'Aksiyon tamamlandı.';
-}
-
-function historyText(item) {
-  const value = item.result ?? item.text ?? item.eventId ?? 'olay';
-  if (typeof value === 'string') return value;
-  if (value?.text) return value.text;
-  return item.eventId ?? item.kind ?? 'olay';
 }
 
 function renderActivities() {
