@@ -33,3 +33,13 @@ export function familyCompatibility(fromId,toId){
 export function isRegulated(jobId){
  return Boolean(metaFor(jobId).regulated);
 }
+
+export function retrainingYears(fromId,toId){
+ const compatibility=familyCompatibility(fromId,toId);
+ if(compatibility>=65)return 0;
+ const target=metaFor(toId);
+ if(target.regulated)return Infinity;
+ if(target.tier>=4)return 2;
+ if(target.tier>=3)return 1;
+ return 1;
+}
