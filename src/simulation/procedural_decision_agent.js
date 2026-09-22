@@ -33,13 +33,13 @@ function choiceWeight(state,event,choice){
  if(event.id==='child-decision'){
   const children=state.children?.length??0;
   const financialSecurity=clamp((cash/1200000)+(income/70000),0,2.4);
-  const ageFit=age<=34?1:age<=38?.75:age<=41?.45:.2;
-  const existingChildPenalty=children===0?0:children===1?.85:1.7;
+  const ageFit=age<=34 ? 1 : age<=38 ? .75 : age<=41 ? .45 : .2;
+  const existingChildPenalty=children===0 ? 0 : children===1 ? .85 : 1.7;
   const relationshipSupport=clamp((rel(state)-55)/30,0,1.2);
   if(choice.id==='have-child'){
    return .45+(prefs.parenthoodDesire??50)/22+financialSecurity*.55+relationshipSupport+ageFit-existingChildPenalty-Math.max(0,stress-55)*.018;
   }
-  return .65+(100-(prefs.parenthoodDesire??50))/55+(children*.55)+(cash<250000?.45:0)+(age>=39?.35:0);
+  return .65+(100-(prefs.parenthoodDesire??50))/55+(children*.55)+(cash<250000 ? .45 : 0)+(age>=39 ? .35 : 0);
  }
  if(event.id==='adult-lifestyle'){
   if(choice.id==='healthy')return .7+(100-health)/45+(100-fitness)/80+(income>50000?.5:0);
