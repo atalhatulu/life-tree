@@ -78,11 +78,31 @@ function qualification(state,job,mode){
  return {eligible:false,exactDegree:false,reason:'retraining-required'};
 }
 
+function chooseEmploymentSector(state,rng,job){
+ const sectors=job.sectors?.length?job.sectors:['private'];
+ const weights=sectors.map(value=>{
+  let weight=1;
+  if(value==='public')weight*=1.05+(100-(state.preferences?.riskTolerance??50))*.01;
+  if(value==='private')weight*=1.15+(state.player.personality?.ambition??50)*.006;
+  if(value==='self-employed')weight*=.55+(state.preferences?.riskTolerance??50)*.012+(state.player.personality?.ambition??50)*.006;
+  return {value,weight:Math.max(.1,weight)};
+ });
+ return rng.weighted(weights);
+}
+
+function sectorProfile(sector){
+ if(sector==='public')return {salary:0.94,stability:78,variance:.04};
+ if(sector==='self-employed')return {salary:1.08,stability:42,variance:.18};
+ return {salary:1.04,stability:58,variance:.11};
+}
+
 function buildOffer(state,rng,job,mode){
  const fit=interestMatch(state,job);
  const q=qualification(state,job,mode);
  const meta=metaFor(job.id);
  const low=job.income[0],high=job.income[1];
+ const sector=chooseEmploymentSector(state,rng.fork('sector-'+job.id),job);
+ const sectorMeta=sectorProfile(sector);
  const experienceYears=yearsInJob(state,job.id)+yearsInFamily(state,meta.family)*.35;
  const degreeBoost=q.exactDegree?1.10:1;
  const experienceBoost=Math.min(1.22,1+experienceYears*.018);
@@ -90,7 +110,8 @@ function buildOffer(state,rng,job,mode){
  const city=chooseJobOfferCity(state,rng.fork('city-'+job.id));
  const salary=Math.round(
   rng.fork(job.id).int(low,Math.max(low,Math.round(low+(high-low)*.45)))*
-  degreeBoost*experienceBoost*macro.wageIndex*city.wage
+  degreeBoost*experienceBoost*macro.wageIndex*city.wage*sectorMeta.salary*
+  (1+rng.fork('sector-variance-'+job.id).int(-Math.round(sectorMeta.variance*100),Math.round(sectorMeta.variance*100))/100)
  );
  const currentSalary=state.career?.monthlyIncome??0;
  const salaryDrop=currentSalary>0?salary/currentSalary:1;
@@ -109,6 +130,8 @@ function buildOffer(state,rng,job,mode){
  return {
   ...job,
   family:meta.family,
+  sector,
+  sectorStability:sectorMeta.stability,
   transitionReason:q.reason,
   fit,salary,offerChance:chance,
   related:q.exactDegree||q.reason==='adjacent-degree'||q.reason==='adjacent-family',
@@ -202,7 +225,8 @@ export function acceptJob(state,jobId){
   cityName:offer.cityName,
   level:Math.max(1,Math.min(3,1+Math.floor((offer.experienceYears??0)/5))),
   satisfaction:55,
-  stability:60,
+  stability:offer.sectorStability??60,
+  sector:offer.sector??'private',
   previousJobs,
   enteredAtAge:state.player.age,
   transitionReason:offer.transitionReason
