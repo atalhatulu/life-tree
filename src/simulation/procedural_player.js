@@ -16,6 +16,23 @@ function policyBias(policy,key){
  return table[policy]?.[key]??1;
 }
 
+function recentCount(state,kind,id,years=5){
+ const minAge=state.player.age-years;
+ return (state.history??[]).filter(item=>
+  item.age>=minAge&&item.kind===kind&&
+  (item.activityId===id||item.hobbyId===id)
+ ).length;
+}
+
+function weightedCandidate(rng,candidates){
+ if(!candidates.length)return null;
+ const floor=Math.min(...candidates.map(x=>x.utility));
+ return rng.weighted(candidates.map(candidate=>({
+  value:candidate,
+  weight:Math.max(.08,(candidate.frequencyWeight??1)*(1+Math.max(0,candidate.utility-floor)))
+ })));
+}
+
 function bestSocialPlan(game,policy,rng){
  const state=game.state;
  const targets=game.socialTargets();
@@ -29,15 +46,18 @@ function bestSocialPlan(game,policy,rng){
   for(const activity of game.availableSocialActivities(target.id)){
    const scored=scoreSocialActivity(state,target.id,activity.id);
    if(!scored)continue;
-   const affordability=(state.finance?.cash??0)>0?activity.cost/Math.max(1,state.finance.cash):1;
-   const frugalPenalty=policy==='frugal'?affordability*8:affordability*3;
+   const monthlyIncome=Math.max(12000,state.finance?.monthlyIncome??12000);
+   const costPressure=activity.cost/Math.max(1000,monthlyIncome*.12);
+   const frugalPenalty=costPressure*(policy==='frugal'?1.8:.9);
    const learned=knownPreference(state,target.id,activity.preferenceKind,activity.preferenceKey)??0;
    const visibleExpected=activity.baseRelationship+learned*2+scored.repetition;
-   const utility=need+visibleExpected*.45-frugalPenalty+rng.int(-2,2)*.15;
-   plans.push({targetId:target.id,activityId:activity.id,utility});
+   const recent=recentCount(state,'social-activity',activity.id,4);
+   const varietyPenalty=Math.min(2.8,recent*.35);
+   const utility=need+visibleExpected*.40-frugalPenalty-varietyPenalty+rng.int(-2,2)*.12;
+   plans.push({targetId:target.id,activityId:activity.id,utility,frequencyWeight:activity.frequencyWeight??1});
   }
  }
- return plans.sort((a,b)=>b.utility-a.utility)[0]??null;
+ return weightedCandidate(rng,plans);
 }
 
 function bestPhysicalPlan(game,policy,rng){
@@ -48,16 +68,19 @@ function bestPhysicalPlan(game,policy,rng){
  const capacity=physicalCapacity(state);
  const need=Math.max(0,75-fitness)*.09+Math.max(0,65-capacity)*.03;
  const ranked=options.map(activity=>{
-  const costRatio=(state.finance?.cash??0)>0?activity.cost/Math.max(1,state.finance.cash):1;
-  const frugalPenalty=policy==='frugal'?costRatio*8:costRatio*2;
+  const monthlyIncome=Math.max(12000,state.finance?.monthlyIncome??12000);
+  const costPressure=activity.cost/Math.max(1000,monthlyIncome*.10);
+  const frugalPenalty=costPressure*(policy==='frugal'?1.6:.7);
   const intensityFit=Math.max(0,activity.minCapacity-capacity)*.2;
   const preference=state.player.preferencesProfile?.activities?.[activity.preferenceKey]??0;
+  const recent=recentCount(state,'physical-activity',activity.id,3);
   return {
    id:activity.id,
-   utility:need+activity.fitnessGain*.55+preference*.35-frugalPenalty-intensityFit+rng.int(-2,2)*.12
+   frequencyWeight:activity.id==='walk'?1.25:activity.id==='run'?.75:1,
+   utility:need+activity.fitnessGain*.40+preference*.40-frugalPenalty-intensityFit-Math.min(2,recent*.28)+rng.int(-2,2)*.10
   };
- }).sort((a,b)=>b.utility-a.utility);
- return ranked[0]??null;
+ });
+ return weightedCandidate(rng,ranked);
 }
 
 function bestHobbyPlan(game,policy,rng){
@@ -66,12 +89,14 @@ function bestHobbyPlan(game,policy,rng){
  const stress=game.state.healthProfile?.stress??20;
  const ranked=options.map(hobby=>{
   const interest=game.state.player.interests?.[hobby.interest]??0;
-  const costRatio=(game.state.finance?.cash??0)>0?hobby.cost/Math.max(1,game.state.finance.cash):1;
-  const frugalPenalty=policy==='frugal'?costRatio*8:costRatio*2;
-  const utility=1.5+interest*.025+Math.max(0,stress-35)*.03-frugalPenalty+rng.int(-2,2)*.15;
-  return {id:hobby.id,utility};
- }).sort((a,b)=>b.utility-a.utility);
- return ranked[0]??null;
+  const monthlyIncome=Math.max(12000,game.state.finance?.monthlyIncome??12000);
+  const costPressure=hobby.cost/Math.max(1000,monthlyIncome*.10);
+  const frugalPenalty=costPressure*(policy==='frugal'?1.5:.6);
+  const recent=recentCount(game.state,'hobby',hobby.id,4);
+  const utility=1.3+interest*.018+Math.max(0,stress-35)*.025-frugalPenalty-Math.min(2.2,recent*.30)+rng.int(-2,2)*.12;
+  return {id:hobby.id,utility,frequencyWeight:hobby.id==='running'?.65:1};
+ });
+ return weightedCandidate(rng,ranked);
 }
 
 function genericCandidates(game,policy,rng){
