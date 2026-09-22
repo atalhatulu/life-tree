@@ -45,7 +45,6 @@ test('moderate unresolved deficit becomes consumer debt before emergency debt',(
 
 test('calibration C remains invariant-valid after finance processing',()=>{
  const g=new Game('cal-c-invariant');
- g.state.player.age=35;
  ensurePersonalFinance(g.state);
  g.state.career={employed:true,monthlyIncome:80000};
  processPersonalFinanceYear(g.state);
