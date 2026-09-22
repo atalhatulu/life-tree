@@ -125,3 +125,18 @@ test('NPC preference becomes known only after sharing that activity',()=>{
  performSocialActivity(g.state,'mother','pizza',{int:()=>0});
  assert.equal(knownPreference(g.state,'mother','food','pizza'),2);
 });
+
+
+test('cohabiting partner is not penalized for one quiet year without explicit activity',()=>{
+ const g=adult('cohabiting-maintenance');
+ const partner={
+  id:'partner-1',name:'Deniz',alive:true,relationship:72,status:'cohabiting',
+  preferencesProfile:{food:{},activities:{}}
+ };
+ g.state.social.romance=partner;
+ g.state.relationshipMemories={'partner-1':{
+  interactions:2,lastInteractionAge:g.state.player.age-1,recentActivities:[],positiveImpact:4,negativeImpact:0,knownPreferences:{}
+ }};
+ processRelationshipMaintenanceYear(g.state);
+ assert.equal(g.state.social.romance.relationship,72);
+});
