@@ -38,12 +38,12 @@ test('major decision stores player-facing context in the Life Tree node',()=>{
  g.state.player.job='Yazılımcı';
  g.state.player.jobId='developer';
  g.state.pendingCareerOffers=[{
-  id:'engineer-offer',title:'Mühendis',family:'engineering',salary:105000,
+  id:'engineer',title:'Mühendis',family:'engineering',salary:105000,
   related:true,transitionReason:'adjacent-family',experienceYears:4,
   cityId:g.state.location.cityId,cityName:g.state.location.cityName,requiresMove:false,moveCost:0
  }];
  const event=g.events.events.find(e=>e.id==='career-switch');
- const choice=g.eventChoices(event).find(c=>c.id==='switch:engineer-offer');
+ const choice=g.eventChoices(event).find(c=>c.id==='switch:engineer');
  assert.ok(choice);
  g.makeChoice(event,choice.id);
  const node=g.state.lifeTree.nodes.at(-1);
