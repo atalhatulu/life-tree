@@ -1,6 +1,7 @@
 import {TURKEY_2026_ECONOMY} from '../data/countries/turkey/economy.js';
 import {locationProfile} from '../data/countries/turkey/profile.js';
 import {addDebt} from '../finance/personal_finance.js';
+import {economy} from '../world/world_state.js';
 
 export function ensureAssets(state){
  state.assets??={home:null,car:null};
@@ -30,7 +31,7 @@ export function affordableHomeOptions(state){
  const income=state.career?.monthlyIncome??state.retirement?.pensionMonthly??0;
  const city=locationProfile(state);
  return TURKEY_2026_ECONOMY.assets.homes
-  .map(home=>({...home,price:Math.round(home.price*city.housing),cityId:city.id,cityName:city.name}))
+  .map(home=>({...home,price:Math.round(home.price*city.housing*(economy(state).housingMarket??1)),cityId:city.id,cityName:city.name}))
   .filter(home=>cash>=home.price*.2&&income>=35000*city.wage);
 }
 
