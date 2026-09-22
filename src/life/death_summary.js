@@ -21,6 +21,7 @@ export function buildDeathSummary(state){
  const estate=settleEstate(state);
  const recap=buildLifeRecap(state);
  const tree=state.lifeTree?.nodes??[];
+ const highlights=lifeHighlights(state,recap);
  const children=state.children??[];
  const exSpouses=state.social?.exSpouses?.length??0;
  const deceasedSpouses=(state.social?.deceasedPartners??[]).filter(p=>p.status==='married').length;
