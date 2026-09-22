@@ -17,7 +17,7 @@ test('lead promotion requires deep experience and strong career signals',()=>{
  assert.notEqual(g.state.career.levelTitle,'lead');
 });
 
-test('home purchase accepts a 15 percent down payment',()=>{
+test('home purchase accepts a 12 percent down payment',()=>{
  const g=new Game('home-down-payment');
  g.state.player.age=35;
  ensurePersonalFinance(g.state);
@@ -28,7 +28,7 @@ test('home purchase accepts a 15 percent down payment',()=>{
  const home=options[0];
  const before=g.state.finance.cash;
  buyHome(g.state,home.id);
- assert.equal(g.state.finance.cash,before-Math.round(home.price*.15));
+ assert.equal(g.state.finance.cash,before-Math.round(home.price*.12));
  assert.ok(g.state.finance.debts.housing>0);
 });
 
