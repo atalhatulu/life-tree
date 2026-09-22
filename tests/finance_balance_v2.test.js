@@ -57,3 +57,21 @@ test('estate includes long-term savings',()=>{
  const estate=settleEstate(g.state);
  assert.ok(estate.gross>=1000000);
 });
+
+
+test('prolonged insolvency without assets is capped to sustainable debt capacity',()=>{
+ const g=new Game('insolvency-resolution');
+ g.state.player.age=78;
+ g.state.career={employed:false};
+ g.state.retirement={retired:true,pensionMonthly:18000};
+ g.state.assets={home:null,car:null};
+ g.state.finance={
+  cash:0,savings:0,debt:9000000,monthlyIncome:0,monthlyExpenses:0,
+  familySupportMonthly:0,childMonthlyCost:0,financialDistressYears:8,
+  financialDistressEvents:8,debtRestructured:true,
+  lifestyle:{housing:'shared',food:'frugal',clothing:'basic',transport:'public'}
+ };
+ processPersonalFinanceYear(g.state);
+ assert.ok(g.state.finance.debt<3000000,'debt should be resolved toward sustainable capacity');
+ assert.equal(g.state.finance.insolvencyResolved,true);
+});
