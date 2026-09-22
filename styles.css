@@ -399,7 +399,7 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 .age-actions{
   display:grid;
-  grid-template-columns:1.7fr .8fr .8fr;
+  grid-template-columns:1.2fr 1.2fr .9fr;
   gap:7px;
 }
 .sim-button{
@@ -414,3 +414,22 @@ button { -webkit-tap-highlight-color: transparent; }
 .sim-button:disabled{opacity:.45;cursor:default;}
 #stressBar{background:linear-gradient(90deg,#e8be5c,#dc7f48);}
 #mentalBar{background:linear-gradient(90deg,#8f9ce8,#8467c8);}
+
+.auto-button,.speed-select{
+  border:1px solid #d7dee8;
+  border-radius:14px;
+  background:#f4f7fa;
+  color:#465267;
+  font-size:10px;
+  font-weight:850;
+}
+.auto-button{cursor:pointer;}
+.auto-button.running{background:#eaf7ed;color:#2f7e43;border-color:#bfe2c8;}
+.speed-select{padding:0 7px;}
+.auto-focus{outline:2px solid #62b875 !important;outline-offset:2px;transition:outline .15s ease;}
+.auto-status{
+  position:absolute;top:10px;left:50%;transform:translateX(-50%);
+  z-index:20;background:#202733;color:white;padding:6px 10px;border-radius:999px;
+  font-size:9px;font-weight:800;box-shadow:0 6px 18px rgba(0,0,0,.18);pointer-events:none;
+}
+.phone-frame{position:relative;}
