@@ -52,8 +52,10 @@ function normalDeathEligible(state){
  const mobility=state.lateLife?.mobility??100;
  if(health<=0)return true;
  if(health<=8)return true;
- if(health<=15&&(fitness<=20||mobility<=20))return true;
- if(state.player.age>=90&&health<=20&&fitness<=15)return true;
+ if(health<=15&&(fitness<=25||mobility<=25))return true;
+ if(state.player.age>=75&&health<=20&&(fitness<=30||mobility<=30))return true;
+ if(state.player.age>=85&&health<=25&&(fitness<=25||mobility<=25))return true;
+ if(state.player.age>=90&&health<=30&&fitness<=20)return true;
  return false;
 }
 
