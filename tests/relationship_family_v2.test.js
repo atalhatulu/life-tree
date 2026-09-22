@@ -50,6 +50,7 @@ test('severe sustained marital conflict can deterministically end in divorce',()
  r.marriageYears=4;
  r.yearsTogether=7;
  r.compatibility=35;
+ r.conflictYears=2;
  processPartnershipYear(g.state,new RNG('divorce-year'));
  assert.equal(g.state.social.romance,null);
  assert.equal(g.state.social.exSpouses.length,1);
