@@ -213,7 +213,7 @@ const report={
   monthlyIncome:[],monthlyExpenses:[],tax:[],familySupport:[],partnerContribution:[],
   childCosts:[],homeOwners:0,carOwners:0,homePurchaseAges:[],carPurchaseAges:[],
   homePrices:[],carPrices:[],estateNet:[],inheritanceReceived:[],
-  spendingTotals:{},durableOwners:{},durablePurchases:{},durableReplacements:{},durablePurchaseAges:{}
+  spendingTotals:{},spendingPerLife:[],spendingByCategoryPerLife:{},durableOwners:{},durablePurchases:{},durableReplacements:{},durablePurchaseAges:{}
  },
 
  world:{
@@ -706,7 +706,14 @@ for(let i=0;i<lives;i++){
  report.finance.familySupport.push(state.finance?.familySupportMonthly??0);
  report.finance.partnerContribution.push(state.finance?.partnerContributionMonthly??0);
  report.finance.childCosts.push(state.finance?.childMonthlyCost??0);
- for(const [category,amount] of Object.entries(state.finance?.spendingTotals??{}))inc(report.finance.spendingTotals,category,amount);
+ report.finance.spendingPerLife.push(state.finance?.totalRecordedSpending??0);
+ for(const [category,amount] of Object.entries(state.finance?.spendingTotals??{})){
+  inc(report.finance.spendingTotals,category,amount);
+  push(report.finance.spendingByCategoryPerLife,category,amount);
+ }
+ for(const category of ['daily-life','experiences','durable-goods','family','ownership','unexpected']){
+  if(state.finance?.spendingTotals?.[category]==null)push(report.finance.spendingByCategoryPerLife,category,0);
+ }
  for(const [itemId,item] of Object.entries(state.finance?.durableGoods??{})){
   if(item)inc(report.finance.durableOwners,itemId);
  }
@@ -1142,6 +1149,10 @@ const summary={
   estateNet:distribution(report.finance.estateNet),
   inheritanceReceived:distribution(report.finance.inheritanceReceived),
   spendingTotals:report.finance.spendingTotals,
+  lifetimeSpending:distribution(report.finance.spendingPerLife),
+  lifetimeSpendingByCategory:Object.fromEntries(
+   Object.entries(report.finance.spendingByCategoryPerLife).map(([category,values])=>[category,distribution(values)])
+  ),
   durableGoods:{
    ownershipPct:Object.fromEntries(Object.entries(report.finance.durableOwners).map(([k,v])=>[k,pct(v,valid)])),
    purchases:report.finance.durablePurchases,
