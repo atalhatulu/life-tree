@@ -14,6 +14,7 @@ export function createRomanticInterest(state,rng,id){
  const sex=rng.chance(.5)?'female':'male';
  const person=createPersonBase({id,name:rng.pick(FIRST_NAMES[sex]),surname:rng.pick(SURNAMES),sex,age:Math.max(14,state.player.age+rng.int(-1,1)),rng});
  person.role='romantic_interest';
+ person.startedAtAge=state.player.age;
  person.relationship=rng.int(42,70);
  person.cityId=state.location?.cityId??state.origin?.cityId;
  person.cityName=state.location?.cityName??state.origin?.cityName;
@@ -37,6 +38,8 @@ export function processRomanceYear(state,rng){
  if(age<=18){
   if(partner.relationship<25&&rng.chance(.28)){
    entries.push({age,kind:'relationship',text:partner.name+' ile ilişkin sona erdi.'});
+   state.social.exPartners??=[];
+   state.social.exPartners.push({...partner,endedAtAge:age});
    state.social.romance=null;
   }
  }
