@@ -135,7 +135,41 @@ function choiceWeight(state,event,choice){
 export function chooseProceduralEventChoice(game,event,policy,rng){
  const choices=game.eventChoices(event);
  if(!choices.length)return null;
- // Named policies still bias behavior, but all policies use causal scoring.
+
+ // Named policies are deterministic scenario presets used by tests/showcases.
+ // The production Fast Sim "random" policy is the causal procedural population.
+ if(policy!=='random'){
+  const common={
+   'adult-lifestyle':'balanced',
+   'move-out':'shared',
+   'relationship-commitment':'cohabit',
+   'marriage-after-cohabiting':'marry',
+   'child-decision':'have-child',
+   'career-switch':'stay'
+  };
+  const preferred={
+   academic:{...common,'high-school-path':'academic','after-high-school':'university','first-romance':'leave','gap-year-direction':'retry-university'},
+   social:{...common,'high-school-path':'academic','after-high-school':'university','first-romance':'approach','gap-year-direction':'retry-university','relationship-commitment':'marry'},
+   vocational:{...common,'high-school-path':'vocational','after-high-school':'work','first-romance':'approach','gap-year-direction':'seek-work'},
+   balanced:{...common,'high-school-path':'academic','after-high-school':'university','first-romance':'approach','gap-year-direction':'retry-university'}
+  }[policy];
+
+  if(preferred?.[event.id]){
+   const exact=choices.find(choice=>choice.id===preferred[event.id]);
+   if(exact)return exact;
+  }
+  if(event.id==='university-application'&&['balanced','academic','social'].includes(policy)){
+   const ranked=[...(game.state.pendingUniversityApplications??[])].sort((a,b)=>(b.admissionChance??0)-(a.admissionChance??0));
+   const best=ranked[0];
+   const exact=best?choices.find(choice=>choice.id==='program:'+best.id):null;
+   if(exact)return exact;
+  }
+  if(event.id==='first-job'&&policy==='vocational'){
+   const exact=choices[0];
+   if(exact)return exact;
+  }
+ }
+
  return weightedPick(rng,choices,choice=>{
   let weight=choiceWeight(game.state,event,choice);
   if(policy==='academic'&&['academic','university','retry-university'].includes(choice.id))weight*=1.8;
