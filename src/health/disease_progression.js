@@ -33,10 +33,10 @@ function biologicalPressure(state,condition){
  const severity=condition.severity??1;
  const geneticCourse=condition.geneticCourse??geneticDiseaseModifiers(state,condition.id);
  const baseline=(
-  severity*.85+
-  (55-health)*.04+
-  (50-fitness)*.065+
-  (stress-45)*.025
+  severity*1.15+
+  Math.max(0,50-health)*.055+
+  (50-fitness)*.045+
+  Math.max(0,stress-45)*.025
  );
  return baseline*geneticCourse.progressionMultiplier;
 }
