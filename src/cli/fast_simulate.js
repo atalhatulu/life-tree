@@ -301,7 +301,7 @@ function childFunnelStages(state){
  const cohabitingOrMarried=partner&&['married','cohabiting'].includes(romance.status);
  const ageEligible=state.player.age>=24&&state.player.age<=42;
  const relationshipEligible=cohabitingOrMarried&&(romance.relationship??0)>=56;
- const desireEligible=(state.preferences?.parenthoodDesire??50)>=40;
+ const desireEligible=(state.preferences?.parenthoodDesire??50)>=25;
  const cooldownEligible=state.player.age>=(state.nextChildDecisionAge??23);
  const underChildCap=(state.children?.length??0)<3;
  return {
