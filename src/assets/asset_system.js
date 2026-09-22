@@ -1,6 +1,5 @@
 import {TURKEY_2026_ECONOMY} from '../data/countries/turkey/economy.js';
 import {liquidFunds,spendLiquidFunds} from '../finance/liquidity.js';
-import {TURKEY_2026_ECONOMY} from '../data/countries/turkey/economy.js';
 import {locationProfile} from '../data/countries/turkey/profile.js';
 
 export function ensureAssets(state){
