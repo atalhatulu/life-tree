@@ -3,12 +3,12 @@ import {geneticRiskMultiplier,geneticDiseaseModifiers} from './genetic_system.js
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 const CONDITIONS=[
- {id:'hypertension',label:'Yüksek tansiyon',minAge:32,base:.012,severity:2},
- {id:'back-pain',label:'Kronik bel ağrısı',minAge:28,base:.018,severity:1},
- {id:'metabolic',label:'Metabolik sorun',minAge:35,base:.010,severity:2},
- {id:'anxiety',label:'Anksiyete',minAge:18,base:.012,severity:1},
- {id:'cardiac',label:'Kalp-damar hastalığı',minAge:48,base:.007,severity:3},
- {id:'cancer',label:'Kanser',minAge:52,base:.004,severity:3}
+ {id:'hypertension',label:'Yüksek tansiyon',minAge:32,base:.009,severity:2},
+ {id:'back-pain',label:'Kronik bel ağrısı',minAge:28,base:.011,severity:1},
+ {id:'metabolic',label:'Metabolik sorun',minAge:35,base:.0075,severity:2},
+ {id:'anxiety',label:'Anksiyete',minAge:18,base:.008,severity:1},
+ {id:'cardiac',label:'Kalp-damar hastalığı',minAge:48,base:.0055,severity:3},
+ {id:'cancer',label:'Kanser',minAge:52,base:.0035,severity:3}
 ];
 
 function ageMortalityBase(age){
@@ -23,14 +23,14 @@ function ageMortalityBase(age){
 
 function annualAgingWear(age){
  if(age<18)return {health:0,fitness:0};
- if(age<30)return {health:.05,fitness:.10};
- if(age<45)return {health:.15,fitness:.25};
- if(age<60)return {health:.55,fitness:.65};
- if(age<70)return {health:2.0,fitness:2.1};
- if(age<80)return {health:3.5,fitness:3.6};
- if(age<90)return {health:5.2,fitness:5.3};
- if(age<100)return {health:6.5,fitness:6.7};
- return {health:8.0,fitness:8.2};
+ if(age<30)return {health:.02,fitness:.10};
+ if(age<45)return {health:.07,fitness:.25};
+ if(age<60)return {health:.28,fitness:.65};
+ if(age<70)return {health:.85,fitness:2.1};
+ if(age<80)return {health:1.65,fitness:3.6};
+ if(age<90)return {health:2.80,fitness:5.3};
+ if(age<100)return {health:4.20,fitness:6.7};
+ return {health:6.0,fitness:8.2};
 }
 
 function conditionBurden(condition){
@@ -71,13 +71,16 @@ export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
  const constitution=state.player.health.constitution??60;
  const agingMultiplier=clamp(1+(60-constitution)*.0075,.70,1.25);
  const exercisedRecently=(h.lastExerciseAge??-999)>=age-1;
- const fitnessProtection=clamp((h.fitness-45)*.003,0,.16);
- const exerciseProtection=exercisedRecently?.14:0;
- const nutritionProtection=lifestyle?.food==='healthy'?.08:lifestyle?.food==='frugal'?-.04:0;
+
+ // Exercise never heals Health directly. Its durable benefit is mediated by the
+ // Fitness reserve it builds. Better Fitness slows age-related reserve loss;
+ // poor Fitness accelerates it.
+ const fitnessWearMultiplier=clamp(1-(h.fitness-50)*.008,.72,1.28);
+ const nutritionWearMultiplier=lifestyle?.food==='healthy'?.92:lifestyle?.food==='frugal'?1.06:1;
  const healthWearMultiplier=clamp(
-  agingMultiplier*(1-fitnessProtection-exerciseProtection-nutritionProtection),
-  .62,
-  1.30
+  agingMultiplier*fitnessWearMultiplier*nutritionWearMultiplier,
+  .55,
+  1.45
  );
  const wear={
   health:baseWear.health*healthWearMultiplier,
@@ -92,30 +95,30 @@ export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
  h.fitness=clamp(previousFitness-wear.fitness-inactivityPenalty);
 
  const activeBurden=h.conditions.reduce((sum,condition)=>sum+conditionBurden(condition),0);
- let delta=(state.player.health.constitution-60)*.02+(h.fitness-50)*.025-(h.stress-40)*.02;
- if(lifestyle?.food==='healthy')delta+=1.5;
- if(lifestyle?.food==='frugal')delta-=1;
- delta-=activeBurden*.70;
+ let delta=(constitution-60)*.02+(h.fitness-50)*.035-(h.stress-40)*.02;
+ if(lifestyle?.food==='healthy')delta+=.55;
+ if(lifestyle?.food==='frugal')delta-=.35;
+ delta-=activeBurden*.62;
 
  const previousHealth=healthBeforeYear??state.player.health.current;
  const healthCeiling=clamp(100-activeBurden*6,20,100);
+ // Health can recover modestly when underlying causes are favorable, but no
+ // action grants Health directly. Fitness, nutrition, constitution, stress and
+ // disease burden determine the yearly reserve change; aging wear is then paid.
  const simulatedHealth=Math.min(
   healthCeiling,
-  clamp(state.player.health.current+delta+rng.int(-2,2))
+  clamp(previousHealth+delta+rng.int(-1,1))
  );
- state.player.health.current=wear.health>0
-  ?Math.min(simulatedHealth,clamp(previousHealth-wear.health))
-  :simulatedHealth;
+ state.player.health.current=clamp(simulatedHealth-wear.health);
 
  for(const condition of CONDITIONS){
   const geneticCourse=geneticDiseaseModifiers(state,condition.id);
   const effectiveMinAge=Math.max(0,condition.minAge+geneticCourse.onsetAgeOffset);
   if(age<effectiveMinAge||h.conditions.some(c=>c.id===condition.id)) continue;
   const geneticMultiplier=geneticRiskMultiplier(state,condition.id);
-  const fitnessRiskMultiplier=clamp(1+(45-h.fitness)*.006,.72,1.28);
-  const activityRiskMultiplier=exercisedRecently?.88:1.06;
-  const chance=condition.base*geneticMultiplier*fitnessRiskMultiplier*activityRiskMultiplier+
-   (100-state.player.health.current)*.00022+h.stress*.00011;
+  const fitnessRiskMultiplier=clamp(1+(45-h.fitness)*.010,.62,1.38);
+  const chance=condition.base*geneticMultiplier*fitnessRiskMultiplier+
+   (100-state.player.health.current)*.00018+h.stress*.00009;
   if(rng.chance(chance)){
    h.conditions.push({
     id:condition.id,label:condition.label,severity:condition.severity,diagnosedAtAge:age,
