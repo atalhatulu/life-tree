@@ -1,3 +1,4 @@
+import {historyText} from '../life/history_text.js';
 const LINE='─'.repeat(68);
 
 export function printHeader(game){
@@ -56,7 +57,7 @@ export function printHeader(game){
 
 export function printNewHistory(game,fromIndex){
  const items=game.state.history.slice(fromIndex);
- for(const item of items) console.log('• ['+item.age+' yaş] '+(item.result??item.text));
+ for(const item of items) console.log('• ['+item.age+' yaş] '+historyText(item));
  return game.state.history.length;
 }
 
