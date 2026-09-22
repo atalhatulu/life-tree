@@ -170,6 +170,45 @@ function discretionaryRate(state){
  return clamp(rate,.10,.42);
 }
 
+function discretionaryCategoryShares(state){
+ const l=state.finance?.lifestyle??{};
+ const interests=state.player?.interests??{};
+ let daily=.55;
+ let experiences=.25;
+ let durable=.20;
+
+ if(l.food==='premium')daily+=.08;
+ else if(l.food==='healthy')daily+=.03;
+ else if(l.food==='frugal')daily-=.06;
+
+ if(l.clothing==='premium')daily+=.05;
+ if(l.transport==='car')durable+=.03;
+ if(['apartment','owned'].includes(l.housing))durable+=.03;
+
+ const experienceInterest=
+  (interests.sinema??0)+(interests.doğa??0)+(interests.müzik??0)+(interests.futbol??0)+(interests.dans??0);
+ const durableInterest=
+  (interests.teknoloji??0)+(interests.otomobil??0)+(interests.fotoğraf??0)+(interests.oyun??0);
+
+ experiences+=Math.max(-.04,Math.min(.08,(experienceInterest/5-50)*.0016));
+ durable+=Math.max(-.04,Math.min(.08,(durableInterest/4-50)*.0016));
+
+ if(state.retirement?.retired){
+  experiences-=.03;
+  daily+=.02;
+ }
+
+ daily=Math.max(.30,daily);
+ experiences=Math.max(.10,experiences);
+ durable=Math.max(.10,durable);
+ const total=daily+experiences+durable;
+ return {
+  daily:daily/total,
+  experiences:experiences/total,
+  durable:durable/total
+ };
+}
+
 function cashReserveTarget(f){
  const mw=TURKEY_2026_ECONOMY.netMinimumWage;
  return Math.round(clamp((f.monthlyExpenses+f.ownershipCostsMonthly)*6,mw*3.3,mw*50));
@@ -276,8 +315,9 @@ export function processPersonalFinanceYear(state){
 
  if(annualNet>=0){
   f.discretionaryAnnual=Math.round(annualNet*discretionaryRate(state));
-  const dailyLife=Math.round(f.discretionaryAnnual*.55);
-  const experiences=Math.round(f.discretionaryAnnual*.25);
+  const shares=discretionaryCategoryShares(state);
+  const dailyLife=Math.round(f.discretionaryAnnual*shares.daily);
+  const experiences=Math.round(f.discretionaryAnnual*shares.experiences);
   const durableGoods=Math.max(0,f.discretionaryAnnual-dailyLife-experiences);
   recordSpending(state,{
    category:'daily-life',
