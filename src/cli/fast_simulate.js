@@ -166,9 +166,13 @@ const report={
   children:[],childless:0,marriedChildless:0,grandchildren:[],
   childOutcomes:{},childEducationPlans:{},
   childFunnel:{
-   everEligibleLives:0,eventShownLives:0,haveChildChoiceLives:0,birthLives:0,
-   eligibleYears:0,eventShownCount:0,haveChildChoiceCount:0,birthCount:0,
-   eligibleAges:[],eventAges:[],birthAges:[]
+   partnerLives:0,cohabitingOrMarriedLives:0,ageEligibleLives:0,relationshipEligibleLives:0,
+   desireEligibleLives:0,cooldownEligibleLives:0,underChildCapLives:0,everEligibleLives:0,
+   eventShownLives:0,haveChildChoiceLives:0,birthLives:0,
+   partnerYears:0,cohabitingOrMarriedYears:0,ageEligibleYears:0,relationshipEligibleYears:0,
+   desireEligibleYears:0,cooldownEligibleYears:0,underChildCapYears:0,eligibleYears:0,
+   eventShownCount:0,haveChildChoiceCount:0,birthCount:0,
+   eligibleAges:[],eventAges:[],choiceAges:[],birthAges:[]
   }
  },
 
@@ -289,32 +293,63 @@ function summarizeSegments(container){
  }]));
 }
 
-function childDecisionEligible(state){
+function childFunnelStages(state){
  const romance=state.social?.romance;
- if(!romance||!['married','cohabiting'].includes(romance.status))return false;
- if((state.children?.length??0)>=3)return false;
- if((romance.relationship??0)<56)return false;
- if(state.player.age<(state.nextChildDecisionAge??23))return false;
- if((state.preferences?.parenthoodDesire??50)<40)return false;
- return state.player.age>=24&&state.player.age<=42;
+ const partner=Boolean(romance);
+ const cohabitingOrMarried=partner&&['married','cohabiting'].includes(romance.status);
+ const ageEligible=state.player.age>=24&&state.player.age<=42;
+ const relationshipEligible=cohabitingOrMarried&&(romance.relationship??0)>=56;
+ const desireEligible=(state.preferences?.parenthoodDesire??50)>=40;
+ const cooldownEligible=state.player.age>=(state.nextChildDecisionAge??23);
+ const underChildCap=(state.children?.length??0)<3;
+ return {
+  partner,cohabitingOrMarried,ageEligible,relationshipEligible,desireEligible,cooldownEligible,underChildCap,
+  eligible:cohabitingOrMarried&&ageEligible&&relationshipEligible&&desireEligible&&cooldownEligible&&underChildCap
+ };
+}
+
+function markLifeStage(state,key){
+ state.__fastSimChildFunnelLives??={};
+ state.__fastSimChildFunnelLives[key]=true;
 }
 
 function recordChildFunnelYear(state,meta){
  const funnel=report.relationships.childFunnel;
- if(childDecisionEligible(state)){
+ const stages=childFunnelStages(state);
+ const stageMap=[
+  ['partner',stages.partner],
+  ['cohabitingOrMarried',stages.cohabitingOrMarried],
+  ['ageEligible',stages.ageEligible],
+  ['relationshipEligible',stages.relationshipEligible],
+  ['desireEligible',stages.desireEligible],
+  ['cooldownEligible',stages.cooldownEligible],
+  ['underChildCap',stages.underChildCap]
+ ];
+ for(const [key,passed] of stageMap){
+  if(!passed)continue;
+  funnel[key+'Years']++;
+  markLifeStage(state,key);
+ }
+ if(stages.eligible){
   funnel.eligibleYears++;
   funnel.eligibleAges.push(state.player.age);
-  state.__fastSimChildEverEligible=true;
+  markLifeStage(state,'everEligible');
  }
  if(meta?.event?.id==='child-decision'){
   funnel.eventShownCount++;
   funnel.eventAges.push(state.player.age);
-  state.__fastSimChildEventShown=true;
+  markLifeStage(state,'eventShown');
  }
- const last=(state.history??[]).at(-1);
- if(last?.eventId==='child-decision'&&last?.choiceId==='have-child'){
+ const choice=(state.history??[]).find(item=>
+  item.age===state.player.age&&
+  item.kind==='choice'&&
+  item.eventId==='child-decision'&&
+  item.choiceId==='have-child'
+ );
+ if(choice){
   funnel.haveChildChoiceCount++;
-  state.__fastSimHaveChildChoice=true;
+  funnel.choiceAges.push(state.player.age);
+  markLifeStage(state,'haveChildChoice');
  }
 }
 
@@ -531,9 +566,10 @@ for(let i=0;i<lives;i++){
   if(child.educationPlan)inc(report.relationships.childEducationPlans,child.educationPlan);
  }
 
- if(state.__fastSimChildEverEligible)report.relationships.childFunnel.everEligibleLives++;
- if(state.__fastSimChildEventShown)report.relationships.childFunnel.eventShownLives++;
- if(state.__fastSimHaveChildChoice)report.relationships.childFunnel.haveChildChoiceLives++;
+ const funnelLives=state.__fastSimChildFunnelLives??{};
+ for(const key of ['partner','cohabitingOrMarried','ageEligible','relationshipEligible','desireEligible','cooldownEligible','underChildCap','everEligible','eventShown','haveChildChoice']){
+  if(funnelLives[key])report.relationships.childFunnel[key+'Lives']++;
+ }
  if((state.children?.length??0)>0){
   report.relationships.childFunnel.birthLives++;
   report.relationships.childFunnel.birthCount+=state.children.length;
@@ -947,19 +983,39 @@ const summary={
   childOutcomes:report.relationships.childOutcomes,
   childEducationPlans:report.relationships.childEducationPlans,
   childFunnel:{
+   partnerLivesPct:pct(report.relationships.childFunnel.partnerLives,valid),
+   cohabitingOrMarriedLivesPct:pct(report.relationships.childFunnel.cohabitingOrMarriedLives,valid),
+   ageEligibleLivesPct:pct(report.relationships.childFunnel.ageEligibleLives,valid),
+   relationshipEligibleLivesPct:pct(report.relationships.childFunnel.relationshipEligibleLives,valid),
+   desireEligibleLivesPct:pct(report.relationships.childFunnel.desireEligibleLives,valid),
+   cooldownEligibleLivesPct:pct(report.relationships.childFunnel.cooldownEligibleLives,valid),
+   underChildCapLivesPct:pct(report.relationships.childFunnel.underChildCapLives,valid),
    everEligibleLivesPct:pct(report.relationships.childFunnel.everEligibleLives,valid),
    eventShownLivesPct:pct(report.relationships.childFunnel.eventShownLives,valid),
    haveChildChoiceLivesPct:pct(report.relationships.childFunnel.haveChildChoiceLives,valid),
    birthLivesPct:pct(report.relationships.childFunnel.birthLives,valid),
+   cohabitingAmongPartnerPct:pct(report.relationships.childFunnel.cohabitingOrMarriedLives,report.relationships.childFunnel.partnerLives),
+   relationshipAmongCohabitingPct:pct(report.relationships.childFunnel.relationshipEligibleLives,report.relationships.childFunnel.cohabitingOrMarriedLives),
+   desireAmongCohabitingPct:pct(report.relationships.childFunnel.desireEligibleLives,report.relationships.childFunnel.cohabitingOrMarriedLives),
    eventShownAmongEligiblePct:pct(report.relationships.childFunnel.eventShownLives,report.relationships.childFunnel.everEligibleLives),
    haveChildChoiceAmongShownPct:pct(report.relationships.childFunnel.haveChildChoiceLives,report.relationships.childFunnel.eventShownLives),
    birthAmongHaveChildChoicePct:pct(report.relationships.childFunnel.birthLives,report.relationships.childFunnel.haveChildChoiceLives),
+   stageYears:{
+    partner:report.relationships.childFunnel.partnerYears,
+    cohabitingOrMarried:report.relationships.childFunnel.cohabitingOrMarriedYears,
+    ageEligible:report.relationships.childFunnel.ageEligibleYears,
+    relationshipEligible:report.relationships.childFunnel.relationshipEligibleYears,
+    desireEligible:report.relationships.childFunnel.desireEligibleYears,
+    cooldownEligible:report.relationships.childFunnel.cooldownEligibleYears,
+    underChildCap:report.relationships.childFunnel.underChildCapYears
+   },
    eligibleYears:report.relationships.childFunnel.eligibleYears,
    eventShownCount:report.relationships.childFunnel.eventShownCount,
    haveChildChoiceCount:report.relationships.childFunnel.haveChildChoiceCount,
    birthCount:report.relationships.childFunnel.birthCount,
    eligibleAges:distribution(report.relationships.childFunnel.eligibleAges),
    eventAges:distribution(report.relationships.childFunnel.eventAges),
+   choiceAges:distribution(report.relationships.childFunnel.choiceAges),
    birthAges:distribution(report.relationships.childFunnel.birthAges)
   }
  },
