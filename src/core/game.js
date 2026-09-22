@@ -29,6 +29,10 @@ import {processGeneticHealthYear} from '../health/genetic_system.js';
 import {processDiseaseProgressionYear} from '../health/disease_progression.js';
 import {decisionContext} from '../life/decision_context.js';
 import {annualActionCapacity} from '../life/action_capacity.js';
+import {processSocialWellbeingYear} from '../social/social_wellbeing.js';
+import {processMentalHealthYear} from '../health/mental_health_system.js';
+import {processBodyYear} from '../health/body_system.js';
+import {systemicStorylets} from '../events/systemic_storylets.js';
 
 export class Game{
  constructor(seed=String(Date.now())){
@@ -42,7 +46,7 @@ export class Game{
   this.state.social={friends:[],romance:null};
   this.state.actions={remaining:0,max:3};
   this.state.world=createWorldState(2026);
-  this.events=new EventEngine([...childhoodEvents,...adolescenceEvents,...adultEvents,...lateLifeEvents,...parentingEvents,...lateAgeEvents,...storyEvents]);
+  this.events=new EventEngine([...childhoodEvents,...adolescenceEvents,...adultEvents,...lateLifeEvents,...parentingEvents,...lateAgeEvents,...storyEvents,...systemicStorylets]);
   this.activeEventId=null;
  }
 
@@ -89,6 +93,9 @@ export class Game{
    ...processDiseaseProgressionYear(this.state,yearRng.fork('disease-progression')),
    ...processRelationshipMaintenanceYear(this.state),
    ...processSocialYear(this.state,yearRng.fork('social')),
+   ...processSocialWellbeingYear(this.state),
+   ...processMentalHealthYear(this.state),
+   ...processBodyYear(this.state),
    ...processAdolescenceYear(this.state,yearRng.fork('adolescence')),
    ...processRomanceYear(this.state,yearRng.fork('romance')),
    ...processAdultYear(this.state,yearRng.fork('adult'))
