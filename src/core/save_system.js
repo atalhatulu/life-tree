@@ -1,10 +1,33 @@
-export const SAVE_VERSION=1;
+import {ensureStateSchema,STATE_SCHEMA_VERSION} from './state_schema.js';
+
+export const SAVE_VERSION=2;
 
 function clone(value){return structuredClone(value);}
 
+function migrateV1(payload){
+ const next=clone(payload);
+ next.version=2;
+ next.state=ensureStateSchema(next.state);
+ next.migratedFromVersion=1;
+ return next;
+}
+
+export function migrateSavePayload(payload){
+ if(!payload||typeof payload!=='object')return payload;
+ if(payload.version===1)return migrateV1(payload);
+ if(payload.version===SAVE_VERSION){
+  const next=clone(payload);
+  next.state=ensureStateSchema(next.state);
+  return next;
+ }
+ return clone(payload);
+}
+
 export function createSavePayload(game){
+ ensureStateSchema(game.state);
  return {
   version:SAVE_VERSION,
+  schemaVersion:STATE_SCHEMA_VERSION,
   savedAtYear:game.state.year,
   savedAtAge:game.state.player.age,
   seedText:game.seedText,
@@ -35,7 +58,8 @@ export function serializeGame(game,pretty=true){
 }
 
 export function parseSave(text){
- const payload=typeof text==='string'?JSON.parse(text):clone(text);
+ const raw=typeof text==='string'?JSON.parse(text):clone(text);
+ const payload=migrateSavePayload(raw);
  const errors=validateSavePayload(payload);
  if(errors.length)throw new Error('Invalid save: '+errors.join('; '));
  return payload;
