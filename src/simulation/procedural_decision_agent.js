@@ -1,4 +1,5 @@
 import {liquidFunds} from '../finance/liquidity.js';
+import {familyCompatibility} from '../career/career_taxonomy.js';
 
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 const rel=(state)=>state.social?.romance?.relationship??0;
@@ -23,13 +24,21 @@ function choiceWeight(state,event,choice){
   return .7+(100-(prefs.partnershipDesire??50))/50+(age>42 ? .25 : 0);
  }
  if(event.id==='relationship-commitment'){
-  if(choice.id==='marry')return .3+(prefs.marriageDesire??50)/28+rel(state)/70+(cash>500000?.4:0);
-  if(choice.id==='cohabit')return .8+(prefs.partnershipDesire??50)/40+rel(state)/90;
-  return .7+(100-(prefs.marriageDesire??50))/55;
+  const partner=state.social?.romance;
+  const compatibility=partner?.compatibility??60;
+  const years=partner?.yearsTogether??0;
+  const debtPressure=Math.min(1.4,(state.finance?.debt??0)/1800000);
+  const stressPressure=Math.max(0,stress-55)/35;
+  if(choice.id==='marry')return .2+(prefs.marriageDesire??50)/28+rel(state)/65+compatibility/120+Math.min(.7,years*.10)+(cash>500000?.35:0)-debtPressure-stressPressure;
+  if(choice.id==='cohabit')return .7+(prefs.partnershipDesire??50)/40+rel(state)/85+compatibility/160+Math.min(.5,years*.07)-debtPressure*.35;
+  return .65+(100-(prefs.marriageDesire??50))/55+debtPressure*.45+stressPressure*.35;
  }
  if(event.id==='marriage-after-cohabiting'){
-  if(choice.id==='marry')return .5+(prefs.marriageDesire??50)/28+rel(state)/75+(state.social?.romance?.yearsTogether??0)*.08;
-  return .8+(100-(prefs.marriageDesire??50))/60;
+  const partner=state.social?.romance;
+  const compatibility=partner?.compatibility??60;
+  const debtPressure=Math.min(1.3,(state.finance?.debt??0)/1800000);
+  if(choice.id==='marry')return .45+(prefs.marriageDesire??50)/28+rel(state)/72+compatibility/125+(partner?.yearsTogether??0)*.08-debtPressure-Math.max(0,stress-55)/40;
+  return .8+(100-(prefs.marriageDesire??50))/60+debtPressure*.4;
  }
  if(event.id==='child-decision'){
   const children=state.children?.length??0;
@@ -75,14 +84,20 @@ function choiceWeight(state,event,choice){
   return .8+(100-(prefs.hometownAttachment??50))/55+(state.player.personality.ambition??50)/100;
  }
  if(event.id==='career-switch'){
-  if(choice.id==='stay')return 1+(state.career?.satisfaction??50)/50;
+  const satisfaction=state.career?.satisfaction??50;
+  if(choice.id==='stay')return 1+satisfaction/42+(state.career?.stability??60)/150;
   const id=choice.id.replace('switch:','');
   const offer=(state.pendingCareerOffers??[]).find(x=>x.id===id);
   if(!offer)return .4;
   const current=state.career?.monthlyIncome??0;
-  const salaryGain=(offer.salary-current)/Math.max(20000,current||20000);
-  const movePenalty=offer.requiresMove ? .45 : 0;
-  return .7+Math.max(-.3,salaryGain)*1.4+(100-(state.career?.satisfaction??50))/70-movePenalty;
+  const salaryRatio=current>0?(offer.salary??0)/current:1;
+  const salaryGain=salaryRatio-1;
+  const compatibility=familyCompatibility(state.career?.jobId,offer.id)/100;
+  const dissatisfaction=(100-satisfaction)/100;
+  const experienceFit=Math.min(1,(offer.experienceYears??0)/8);
+  const movePenalty=offer.requiresMove ? .35+Math.min(.55,(offer.moveCost??0)/Math.max(150000,cash||150000)) : 0;
+  const severePayCutPenalty=salaryRatio<.80&&satisfaction>=35 ? (0.80-salaryRatio)*5 : 0;
+  return .45+compatibility*1.25+experienceFit*.45+Math.max(-.5,salaryGain)*1.8+dissatisfaction*1.15-movePenalty-severePayCutPenalty;
  }
  if(event.id==='first-job'){
   const id=choice.id.replace('job:','');
