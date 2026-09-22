@@ -208,6 +208,10 @@ const report={
   finalLaborMarket:[],finalCostOfLiving:[],finalWageIndex:[],finalHealthcareCost:[],finalConfidence:[]
  },
 
+ segments:{
+  bySex:{},byBirthCity:{},byChildhoodClass:{}
+ },
+
  pacing:{
   adultMajorDecisions:[],adjacentMajorDecisionLives:0,categories:{},eventIds:{}
  },
@@ -230,6 +234,50 @@ const report={
   invalid:[],careerIssues:[],extremeDebt:[],extremeCash:[],youngDeaths:[],highHealthDeaths:[]
  }
 };
+
+function recordSegment(container,key,state,netWorth){
+ const bucket=container[key]??={
+  n:0,ages:[],health:[],fitness:[],conditions:[],children:[],moves:[],income:[],netWorth:[],
+  married:0,everMarried:0,graduated:0,employed:0,retired:0,homeOwners:0,carOwners:0
+ };
+ bucket.n++;
+ bucket.ages.push(state.player.age??0);
+ bucket.health.push(state.player.health.current??0);
+ bucket.fitness.push(state.healthProfile?.fitness??0);
+ bucket.conditions.push(state.healthProfile?.conditions?.length??0);
+ bucket.children.push(state.children?.length??0);
+ bucket.moves.push(state.migrationHistory?.length??0);
+ bucket.income.push(state.finance?.monthlyIncome??state.player.monthlyIncome??0);
+ bucket.netWorth.push(netWorth);
+ bucket.married+=state.social?.romance?.status==='married'?1:0;
+ bucket.everMarried+=(state.marriageHistory?.length??0)>0||state.social?.romance?.status==='married'?1:0;
+ bucket.graduated+=state.higherEducation?.completed?1:0;
+ bucket.employed+=state.career?.employed?1:0;
+ bucket.retired+=state.retirement?.retired?1:0;
+ bucket.homeOwners+=state.assets?.home?1:0;
+ bucket.carOwners+=state.assets?.car?1:0;
+}
+
+function summarizeSegments(container){
+ return Object.fromEntries(Object.entries(container).map(([key,b])=>[key,{
+  n:b.n,
+  lifespan:distribution(b.ages),
+  health:distribution(b.health),
+  fitness:distribution(b.fitness),
+  conditions:distribution(b.conditions),
+  children:distribution(b.children),
+  moves:distribution(b.moves),
+  monthlyIncome:distribution(b.income),
+  netWorth:distribution(b.netWorth),
+  marriedAtEndPct:pct(b.married,b.n),
+  everMarriedPct:pct(b.everMarried,b.n),
+  graduatePct:pct(b.graduated,b.n),
+  employedAtEndPct:pct(b.employed,b.n),
+  retiredPct:pct(b.retired,b.n),
+  homeOwnershipPct:pct(b.homeOwners,b.n),
+  carOwnershipPct:pct(b.carOwners,b.n)
+ }]));
+}
 
 function recordSnapshot(state){
  const age=state.player.age;
@@ -539,6 +587,9 @@ for(let i=0;i<lives;i++){
  const homeValue=state.assets?.home?.price??0;
  const carValue=state.assets?.car?.price??0;
  const netWorth=cash+savings+homeValue+carValue-debt;
+ recordSegment(report.segments.bySex,state.player.sex??'unknown',state,netWorth);
+ recordSegment(report.segments.byBirthCity,state.origin?.cityName??'unknown',state,netWorth);
+ recordSegment(report.segments.byChildhoodClass,state.player.background?.childhoodClass??state.household?.economicClass??'unknown',state,netWorth);
  report.finance.cash.push(cash);
  report.finance.savings.push(savings);
  report.finance.liquidReserves.push(cash+savings);
@@ -938,6 +989,12 @@ const summary={
   carPrices:distribution(report.finance.carPrices),
   estateNet:distribution(report.finance.estateNet),
   inheritanceReceived:distribution(report.finance.inheritanceReceived)
+ },
+
+ segments:{
+  bySex:summarizeSegments(report.segments.bySex),
+  byBirthCity:summarizeSegments(report.segments.byBirthCity),
+  byChildhoodClass:summarizeSegments(report.segments.byChildhoodClass)
  },
 
  world:{
