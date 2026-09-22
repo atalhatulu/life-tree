@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Game} from '../src/core/game.js';
 import {processRelationshipMaintenanceYear} from '../src/social/relationship_maintenance.js';
+import {processPartnershipYear} from '../src/social/partnership_system.js';
 import {knownPreference} from '../src/social/relationship_memory.js';
 import {performSocialActivity} from '../src/social/social_activity_system.js';
 import {performPhysicalActivity} from '../src/health/physical_activity_system.js';
@@ -139,4 +140,17 @@ test('cohabiting partner is not penalized for one quiet year without explicit ac
  }};
  processRelationshipMaintenanceYear(g.state);
  assert.equal(g.state.social.romance.relationship,72);
+});
+
+
+test('compatible dating relationship deepens over time without random bonus',()=>{
+ const g=adult('compatible-growth');
+ g.state.social.romance={
+  id:'partner-growth',name:'Ece',alive:true,age:31,status:'dating',
+  relationship:50,compatibility:85,yearsTogether:1,
+  health:{current:80},preferencesProfile:{food:{},activities:{}}
+ };
+ const rng={int:()=>0,chance:()=>false,fork:()=>({chance:()=>false})};
+ processPartnershipYear(g.state,rng);
+ assert.ok(g.state.social.romance.relationship>50);
 });
