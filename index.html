@@ -20,8 +20,15 @@
 
       <section class="stats" aria-label="Temel durum">
         <div class="stat"><span>Sağlık</span><div class="bar"><i id="healthBar"></i></div><b id="healthValue">0</b></div>
-        <div class="stat"><span>Mutluluk</span><div class="bar"><i id="happinessBar"></i></div><b id="happinessValue">0</b></div>
-        <div class="stat"><span>Görünüş</span><div class="bar"><i id="looksBar"></i></div><b id="looksValue">0</b></div>
+        <div class="stat"><span>Stres</span><div class="bar"><i id="stressBar"></i></div><b id="stressValue">0</b></div>
+        <div class="stat"><span>Mental</span><div class="bar"><i id="mentalBar"></i></div><b id="mentalValue">0</b></div>
+      </section>
+
+      <section class="quick-strip" aria-label="Hızlı durum">
+        <div><span>Para</span><b id="moneyQuick">₺0</b></div>
+        <div><span>Borç</span><b id="debtQuick">₺0</b></div>
+        <div><span>İş</span><b id="jobQuick">—</b></div>
+        <div><span>Aile</span><b id="familyQuick">—</b></div>
       </section>
 
       <section id="screen" class="screen">
@@ -57,7 +64,13 @@
         </div>
       </section>
 
-      <section class="age-zone"><button id="ageUp" class="age-button">+1 YAŞ</button></section>
+      <section class="age-zone">
+        <div class="age-actions">
+          <button id="ageUp" class="age-button">+1 YAŞ</button>
+          <button id="sim5" class="sim-button">AI +5</button>
+          <button id="sim10" class="sim-button">AI +10</button>
+        </div>
+      </section>
 
       <nav class="bottom-nav" aria-label="Ana menü">
         <button class="nav-item active" data-screen="lifeScreen"><span>◉</span><small>Hayat</small></button>
@@ -72,7 +85,7 @@
     <aside class="dev-panel">
       <label for="seedInput">Seed</label>
       <div class="seed-row"><input id="seedInput" placeholder="isteğe bağlı seed" /><button id="applySeed">Başlat</button></div>
-      <p>Bu panel sadece geliştirme sırasında var.</p>
+      <p>Geçici Life Viewer. AI +5/+10 human-like kararlarla ilerler.</p>
     </aside>
   </main>
 
