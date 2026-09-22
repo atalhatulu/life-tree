@@ -21,12 +21,12 @@ test('procedural career decision rejects a severe pay cut when current career is
   healthProfile:{stress:30,fitness:65},
   career:{jobId:'developer',monthlyIncome:100000,satisfaction:72,stability:75},
   pendingCareerOffers:[{
-   id:'engineer-cut',title:'Mühendis',salary:65000,experienceYears:2,
+   id:'engineer',title:'Mühendis',salary:65000,experienceYears:2,
    requiresMove:false,transitionReason:'adjacent-family',related:true
   }],
   preferences:{}
  };
- const choices=[{id:'switch:engineer-cut'},{id:'stay'}];
+ const choices=[{id:'switch:engineer'},{id:'stay'}];
  const picked=chooseProceduralEventChoice(fakeGame(state,choices),{id:'career-switch'},'random',maxRng);
  assert.equal(picked.id,'stay');
 });
@@ -38,14 +38,14 @@ test('procedural career decision can take a coherent adjacent promotion with mea
   healthProfile:{stress:30,fitness:65},
   career:{jobId:'developer',monthlyIncome:80000,satisfaction:42,stability:60},
   pendingCareerOffers:[{
-   id:'engineer-up',title:'Mühendis',salary:105000,experienceYears:5,
+   id:'engineer',title:'Mühendis',salary:105000,experienceYears:5,
    requiresMove:false,transitionReason:'adjacent-family',related:true
   }],
   preferences:{}
  };
- const choices=[{id:'switch:engineer-up'},{id:'stay'}];
+ const choices=[{id:'switch:engineer'},{id:'stay'}];
  const picked=chooseProceduralEventChoice(fakeGame(state,choices),{id:'career-switch'},'random',maxRng);
- assert.equal(picked.id,'switch:engineer-up');
+ assert.equal(picked.id,'switch:engineer');
 });
 
 test('strong compatible long-term relationship and marriage desire favor commitment',()=>{
