@@ -22,6 +22,12 @@ export function ensureStateSchema(state){
  state.actions.max??=3;
  state.actions.remaining??=0;
  state.children??=[];
+ state.childMoney??={wallet:0,saved:0,totalAllowance:0,totalSpent:0,lastAllowanceAge:null};
+ state.childMoney.wallet??=0;
+ state.childMoney.saved??=0;
+ state.childMoney.totalAllowance??=0;
+ state.childMoney.totalSpent??=0;
+ state.childMoney.lastAllowanceAge??=null;
  state.migrationHistory??=[];
  state.pendingInheritance??=[];
  state.activityMemory??={};
