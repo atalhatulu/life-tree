@@ -25,10 +25,12 @@ export function printHeader(game){
  if(r){
   const status={dating:'Sevgili',cohabiting:'Birlikte yaşıyor',married:'Evli'}[r.status]??'İlişki';
   console.log('İlişki: '+r.name+' '+r.surname+' | '+status+' | '+Math.round(r.relationship)+'/100 | '+r.yearsTogether+' yıl');
+  if(r.lifeGoals?.active)console.log('Partner hedefi: '+r.lifeGoals.active.label+' | İlerleme '+Math.round(r.lifeGoals.active.progress??0)+'/100'+(r.goalAlignment!=null?' | Hedef uyumu '+(r.goalAlignment>0?'uyumlu':r.goalAlignment<0?'çatışıyor':'nötr'):''));
+
  }else console.log('İlişki: Yok');
 
  if(s.children?.length){
-  console.log('Çocuklar: '+s.children.map(c=>c.name+' ('+c.age+')'+(c.adultLife?.jobTitle?' — '+c.adultLife.jobTitle:'')).join(', '));
+  console.log('Çocuklar: '+s.children.map(c=>c.name+' ('+c.age+')'+(c.adultLife?.jobTitle?' — '+c.adultLife.jobTitle:'')+(c.lifeGoals?.active?' ['+c.lifeGoals.active.label+']':'')).join(', '));
   if((s.grandchildren??0)>0)console.log('Torunlar: '+s.grandchildren);
  }else if(s.player.age>=19) console.log('Çocuklar: Yok');
 
@@ -44,6 +46,9 @@ export function printHeader(game){
  }
  if(s.inheritanceHistory?.length){
   console.log('Alınan miras: ₺'+Math.round(s.inheritanceHistory.reduce((sum,x)=>sum+x.amount,0)).toLocaleString('tr-TR'));
+ }
+ if(s.lifeGoals?.active){
+  console.log('Yaşam hedefi: '+s.lifeGoals.active.label+' | İlerleme '+Math.round(s.lifeGoals.active.progress??0)+'/100');
  }
  if(s.healthProfile){
   const conditions=s.healthProfile.conditions.length?s.healthProfile.conditions.map(c=>c.label).join(', '):'tanı yok';
@@ -68,9 +73,19 @@ export function printEvent(game,event){
 }
 
 export function printActivities(game){
- const list=game.availableActivities();
- console.log('\nAktiviteler:');
- list.forEach((activity,index)=>console.log('  '+(index+1)+') '+activity.label));
+ const activities=game.availableActivities().map(x=>({...x,kind:'activity'}));
+ const lifeActions=game.availableLifeActions().map(x=>({...x,kind:'life-action'}));
+ const list=[...lifeActions,...activities];
+ console.log('\nAksiyonlar:');
+ list.forEach((action,index)=>console.log('  '+(index+1)+') '+action.label+(action.kind==='life-action'?' [yaşam]':'')));
  console.log('  0) Yılı bitir');
+ return list;
+}
+
+export function printLifeGoals(game){
+ const list=game.availableLifeGoals();
+ console.log('\nUzun vadeli bir yaşam hedefi seçebilirsin:');
+ list.forEach((goal,index)=>console.log('  '+(index+1)+') '+goal.label));
+ console.log('  0) Şimdilik seçme');
  return list;
 }

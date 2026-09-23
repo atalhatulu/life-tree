@@ -20,9 +20,13 @@ import {adultEvents} from '../events/adult_events.js';
 import {lateLifeEvents} from '../events/late_life_events.js';
 import {parentingEvents} from '../events/parenting_events.js';
 import {lateAgeEvents} from '../events/late_age_events.js';
+import {systemicStorylets} from '../events/systemic_storylets.js';
+import {npcInitiativeEvents} from '../events/npc_initiative_events.js';
 import {createWorldState,processWorldYear} from '../world/world_state.js';
 import {processGeneticHealthYear} from '../health/genetic_system.js';
 import {processDiseaseProgressionYear} from '../health/disease_progression.js';
+import {availableLifeGoals,setLifeGoal} from '../life/life_goal_system.js';
+import {availableLifeActions,performLifeAction} from '../life/agency_system.js';
 
 export class Game{
  constructor(seed=String(Date.now())){
@@ -37,7 +41,7 @@ export class Game{
   this.state.actions={remaining:0,max:3};
   this.state.world=createWorldState(2026);
   ensureStateSchema(this.state);
-  this.events=new EventEngine([...childhoodEvents,...adolescenceEvents,...adultEvents,...lateLifeEvents,...parentingEvents,...lateAgeEvents]);
+  this.events=new EventEngine([...childhoodEvents,...adolescenceEvents,...adultEvents,...lateLifeEvents,...parentingEvents,...lateAgeEvents,...systemicStorylets,...npcInitiativeEvents]);
   this.activeEventId=null;
  }
 
@@ -148,6 +152,18 @@ export class Game{
  }
 
  availableActivities(){return availableActivities(this.state);}
+ availableLifeGoals(){return availableLifeGoals(this.state);}
+ setLifeGoal(id){
+  const goal=setLifeGoal(this.state,id);
+  this.state.history.push({age:this.state.player.age,kind:'life-goal',text:'Uzun vadeli hedef seçtin: '+goal.label+'.'});
+  return goal;
+ }
+ availableLifeActions(){return availableLifeActions(this.state);}
+ performLifeAction(id){
+  const result=performLifeAction(this.state,id);
+  this.state.history.push({age:this.state.player.age,kind:'life-action',actionId:id,result});
+  return result;
+ }
  pendingEvent(){return this.activeEventId?this.events.events.find(event=>event.id===this.activeEventId)??null:null;}
  eventChoices(event){return this.events.choicesFor(this.state,event);}
 }

@@ -35,6 +35,20 @@ export function validateState(state){
  if(state.parents.mother.alive&&state.parents.mother.age-p.age<18) errors.push('mother/player age gap below 18');
  if(state.parents.father.alive&&state.parents.father.age-p.age<18) errors.push('father/player age gap below 18');
  if(state.actions&&(state.actions.remaining<0||state.actions.remaining>state.actions.max)) errors.push('invalid action economy');
+ if(state.lifeGoals){
+  if(!Array.isArray(state.lifeGoals.completed)||!Array.isArray(state.lifeGoals.history))errors.push('invalid life goals state');
+  if(state.lifeGoals.active&&!bounded(state.lifeGoals.active.progress??0))errors.push('life goal progress out of range');
+ }
+ if(state.narrativeEcho&&(!Number.isFinite(state.narrativeEcho.total)||state.narrativeEcho.total<0))errors.push('invalid narrative echo counter');
+ if(state.npcInitiatives){
+  if(!Array.isArray(state.npcInitiatives.pending)||!Array.isArray(state.npcInitiatives.history))errors.push('invalid npc initiative state');
+  const initiativeIds=new Set();
+  for(const item of [...(state.npcInitiatives.pending??[]),...(state.npcInitiatives.history??[])]){
+   if(!item.id)errors.push('npc initiative missing id');
+   if(initiativeIds.has(item.id)&&item.status==='pending')errors.push('duplicate pending npc initiative id');
+   initiativeIds.add(item.id);
+  }
+ }
 
  if(state.education){
   for(const key of ['quality','performance','motivation','attendance']){

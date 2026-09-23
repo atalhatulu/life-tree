@@ -2,6 +2,9 @@ import { Game } from '../core/game.js';
 import { autoplay, humanLikeChoice, activityOrder } from '../simulation/autoplay.js';
 import { RNG } from '../core/rng.js';
 import { setLifestyle, lifestyleMonthlyCost } from '../lifestyle/lifestyle_system.js';
+import { affordableCarOptions, affordableHomeOptions, buyCar, buyHome, sellCar, sellHome, moveHousing } from '../assets/asset_system.js';
+import { generateJobOffers } from '../career/job_market.js';
+import { switchJob } from '../career/career_system.js';
 
 let game;
 let pendingEvent = null;
@@ -11,6 +14,9 @@ let autoLifeToken = 0;
 let autoLifeRng = null;
 let yearMoment = null;
 let leisurePicker = null;
+let personActionTarget = null;
+let lastRenderedAge = null;
+let toastTimer = null;
 const sleep = (ms) => new Promise(resolve=>setTimeout(resolve,ms));
 
 const $ = (selector) => document.querySelector(selector);
@@ -23,6 +29,131 @@ function money(value=0){ return '₺'+Math.round(value).toLocaleString('tr-TR');
 function netWorth(){
   const f=game.state.finance??{};
   return (f.cash??0)+(f.savings??0)+(game.state.assets?.home?.price??0)+(game.state.assets?.car?.price??0)-(f.debt??0);
+}
+function showToast(text){
+  if(!text)return;
+  let el=document.querySelector('.ui-toast');
+  if(!el){
+    el=document.createElement('div');
+    el.className='ui-toast';
+    document.querySelector('.phone-frame')?.appendChild(el);
+  }
+  el.textContent=text;
+  clearTimeout(toastTimer);
+  requestAnimationFrame(()=>el.classList.add('show'));
+  toastTimer=setTimeout(()=>el.classList.remove('show'),1700);
+}
+function pulseYear(){
+  const frame=document.querySelector('.phone-frame');
+  if(!frame)return;
+  frame.classList.remove('year-pulse');
+  void frame.offsetWidth;
+  frame.classList.add('year-pulse');
+  setTimeout(()=>frame.classList.remove('year-pulse'),480);
+}
+
+
+function personTarget(key){
+  const s=game.state;
+  if(key==='partner')return s.social?.romance?{key,type:'partner',person:s.social.romance,label:s.social.romance.name??'Partner'}:null;
+  if(key.startsWith('child:')){
+    const i=Number(key.split(':')[1]), person=s.children?.[i];
+    return person?{key,type:'child',person,label:person.name??('Çocuk '+(i+1))}:null;
+  }
+  if(key.startsWith('friend:')){
+    const id=key.slice(7), person=s.social?.friends?.find(x=>String(x.id)===id);
+    return person?{key,type:'friend',person,label:person.name??'Arkadaş'}:null;
+  }
+  const familyMap={
+    mother:['parent',s.parents?.mother,'Anne'],
+    father:['parent',s.parents?.father,'Baba']
+  };
+  if(key.startsWith('sibling:')){
+    const i=Number(key.split(':')[1]), person=s.siblings?.[i];
+    return person?{key,type:'family',person,label:person.name??'Kardeş'}:null;
+  }
+  const entry=familyMap[key];
+  return entry?.[1]?{key,type:entry[0],person:entry[1],label:entry[2]}:null;
+}
+function changePersonRelationship(target,delta){
+  const p=target.person;
+  if(target.type==='parent'||target.type==='family'){
+    game.state.player.relationships??={};
+    const current=game.state.player.relationships[p.id]??p.relationship??60;
+    game.state.player.relationships[p.id]=clamp(current+delta);
+  }else{
+    p.relationship=clamp((p.relationship??60)+delta);
+  }
+}
+function personActions(target){
+  const actions=[];
+  if(target.type==='partner'){
+    actions.push({id:'talk',label:'Uzun konuş',cost:0,rel:4,stress:-2});
+    actions.push({id:'date',label:'Birlikte dışarı çık',cost:900,rel:6,stress:-3});
+    actions.push({id:'gift',label:'Hediye al',cost:1800,rel:7,stress:0});
+    if(game.state.player.age>=18)actions.push({id:'trip',label:'Kısa kaçamak yap',cost:6500,rel:10,stress:-6});
+  }else if(target.type==='child'){
+    actions.push({id:'time',label:'Birlikte vakit geçir',cost:0,rel:6,stress:-2});
+    if((target.person.age??0)>=6)actions.push({id:'homework',label:'Derslerine yardım et',cost:0,rel:4,stress:1});
+    actions.push({id:'allowance',label:'Harçlık ver',cost:(target.person.age??0)>=13?1000:500,rel:4,stress:0});
+    if((target.person.age??0)>=6&&target.person.age<18)actions.push({id:'course',label:'Kursa yazdır',cost:3500,rel:5,stress:0});
+  }else if(target.type==='friend'){
+    actions.push({id:'call',label:'Ara ve sohbet et',cost:0,rel:4,stress:-2});
+    actions.push({id:'meet',label:'Buluş',cost:650,rel:6,stress:-3});
+    actions.push({id:'gift',label:'Küçük hediye al',cost:1200,rel:5,stress:0});
+  }else{
+    actions.push({id:'call',label:'Ara ve konuş',cost:0,rel:4,stress:-2});
+    actions.push({id:'visit',label:'Ziyaret et',cost:350,rel:6,stress:-3});
+    actions.push({id:'help',label:'Bir işine yardım et',cost:0,rel:7,stress:1});
+  }
+  return actions;
+}
+function applyPersonAction(targetKey,actionId){
+  const target=personTarget(targetKey);
+  if(!target)return;
+  const action=personActions(target).find(x=>x.id===actionId);
+  if(!action)return;
+  if(game.state.actions.remaining<=0){activityMessage='Bu yıl aksiyon hakkın kalmadı.';return;}
+  if(action.cost&&!spendCash(action.cost)){activityMessage='Bu etkileşim için yeterli nakdin yok.';return;}
+
+  changePersonRelationship(target,action.rel);
+  game.state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
+  game.state.healthProfile.stress=clamp((game.state.healthProfile.stress??20)+action.stress);
+
+  if(target.type==='partner'){
+    target.person.relationshipTension=clamp((target.person.relationshipTension??10)-(action.id==='talk'?5:action.id==='trip'?6:3));
+    if(['date','trip'].includes(action.id))target.person.lastQualityTimeAge=game.state.player.age;
+  }
+  if(target.type==='child'){
+    target.person.parenting??={involvement:55,stability:68,emotionalSecurity:72,conflict:8,accumulatedSupport:0};
+    target.person.parenting.involvement=clamp(target.person.parenting.involvement+(action.id==='time'?5:3));
+    if(action.id==='homework'){
+      target.person.personality.discipline=clamp((target.person.personality?.discipline??50)+2);
+      target.person.parenting.accumulatedSupport=(target.person.parenting.accumulatedSupport??0)+3;
+    }
+    if(action.id==='course'){
+      target.person.personality.curiosity=clamp((target.person.personality?.curiosity??50)+3);
+      target.person.parenting.accumulatedSupport=(target.person.parenting.accumulatedSupport??0)+4;
+    }
+  }
+  if(target.type==='friend')target.person.lastContactAge=game.state.player.age;
+
+  game.state.actions.remaining--;
+  const spent=action.cost?' • '+money(action.cost):'';
+  const text=target.label+' ile '+action.label.toLocaleLowerCase('tr-TR')+'.'+spent;
+  game.state.history.push({age:game.state.player.age,kind:'relationship-action',personId:target.person.id,actionId,text});
+  activityMessage=text;
+  personActionTarget=null;
+  render();
+}
+function personActionButton(key){
+  return `<button class="person-action-toggle" data-person-target="${key}" ${game.state.actions.remaining<=0?'disabled':''}>Etkileşim</button>`;
+}
+function personActionPanel(key){
+  if(personActionTarget!==key)return '';
+  const target=personTarget(key);
+  if(!target)return '';
+  return `<div class="person-action-panel"><div class="person-action-head"><span>${target.label} ile ne yapmak istiyorsun?</span><small>${game.state.actions.remaining}/${game.state.actions.max} aksiyon</small></div><div class="person-action-grid">${personActions(target).map(a=>`<button data-person-action="${a.id}" data-person-key="${key}"><span>${a.label}</span><small>${a.cost?money(a.cost):'Ücretsiz'}</small></button>`).join('')}</div></div>`;
 }
 
 
@@ -74,30 +205,119 @@ function applyLeisure(kind,companionId,tier){
 }
 function makeYearMoment(){
   if(!game.state.player.alive)return null;
-  const age=game.state.player.age;
-  const rng=new RNG(game.seedText+':year-moment:'+game.state.year);
-  if(age<7)return {title:'Küçük bir yıl',text:'Boş zamanında neye yöneldin?',choices:[
-    {id:'play',label:'Oyun oyna'},{id:'family',label:'Ailenle vakit geçir'},{id:'learn',label:'Bir şey öğren'}
-  ]};
-  if(age<18)return {title:'Bu yıl neye ağırlık verdin?',text:'Okul dışında zamanını nasıl geçirdin?',choices:[
-    {id:'friends',label:'Arkadaşlarla takıl'},{id:'study',label:'Derse ağırlık ver'},{id:'save',label:'Harçlığı biriktir'}
-  ]};
-  return rng.pick([
-    {title:'Hafta sonu planı',text:'Kendine biraz zaman ayıracaksın.',choices:[{id:'cinema',label:'Sinemaya git'},{id:'rest',label:'Evde dinlen'},{id:'social',label:'Birini ara'}]},
-    {title:'Küçük bir para kararı',text:'Bu ay elinde biraz serbest para kaldı.',choices:[{id:'save',label:'Biriktir'},{id:'shopping',label:'Kendine bir şey al'},{id:'meal',label:'Dışarıda yemek ye'}]}
+  const s=game.state, age=s.player.age;
+  const rng=new RNG(game.seedText+':year-moment:'+s.year);
+  if(age<7)return rng.pick([
+    {title:'Küçük bir keşif',text:'Bugün seni ne çekiyor?',choices:[{id:'play',label:'Oyun kur'},{id:'family',label:'Ailenle vakit geçir'},{id:'learn',label:'Yeni bir şey öğren'}]},
+    {title:'Evde bir gün',text:'Kendi kendine oyalanıyorsun.',choices:[{id:'draw',label:'Resim yap'},{id:'help-home',label:'Ev işine yardım et'},{id:'rest',label:'Dinlen'}]}
   ]);
+  if(age<13)return rng.pick([
+    {title:'Okuldan sonra',text:'Günün geri kalanını nasıl geçireceksin?',choices:[{id:'friends',label:'Arkadaşlarla oyna'},{id:'study',label:'Ödevlerini bitir'},{id:'game-spend',label:'Oyuna/oyuncağa harca'}]},
+    {title:'Harçlık kararı',text:'Cebinde biraz harçlık var.',choices:[{id:'child-save',label:'Biriktir'},{id:'snack',label:'Atıştırmalık al'},{id:'book',label:'Kitap/dergi al'}]},
+    {title:'Hafta sonu',text:'Ailen sana seçim bıraktı.',choices:[{id:'family',label:'Ailece dışarı çık'},{id:'learn',label:'Bir hobiyle uğraş'},{id:'rest',label:'Evde kal'}]}
+  ]);
+  if(age<18)return rng.pick([
+    {title:'Okul ve sosyal hayat',text:'Bu hafta neye ağırlık vereceksin?',choices:[{id:'friends',label:'Arkadaşlarla takıl'},{id:'study',label:'Derse ağırlık ver'},{id:'club',label:'Kulüp/hobiye katıl'}]},
+    {title:'Harçlık kararı',text:'Küçük ama senin olan bir paran var.',choices:[{id:'child-save',label:'Biriktir'},{id:'meal-small',label:'Arkadaşlarla bir şeyler ye'},{id:'clothes-small',label:'Kendine bir şey al'}]},
+    {title:'Kendine yatırım',text:'Boş vaktini nasıl kullanacaksın?',choices:[{id:'exercise',label:'Spor yap'},{id:'learn',label:'Yeni beceri öğren'},{id:'social',label:'Sosyalleş'}]}
+  ]);
+
+  const pool=[
+    {title:'Hafta sonu planı',text:'Kendine biraz zaman ayıracaksın.',choices:[{id:'cinema',label:'Sinemaya git'},{id:'rest',label:'Evde dinlen'},{id:'social',label:'Birini ara'}]},
+    {title:'Küçük bir para kararı',text:'Bu ay elinde biraz serbest para kaldı.',choices:[{id:'adult-save',label:'Biriktir'},{id:'shopping',label:'Kendine bir şey al'},{id:'meal',label:'Dışarıda yemek ye'}]},
+    {title:'Yoğun bir dönem',text:'Enerjini nereye vereceksin?',choices:[{id:'work-focus',label:'İşe yüklen'},{id:'exercise',label:'Spora dön'},{id:'rest',label:'Dinlen'}]},
+    {title:'Sosyal çevre',text:'Bir süredir insanlarla görüşmedin.',choices:[{id:'social',label:'Birini ara'},{id:'family',label:'Aileyi ziyaret et'},{id:'solo',label:'Tek başına kal'}]},
+    {title:'Kendine yatırım',text:'Biraz zaman ve enerji ayırabilirsin.',choices:[{id:'learn',label:'Yeni beceri öğren'},{id:'exercise',label:'Sağlığına odaklan'},{id:'shopping',label:'Görünüşünü yenile'}]},
+    {title:'Akşam planı',text:'Günün sonunda ne yapmak istersin?',choices:[{id:'meal',label:'Dışarıda yemek'},{id:'cinema',label:'Bir şeyler izle'},{id:'rest',label:'Erken dinlen'}]}
+  ];
+  if(s.social?.romance)pool.push({title:'İlişkiye zaman ayır',text:'Partnerinle bir süredir baş başa kalmadınız.',choices:[{id:'partner-time',label:'Birlikte vakit geçir'},{id:'social',label:'Uzun konuş'},{id:'work-focus',label:'Bu hafta işe odaklan'}]});
+  if((s.children?.length??0)>0)pool.push({title:'Aile zamanı',text:'Evde senden ilgi bekleyenler var.',choices:[{id:'child-time',label:'Çocuklarla ilgilen'},{id:'family',label:'Ailece bir şey yap'},{id:'rest',label:'Biraz yalnız kal'}]});
+  if((s.finance?.debt??0)>250000)pool.push({title:'Bütçeyi toparlama',text:'Borç yükün kendini hissettiriyor.',choices:[{id:'adult-save',label:'Harcamayı kıs'},{id:'work-focus',label:'İşe odaklan'},{id:'rest',label:'Stresi azalt'}]});
+  return rng.pick(pool);
+}
+function spendChildMoney(amount,label){
+  const m=game.state.childMoney??={wallet:0,saved:0,totalAllowance:0,totalSpent:0};
+  if((m.wallet??0)<amount)return false;
+  m.wallet-=amount;
+  m.totalSpent=(m.totalSpent??0)+amount;
+  return label;
 }
 function applyYearMoment(choice){
   const s=game.state;
   s.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
+  s.childMoney??={wallet:0,saved:0,totalAllowance:0,totalSpent:0,lastAllowanceAge:null};
   let text='';
-  if(choice==='play'||choice==='rest'){s.healthProfile.stress=clamp(s.healthProfile.stress-3);text='Kendine zaman ayırdın.';}
-  if(choice==='family'){s.player.personality.sociability=clamp((s.player.personality.sociability??50)+1);text='Ailenle vakit geçirdin.';}
-  if(choice==='learn'||choice==='study'){s.player.personality.discipline=clamp((s.player.personality.discipline??50)+1);text='Kendini geliştirmeye zaman ayırdın.';}
-  if(choice==='friends'||choice==='social'){s.player.personality.sociability=clamp((s.player.personality.sociability??50)+1);text='Sosyal bağlarına vakit ayırdın.';}
-  if(choice==='save'){if(s.finance)s.finance.cash=(s.finance.cash??0)+Math.round((s.familySupportMonthly??s.finance.familySupportMonthly??0)*.15);text='Harcamayıp kenara koymayı seçtin.';}
-  if(['cinema','shopping','meal'].includes(choice)){leisurePicker=choice;text='Bir aktivite planladın.';switchScreen('activitiesScreen');}
-  s.history.push({age:s.player.age,kind:'year-moment',text});
+
+  if(['play','draw','rest','solo'].includes(choice)){
+    s.healthProfile.stress=clamp(s.healthProfile.stress-3);
+    if(choice==='draw')s.player.personality.curiosity=clamp((s.player.personality.curiosity??50)+1);
+    text='Kendine sakin bir alan açtın.';
+  }
+  if(['family','help-home'].includes(choice)){
+    s.player.personality.sociability=clamp((s.player.personality.sociability??50)+1);
+    text=choice==='help-home'?'Evde sorumluluk aldın.':'Ailene zaman ayırdın.';
+  }
+  if(['learn','study','club'].includes(choice)){
+    s.player.personality.discipline=clamp((s.player.personality.discipline??50)+1);
+    if(choice!=='study')s.player.personality.curiosity=clamp((s.player.personality.curiosity??50)+1);
+    if(s.education&&choice==='study')s.education.studyEffort=(s.education.studyEffort??0)+12;
+    text='Kendini geliştirmeye zaman ayırdın.';
+  }
+  if(['friends','social'].includes(choice)){
+    s.player.personality.sociability=clamp((s.player.personality.sociability??50)+1);
+    s.healthProfile.stress=clamp(s.healthProfile.stress-2);
+    text='Sosyal bağlarına vakit ayırdın.';
+  }
+  if(choice==='exercise'){
+    s.healthProfile.fitness=clamp((s.healthProfile.fitness??50)+3);
+    s.healthProfile.stress=clamp(s.healthProfile.stress-2);
+    text='Hareket edip kendine iyi baktın.';
+  }
+  if(choice==='work-focus'){
+    if(s.career?.employed)s.career.performance=clamp((s.career.performance??50)+3);
+    s.healthProfile.stress=clamp(s.healthProfile.stress+2);
+    text='İşine ekstra enerji ayırdın.';
+  }
+  if(choice==='child-save'){
+    const moved=Math.round((s.childMoney.wallet??0)*.6);
+    s.childMoney.wallet-=moved;s.childMoney.saved+=moved;
+    text=moved>0?'Harçlığından '+money(moved)+' biriktirdin.':'Biriktirmek istedin ama cebinde para yoktu.';
+  }
+  const childCosts={snack:120,book:280,'game-spend':450,'meal-small':300,'clothes-small':650};
+  if(childCosts[choice]){
+    const ok=spendChildMoney(childCosts[choice],choice);
+    if(ok){
+      if(choice==='book')s.player.personality.curiosity=clamp((s.player.personality.curiosity??50)+2);
+      if(choice==='meal-small')s.player.personality.sociability=clamp((s.player.personality.sociability??50)+1);
+      text=money(childCosts[choice])+' harcadın.';
+    }else text='Bunu almak istedin ama harçlığın yetmedi.';
+  }
+  if(choice==='adult-save'){
+    const f=s.finance;
+    if(f){
+      const moved=Math.min(f.cash??0,Math.max(500,Math.round((f.monthlyIncome??0)*.08)));
+      f.cash-=moved;f.savings=(f.savings??0)+moved;
+      text=moved>0?money(moved)+' birikime ayırdın.':'Bu ay birikime para ayıramadın.';
+    }
+  }
+  if(choice==='partner-time'&&s.social?.romance){
+    s.social.romance.relationship=clamp((s.social.romance.relationship??60)+5);
+    s.social.romance.relationshipTension=clamp((s.social.romance.relationshipTension??10)-4);
+    s.social.romance.lastQualityTimeAge=s.player.age;
+    text='Partnerinle kaliteli zaman geçirdin.';
+  }
+  if(choice==='child-time'&&(s.children?.length??0)>0){
+    for(const child of s.children){
+      child.relationship=clamp((child.relationship??70)+3);
+      if(child.parenting)child.parenting.involvement=clamp((child.parenting.involvement??55)+3);
+    }
+    text='Çocuklarına özellikle zaman ayırdın.';
+  }
+  if(['cinema','shopping','meal'].includes(choice)){
+    leisurePicker=choice;text='Bir aktivite planladın.';switchScreen('activitiesScreen');
+  }
+  if(!text)text='Bu yıl küçük ama sana ait bir seçim yaptın.';
+  s.history.push({age:s.player.age,kind:'year-moment',choiceId:choice,text});
   yearMoment=null;render();
 }
 
@@ -112,18 +332,21 @@ function interestText(person) {
   return items.length ? items.map(([name]) => name).join(', ') : 'belirgin hobi yok';
 }
 
-function personCard(person, relation) {
+function personCard(person, relation, key=null) {
   const rel = relationScore(person);
   const education = person.education?.level ?? 0;
   return `
     <article class="person-card">
       <div class="card-row">
-        <div><h3>${relation}: ${person.name} ${person.surname}</h3><p>${person.age} yaş • ${person.job ?? 'Öğrenci/Çocuk'} • Eğitim ${education}/5</p></div>
-        ${rel == null ? '' : `<span class="relationship-pill">${rel}/100</span>`}
+        <div><h3>${relation}: ${person.name} ${person.surname??''}</h3><p>${person.age} yaş • ${person.job ?? 'Öğrenci/Çocuk'} • Eğitim ${education}/5</p></div>
+        ${rel == null ? '' : `<span class="relationship-pill">${Math.round(rel)}/100</span>`}
       </div>
-      <p>Boy ${person.appearance.heightCm} cm • Sağlık ${person.health.current}/100 • Görünüş ${person.appearance.attractiveness}/100</p>
+      <p>Boy ${person.appearance?.heightCm??'—'} cm • Sağlık ${Math.round(person.health?.current??70)}/100 • Görünüş ${Math.round(person.appearance?.attractiveness??50)}/100</p>
       <p>İlgiler: ${interestText(person)}</p>
+      ${person.life?`<p>Kendi hayatı: ${person.life.relationshipStatus??'single'} • İş istikrarı ${Math.round(person.life.workStability??0)}/100 • Stres ${Math.round(person.life.personalStress??0)}/100 • Yaşam memnuniyeti ${Math.round(person.life.lifeSatisfaction??0)}/100</p>`:''}
+      ${person.needsSupport?'<p class="attention-note">Şu anda desteğe ihtiyacı var.</p>':''}
       ${person.background?.parentingStyle ? `<p>Ebeveynlik tarzı: ${person.background.parentingStyle.replace('_',' ')}</p>` : ''}
+      ${key?`<div class="person-card-actions">${personActionButton(key)}</div>${personActionPanel(key)}`:''}
     </article>`;
 }
 
@@ -135,24 +358,35 @@ function siblingLabel(person, index) {
 function renderRelationships() {
   const { parents, siblings, grandparents, social } = game.state;
   const family = [
-    personCard(parents.mother, 'Anne'),
-    personCard(parents.father, 'Baba'),
-    ...siblings.map((person, index) => personCard(person, siblingLabel(person,index))),
+    personCard(parents.mother, 'Anne', 'mother'),
+    personCard(parents.father, 'Baba', 'father'),
+    ...siblings.map((person, index) => personCard(person, siblingLabel(person,index), 'sibling:'+index)),
     personCard(grandparents.maternal.grandmother, 'Anneanne'),
     personCard(grandparents.maternal.grandfather, 'Anne tarafından dede'),
     personCard(grandparents.paternal.grandmother, 'Babaanne'),
     personCard(grandparents.paternal.grandfather, 'Baba tarafından dede')
   ];
   const romance= social.romance
-    ? `<div class="section-divider">Partner</div><article class="summary-card"><h3>${social.romance.name??'Partner'}</h3><p>Durum: <strong>${social.romance.status??'dating'}</strong> • İlişki: <strong>${Math.round(social.romance.relationship??0)}/100</strong></p><p>Birlikte: ${social.romance.yearsTogether??0} yıl • Gerilim: ${Math.round(social.romance.relationshipTension??0)}/100</p></article>`
+    ? `<div class="section-divider">Partner</div><article class="summary-card partner-card"><div class="card-row"><div><h3>${social.romance.name??'Partner'} ${social.romance.surname??''}</h3><p>Durum: <strong>${social.romance.status??'dating'}</strong> • Birlikte: ${social.romance.yearsTogether??0} yıl</p></div><span class="relationship-pill">${Math.round(social.romance.relationship??0)}/100</span></div><p>Gerilim: ${Math.round(social.romance.relationshipTension??0)}/100 • ${social.romance.relationshipState??'stable'}</p>
+<p>Güven: ${Math.round(social.romance.trust??0)}/100 • Yakınlık: ${Math.round(social.romance.intimacy??0)}/100 • Kırgınlık: ${Math.round(social.romance.resentment??0)}/100</p>
+<p>Ortak hedefler: ${Math.round(social.romance.sharedGoals??0)}/100 • Para uyumu: ${Math.round(social.romance.moneyAlignment??0)}/100</p>
+${social.romance.life?`<p>Kendi hayatı: ${social.romance.job??'—'} • İş memnuniyeti ${Math.round(social.romance.life.careerSatisfaction??0)}/100 • İş stresi ${Math.round(social.romance.life.workStress??0)}/100 • Yaşam memnuniyeti ${Math.round(social.romance.life.lifeSatisfaction??0)}/100</p>`:''}<div class="person-card-actions">${personActionButton('partner')}</div>${personActionPanel('partner')}</article>`
     : '<div class="section-divider">Partner</div><div class="empty-state compact">Aktif partner yok.</div>';
   const kids=(game.state.children??[]).length
-    ? `<div class="section-divider">Çocuklar</div>${game.state.children.map((child,i)=>`<article class="summary-card"><h3>${child.name??('Çocuk '+(i+1))}</h3><p>${child.age??0} yaş • ${child.educationPlan??child.education?.plan??'eğitim planı oluşuyor'}</p></article>`).join('')}`
+    ? `<div class="section-divider">Çocuklar</div>${game.state.children.map((child,i)=>`<article class="summary-card child-card"><div class="card-row"><div><h3>${child.name??('Çocuk '+(i+1))}</h3><p>${child.age??0} yaş • ${child.educationPlan??child.education?.plan??'eğitim planı oluşuyor'}</p></div><span class="relationship-pill">${Math.round(child.relationship??70)}/100</span></div><p>İlgi: ${Math.round(child.parenting?.involvement??55)}/100 • Güven: ${Math.round(child.parenting?.emotionalSecurity??72)}/100</p>
+${child.development?`<p>Özgüven ${Math.round(child.development.confidence)}/100 • Bağımsızlık ${Math.round(child.development.independence)}/100 • Akademik dürtü ${Math.round(child.development.academicDrive)}/100 • Sosyal güven ${Math.round(child.development.socialSecurity)}/100</p>`:''}<div class="person-card-actions">${personActionButton('child:'+i)}</div>${personActionPanel('child:'+i)}</article>`).join('')}`
     : '';
   const friends = social.friends.length
-    ? `<div class="section-divider">Arkadaşlar</div>${social.friends.map(f=>personCard(f,'Arkadaş')).join('')}`
+    ? `<div class="section-divider">Arkadaşlar</div>${social.friends.map(f=>personCard(f,'Arkadaş','friend:'+f.id)).join('')}`
     : '<div class="section-divider">Arkadaşlar</div><div class="empty-state compact">Henüz yakın bir arkadaşın yok.</div>';
   $('#relationships').innerHTML = family.join('') + romance + kids + friends;
+  $('#relationships').querySelectorAll('[data-person-target]').forEach(button=>button.addEventListener('click',()=>{
+    personActionTarget=personActionTarget===button.dataset.personTarget?null:button.dataset.personTarget;
+    renderRelationships();
+  }));
+  $('#relationships').querySelectorAll('[data-person-action]').forEach(button=>button.addEventListener('click',()=>{
+    applyPersonAction(button.dataset.personKey,button.dataset.personAction);
+  }));
 }
 
 function renderActivities() {
@@ -187,10 +421,71 @@ function renderActivities() {
   }));
 }
 
+function useAction(){
+  if(game.state.actions.remaining<=0){activityMessage='Bu yıl aksiyon hakkın kalmadı.';return false;}
+  game.state.actions.remaining--;return true;
+}
+function requestRaise(){
+  const c=game.state.career;
+  if(!c?.employed){activityMessage='Aktif bir işin yok.';return;}
+  if(!useAction())return;
+  const rng=new RNG(game.seedText+':raise:'+game.state.year);
+  const chance=clamp(28+(c.performance??50)*.45+(c.network??50)*.2+(c.companyFit??50)*.12,10,88);
+  if(rng.int(1,100)<=chance){
+    const pct=rng.int(5,12);
+    c.monthlyIncome=Math.round(c.monthlyIncome*(1+pct/100));
+    game.state.player.monthlyIncome=c.monthlyIncome;
+    activityMessage='Zam talebin kabul edildi. Maaşın %'+pct+' arttı.';
+  }else{
+    c.satisfaction=clamp((c.satisfaction??50)-2);
+    activityMessage='Zam talebin bu kez kabul edilmedi.';
+  }
+  game.state.history.push({age:game.state.player.age,kind:'career-action',text:activityMessage});
+  render();
+}
+function networkCareer(){
+  const c=game.state.career;
+  if(!c?.employed){activityMessage='Aktif bir işin yok.';return;}
+  if(!useAction())return;
+  c.network=clamp((c.network??50)+6);
+  c.performance=clamp((c.performance??50)+1);
+  game.state.healthProfile.stress=clamp((game.state.healthProfile?.stress??20)+1);
+  activityMessage='Profesyonel çevreni genişlettin.';
+  game.state.history.push({age:game.state.player.age,kind:'career-action',text:activityMessage});
+  render();
+}
+function refreshCareerOffers(){
+  const c=game.state.career;
+  if(!c?.employed){activityMessage='Şimdilik iş değişikliği yalnız aktif kariyerde kullanılabilir.';render();return;}
+  const rng=new RNG(game.seedText+':manual-career-offers:'+game.state.year);
+  game.state.pendingCareerOffers=generateJobOffers(game.state,rng,3,{mode:'career-switch'});
+  activityMessage=game.state.pendingCareerOffers.length?'Yeni iş fırsatlarına baktın.':'Uygun bir teklif bulamadın.';
+  render();
+}
+function acceptCareerOffer(id){
+  const offer=(game.state.pendingCareerOffers??[]).find(x=>x.id===id);
+  if(!offer)return;
+  if(!useAction())return;
+  const result=switchJob(game.state,offer);
+  activityMessage=result.moveResult?'Yeni iş için taşındın ve '+result.job.title+' olarak başladın.':result.job.title+' olarak yeni işe başladın.';
+  game.state.history.push({age:game.state.player.age,kind:'career-action',text:activityMessage});
+  render();
+}
+function assetAction(fn,success){
+  try{
+    const result=fn();
+    activityMessage=typeof success==='function'?success(result):success;
+    game.state.history.push({age:game.state.player.age,kind:'asset-action',text:activityMessage});
+  }catch(error){activityMessage=error.message;}
+  render();
+}
+
 function renderAssets() {
   const { household, finance, assets } = game.state;
   const debts=finance?.debts??{};
+  const childWallet=game.state.player.age<18?`<article class="summary-card child-wallet-card"><h3>Harçlık & Birikim</h3><p>Cüzdan: <strong>${money(game.state.childMoney?.wallet??0)}</strong></p><p>Birikim: <strong>${money(game.state.childMoney?.saved??0)}</strong></p><p class="muted">Şimdiye kadar aldığın harçlık: ${money(game.state.childMoney?.totalAllowance??0)} • Harcadığın: ${money(game.state.childMoney?.totalSpent??0)}</p></article>`:'';
   $('#assets').innerHTML = `
+    ${childWallet}
     <article class="summary-card">
       <h3>Kişisel Finans</h3>
       <p>Nakit: <strong>${money(finance?.cash)}</strong></p>
@@ -199,6 +494,7 @@ function renderAssets() {
       <p>Net worth: <strong>${money(netWorth())}</strong></p>
       <p class="muted">Tüketici ${money(debts.consumer)} • Acil ${money(debts.emergency)} • Konut ${money(debts.housing)} • Araç ${money(debts.car)}</p>
     </article>
+    ${game.state.householdDynamics?`<article class="summary-card"><h3>Hane Dayanıklılığı</h3><p>Finansal baskı: <strong>${Math.round(game.state.householdDynamics.financialPressure)}/100</strong> • İstikrar: <strong>${Math.round(game.state.householdDynamics.stability)}/100</strong></p><p>Acil rezerv: ${game.state.householdDynamics.emergencyReserveMonths} ay • Bakım yükü: ${Math.round(game.state.householdDynamics.maintenanceBurden)}/100 • Aile yükü: ${Math.round(game.state.householdDynamics.familySupportBurden)}/100</p></article>`:''}
     <article class="summary-card">
       <h3>Varlıklar</h3>
       <p>Ev: <strong>${assets?.home ? assets.home.label : 'Yok'}</strong></p>
@@ -216,7 +512,19 @@ function renderAssets() {
       <h3>Aile Hanesi</h3>
       <p>Başlangıç sınıfı: <strong>${household.economicClass}</strong></p>
       <p>Aylık hane geliri: <strong>${money(household.monthlyIncome)}</strong></p>
+    </article>
+    <article class="summary-card"><h3>Konut Kararları</h3><div class="activity-grid">
+      ${!assets?.home?['family','shared','studio','apartment'].map(x=>`<button class="activity-button" data-housing="${x}">${({family:'Aile evi',shared:'Paylaşımlı ev',studio:'Stüdyo',apartment:'Daire'})[x]}</button>`).join(''):`<button class="activity-button" data-sell-home>Evi sat</button>`}
+    </div></article>
+    <article class="summary-card"><h3>Araç & Ev Satın Alma</h3>
+      <div class="activity-grid">${!assets?.car?affordableCarOptions(game.state).slice(0,3).map(x=>`<button class="activity-button" data-buy-car="${x.id}">${x.label}<br><small>${money(x.price)}</small></button>`).join(''):`<button class="activity-button" data-sell-car>Arabayı sat</button>`}</div>
+      <div class="activity-grid">${!assets?.home?affordableHomeOptions(game.state).slice(0,3).map(x=>`<button class="activity-button" data-buy-home="${x.id}">${x.label}<br><small>${money(x.price)}</small></button>`).join(''):''}</div>
     </article>`;
+  $('#assets').querySelectorAll('[data-housing]').forEach(b=>b.addEventListener('click',()=>assetAction(()=>moveHousing(game.state,b.dataset.housing),r=>'Taşındın. Masraf: '+money(r.cost))));
+  $('#assets').querySelectorAll('[data-buy-car]').forEach(b=>b.addEventListener('click',()=>assetAction(()=>buyCar(game.state,b.dataset.buyCar),r=>r.label+' satın aldın.')));
+  $('#assets').querySelectorAll('[data-buy-home]').forEach(b=>b.addEventListener('click',()=>assetAction(()=>buyHome(game.state,b.dataset.buyHome),r=>r.label+' satın aldın.')));
+  $('#assets').querySelector('[data-sell-car]')?.addEventListener('click',()=>assetAction(()=>sellCar(game.state),r=>'Arabanı sattın. Net: '+money(r.net)));
+  $('#assets').querySelector('[data-sell-home]')?.addEventListener('click',()=>assetAction(()=>sellHome(game.state),r=>'Evini sattın. Net: '+money(r.net)));
   $('#assets').querySelectorAll('[data-lifestyle]').forEach(sel=>{
     const key=sel.dataset.lifestyle;
     sel.value=finance?.lifestyle?.[key]??sel.value;
@@ -234,26 +542,37 @@ function renderCareer() {
   const e=game.state.education;
   const c=game.state.career;
   const higher=game.state.higherEducation;
+  const offers=game.state.pendingCareerOffers??[];
   $('#career').innerHTML=`
     <article class="summary-card">
-      <h3>Kariyer</h3>
+      <div class="card-row"><h3>Kariyer</h3><span class="relationship-pill">${game.state.actions.remaining}/${game.state.actions.max}</span></div>
       <p>İş: <strong>${c?.title ?? game.state.player.job ?? 'Çalışmıyor'}</strong></p>
       <p>Seviye: <strong>${c?.levelTitle ?? '—'}</strong> • Sektör: <strong>${c?.sector ?? '—'}</strong></p>
       <p>Aylık gelir: <strong>${money(c?.monthlyIncome ?? game.state.player.monthlyIncome)}</strong></p>
       <p>Performans: ${Math.round(c?.performance ?? 0)}/100 • Memnuniyet: ${Math.round(c?.satisfaction ?? 0)}/100</p>
       <p>Network: ${Math.round(c?.network ?? 0)}/100 • Company fit: ${Math.round(c?.companyFit ?? 0)}/100</p>
+      ${c?.workplace?`<p>Patron: ${Math.round(c.workplace.bossQuality)}/100 • Ekip: ${Math.round(c.workplace.teamCohesion)}/100 • Kültür uyumu: ${Math.round(c.workplace.cultureFit)}/100</p><p>İş yükü: ${Math.round(c.workplace.workload)}/100 • Tükenmişlik: ${Math.round(c.workplace.burnout)}/100 • İtibar: ${Math.round(c.workplace.reputation)}/100</p>`:''}
+      ${c?.employed?`<div class="activity-grid"><button class="activity-button" data-career="network">Network yap</button><button class="activity-button" data-career="raise">Zam iste</button><button class="activity-button" data-career="offers">İş fırsatlarına bak</button></div>`:''}
     </article>
+    ${offers.length?`<article class="summary-card"><h3>İş Teklifleri</h3>${offers.map(o=>`<button class="choice-button career-offer" data-offer="${o.id}"><strong>${o.title}</strong> • ${money(o.salary)}/ay • ${o.cityName??''} • ${o.sector??'private'}</button>`).join('')}</article>`:''}
     <article class="summary-card">
       <h3>Eğitim</h3>
       <p>${higher?.completed ? 'Üniversite mezunu' : higher?.enrolled ? 'Üniversitede' : e?.schoolName ?? 'Temel eğitim'}</p>
       <p>${higher?.programTitle ?? higher?.programId ?? ''}</p>
     </article>`;
+  $('#career').querySelector('[data-career="network"]')?.addEventListener('click',networkCareer);
+  $('#career').querySelector('[data-career="raise"]')?.addEventListener('click',requestRaise);
+  $('#career').querySelector('[data-career="offers"]')?.addEventListener('click',refreshCareerOffers);
+  $('#career').querySelectorAll('[data-offer]').forEach(b=>b.addEventListener('click',()=>acceptCareerOffer(b.dataset.offer)));
 }
 
 function renderLifeTree() {
   const nodes = game.state.lifeTree?.nodes ?? [];
   if (!nodes.length) { $('#lifeTree').innerHTML = '<div class="empty-state">Henüz hayatının yönünü değiştiren büyük bir karar vermedin.</div>'; return; }
-  $('#lifeTree').innerHTML = `<div class="tree-root">Doğum</div>${nodes.map((node,index)=>`<div class="tree-connector"></div><article class="tree-node"><small>${node.age} yaş • Karar ${index+1}</small><h3>${node.title}</h3><p class="chosen-path">✓ ${node.label}</p>${node.alternatives.map(a=>`<p class="alternate-path">↳ ${a.label}</p>`).join('')}</article>`).join('')}`;
+  const memory=game.state.lifeMemory;
+  const memories=(memory?.memories??[]).slice(-6).reverse();
+  $('#lifeTree').innerHTML = `<div class="tree-root">Doğum</div>${nodes.map((node,index)=>`<div class="tree-connector"></div><article class="tree-node"><small>${node.age} yaş • Karar ${index+1}</small><h3>${node.title}</h3><p class="chosen-path">✓ ${node.label}</p>${node.alternatives.map(a=>`<p class="alternate-path">↳ ${a.label}</p>`).join('')}</article>`).join('')}${memory?`<div class="section-divider">Hayat İzleri</div><article class="summary-card"><p>Dayanıklılık: <strong>${Math.round(memory.resilience??50)}/100</strong> • Yük: <strong>${Math.round(memory.scarLoad??0)}/100</strong></p>${memories.length?memories.map(x=>`<p><strong>${x.age}:</strong> ${x.label}</p>`).join(''):'<p class="muted">Henüz belirgin bir hayat izi yok.</p>'}</article>`:''}
+${(game.state.consequenceChains??[]).some(x=>!x.resolved)?`<div class="section-divider">Devam Eden Etkiler</div>${game.state.consequenceChains.filter(x=>!x.resolved).map(x=>`<article class="summary-card consequence-card"><h3>${({ 'burnout-spiral':'Tükenmişlik Döngüsü','financial-strain':'Finansal Baskı','relationship-erosion':'İlişki Aşınması'})[x.type]??x.type}</h3><p>${x.startedAtAge} yaşında başladı • ${x.step}. yıl</p></article>`).join('')}`:''}`;
 }
 
 function baseTimelineEntries() {
@@ -267,14 +586,81 @@ function baseTimelineEntries() {
   ];
 }
 
+function lifeChapter(age){
+  if(age<7)return 'Erken çocukluk';
+  if(age<13)return 'Çocukluk';
+  if(age<18)return 'Ergenlik';
+  if(age<25)return 'Genç yetişkinlik';
+  if(age<40)return 'Yetişkinlik';
+  if(age<60)return 'Orta yaş';
+  if(age<75)return 'Geç yetişkinlik';
+  return 'İleri yaş';
+}
+function timelineMeta(kind=''){
+  const map={
+    choice:['Karar','decision'],
+    'year-moment':['Günlük hayat','daily'],
+    relationship:['İlişki','relationship'],
+    'relationship-depth':['İlişki','relationship'],
+    'relationship-action':['İlişki','relationship'],
+    'partner-life':['Partner','relationship'],
+    social:['Sosyal','social'],
+    'friend-life':['Arkadaş','social'],
+    family:['Aile','family'],
+    'child-development':['Çocuk','family'],
+    career:['Kariyer','career'],
+    'career-action':['Kariyer','career'],
+    workplace:['İş','career'],
+    finance:['Finans','finance'],
+    household:['Hane','finance'],
+    'asset-action':['Varlık','finance'],
+    memory:['Hayat izi','memory'],
+    'consequence-chain':['Devam eden etki','warning'],
+    health:['Sağlık','health'],
+    activity:['Aktivite','daily']
+  };
+  return map[kind]??['Hayat','neutral'];
+}
+function currentPressures(){
+  const s=game.state, items=[];
+  if((s.career?.workplace?.burnout??0)>=60)items.push('Tükenmişlik '+Math.round(s.career.workplace.burnout));
+  if((s.householdDynamics?.financialPressure??0)>=55)items.push('Finansal baskı '+Math.round(s.householdDynamics.financialPressure));
+  if((s.social?.romance?.resentment??0)>=55)items.push('İlişki kırgınlığı '+Math.round(s.social.romance.resentment));
+  if((s.healthProfile?.stress??0)>=65)items.push('Stres '+Math.round(s.healthProfile.stress));
+  const active=(s.consequenceChains??[]).filter(x=>!x.resolved).length;
+  if(active)items.push(active+' devam eden etki');
+  return items;
+}
 function renderTimeline() {
-  const entries=[...baseTimelineEntries(),...game.state.history.map(item=>({age:item.age,text:item.result ?? item.text}))];
-  $('#timeline').innerHTML=entries.filter(e=>e.text).sort((a,b)=>b.age-a.age).map(entry=>`<article class="life-entry"><div class="life-age">${entry.age} yaş</div><div class="life-copy">${entry.text}</div></article>`).join('');
+  const history=game.state.history.map(item=>({
+    age:item.age,
+    text:item.result ?? item.text,
+    kind:item.kind??'',
+    important:Boolean(item.paceBlock||item.kind==='choice'||item.kind==='memory'||item.kind==='consequence-chain')
+  }));
+  const entries=[...baseTimelineEntries().map(x=>({...x,kind:'family',important:true})),...history]
+    .filter(e=>e.text)
+    .sort((a,b)=>b.age-a.age);
+  let lastChapter=null;
+  const rows=[];
+  for(const entry of entries){
+    const chapter=lifeChapter(entry.age);
+    if(chapter!==lastChapter){
+      rows.push(`<div class="timeline-chapter"><span>${chapter}</span><small>${entry.age} yaş civarı</small></div>`);
+      lastChapter=chapter;
+    }
+    const [label,tone]=timelineMeta(entry.kind);
+    rows.push(`<article class="life-entry ${entry.important?'important':''}" data-tone="${tone}"><div class="life-age">${entry.age} yaş</div><div class="life-copy"><div class="timeline-tag">${label}</div>${entry.text}</div></article>`);
+  }
+  const pressures=currentPressures();
+  const overview=`<article class="life-overview"><div><small>ŞU AN</small><strong>${lifeChapter(game.state.player.age)}</strong></div><div class="pressure-list">${pressures.length?pressures.map(x=>`<span>${x}</span>`).join(''):'<span class="calm">Belirgin baskı yok</span>'}</div></article>`;
+  $('#timeline').innerHTML=overview+rows.join('');
 }
 
 function renderEvent() {
   const card=$('#eventCard');
   const dead=!game.state.player.alive;
+  card.classList.toggle('major-event',Boolean(pendingEvent?.majorDecision));
   if(!pendingEvent){
     if(yearMoment&&!dead){
       card.classList.remove('hidden');
@@ -295,14 +681,27 @@ function renderEvent() {
   $('#ageUp').disabled=true;
   card.classList.remove('hidden');
   card.innerHTML=`<h3>${pendingEvent.title}</h3><p>${pendingEvent.majorDecision?'Bu seçim Life Tree üzerinde bir dönüm noktası olarak kaydedilecek.':'Bu yıl hayatında bir seçim yapman gerekiyor.'}</p><div class="choice-list">${game.eventChoices(pendingEvent).map(choice=>`<button class="choice-button" data-choice="${choice.id}">${choice.label}</button>`).join('')}</div>`;
-  card.querySelectorAll('[data-choice]').forEach(button=>button.addEventListener('click',()=>{game.makeChoice(pendingEvent,button.dataset.choice);pendingEvent=null;render();}));
+  card.querySelectorAll('[data-choice]').forEach(button=>button.addEventListener('click',()=>{
+    const event=pendingEvent;
+    const result=game.makeChoice(event,button.dataset.choice);
+    pendingEvent=null;
+    render();
+    showToast(result||'Kararın hayatına işlendi.');
+  }));
 }
 
 function render(){
   const {player,household,year,finance,social,children}=game.state;
+  const ageChanged=lastRenderedAge!=null&&lastRenderedAge!==player.age;
   $('#identity').textContent=`${player.name} ${player.surname}`;
   $('#subtitle').textContent=`${player.age} yaş • ${year} • ${household.economicClass} sınıf`;
   $('#seed').textContent=`seed: ${game.seedText}`;
+  $('#lifePhaseChip').textContent=lifeChapter(player.age);
+  const activeGoal=game.state.lifeGoals?.active;
+  $('#goalQuick').textContent=activeGoal?`Hedef: ${activeGoal.label}`:'Uzun vadeli hedef yok';
+  $('#goalQuick').title=activeGoal?activeGoal.label:'';
+  lastRenderedAge=player.age;
+  if(ageChanged)requestAnimationFrame(pulseYear);
 
   updateBar('health',getHealth(player));
   updateBar('stress',getStress());
@@ -472,10 +871,15 @@ function toggleAutoLife(){
   autoLifeLoop(autoLifeToken);
 }
 
-function switchScreen(id){document.querySelectorAll('.screen-panel').forEach(panel=>panel.classList.toggle('active',panel.id===id));document.querySelectorAll('.nav-item').forEach(button=>button.classList.toggle('active',button.dataset.screen===id));}
+function switchScreen(id){
+  document.querySelectorAll('.screen-panel').forEach(panel=>panel.classList.toggle('active',panel.id===id));
+  document.querySelectorAll('.nav-item').forEach(button=>button.classList.toggle('active',button.dataset.screen===id));
+  const active=document.getElementById(id);
+  if(active)active.scrollTop=0;
+}
 function newLife(seed=$('#seedInput').value.trim()||String(Date.now())){
   autoLifeRunning=false;autoLifeToken++;setAutoStatus('');
-  game=new Game(seed);pendingEvent=null;yearMoment=null;leisurePicker=null;activityMessage='';autoLifeRng=null;
+  game=new Game(seed);pendingEvent=null;yearMoment=null;leisurePicker=null;personActionTarget=null;activityMessage='';autoLifeRng=null;lastRenderedAge=null;
   $('#autoLife')?.classList.remove('running');
   if($('#autoLife'))$('#autoLife').textContent='▶ AUTO LIFE';
   switchScreen('lifeScreen');render();
@@ -490,6 +894,7 @@ $('#ageUp').addEventListener('click',()=>{
   pendingEvent=game.ageOneYear();
   if(!pendingEvent&&game.state.player.alive)yearMoment=makeYearMoment();
   render();
+  if(!pendingEvent&&yearMoment)showToast(game.state.player.age+' yaş • yeni bir yıl');
 });
 
 $('#autoLife').addEventListener('click',toggleAutoLife);

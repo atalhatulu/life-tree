@@ -21,6 +21,18 @@ import {processRetrainingYear} from '../career/career_system.js';
 import {processMentalHealthYear} from '../health/mental_health_system.js';
 import {processMilitaryYear} from './military_service.js';
 import {processMiddleAgeYear} from './middle_age_system.js';
+import {processRelationshipDepthYear} from '../social/relationship_depth.js';
+import {processWorkplaceYear} from '../career/workplace_system.js';
+import {processHouseholdDepthYear} from '../finance/household_depth.js';
+import {processMemoryConsequencesYear} from './memory_system.js';
+import {processChildDevelopmentYear} from '../family/child_development_system.js';
+import {processPartnerLifeYear} from '../social/partner_life_system.js';
+import {processFriendLivesYear} from '../social/friend_life_system.js';
+import {processConsequenceChainsYear} from './consequence_chain_system.js';
+import {processLifeGoalsYear} from './life_goal_system.js';
+import {processNarrativeEchoesYear} from './narrative_echo_system.js';
+import {processLongTermConsequences} from './long_term_consequence_system.js';
+import {generateNpcInitiatives,processNpcInitiativeFollowups} from './npc_initiative_system.js';
 
 export function processAdultYear(state,rng){
  const entries=[];
@@ -48,12 +60,17 @@ export function processAdultYear(state,rng){
  entries.push(...progressCareerYear(state,rng.fork('career-progress')));
  recordCareerYear(state);
  entries.push(...processCareerDynamics(state,rng.fork('career-dynamics')));
+ entries.push(...processWorkplaceYear(state,rng.fork('workplace')));
  entries.push(...processUnemploymentYear(state));
  entries.push(...processRetrainingYear(state));
  entries.push(...processMilitaryYear(state));
  entries.push(...processMiddleAgeYear(state,rng.fork('middle-age')));
  entries.push(...processPartnershipYear(state,rng.fork('partnership')));
+ entries.push(...processRelationshipDepthYear(state,rng.fork('relationship-depth')));
+ entries.push(...processPartnerLifeYear(state,rng.fork('partner-life')));
+ entries.push(...processFriendLivesYear(state,rng.fork('friend-lives')));
  entries.push(...processChildrenYear(state,rng.fork('children')));
+ entries.push(...processChildDevelopmentYear(state,rng.fork('child-development')));
  entries.push(...processDescendantLives(state,rng.fork('descendants')));
  entries.push(...processInheritance(state));
  entries.push(...processRetirementYear(state));
@@ -68,6 +85,14 @@ export function processAdultYear(state,rng){
  const transitionPending=state.pendingUniversityApplications||state.pendingJobOffers||state.pendingCareerOffers;
  if(age>=20||state.career?.employed||state.higherEducation?.enrolled){
   if(!transitionPending||age>=20) entries.push(...processPersonalFinanceYear(state));
+  entries.push(...processHouseholdDepthYear(state,rng.fork('household-depth')));
+  entries.push(...processMemoryConsequencesYear(state));
+  entries.push(...processConsequenceChainsYear(state,rng.fork('consequence-chains')));
+  entries.push(...processLifeGoalsYear(state));
+  entries.push(...processNarrativeEchoesYear(state,rng.fork('narrative-echo')));
+  entries.push(...processLongTermConsequences(state));
+  entries.push(...processNpcInitiativeFollowups(state));
+  entries.push(...generateNpcInitiatives(state,rng.fork('npc-initiative')));
  }
 
  entries.push(...processMentalHealthYear(state,rng.fork('mental-health')));

@@ -22,6 +22,12 @@ export function ensureStateSchema(state){
  state.actions.max??=3;
  state.actions.remaining??=0;
  state.children??=[];
+ state.childMoney??={wallet:0,saved:0,totalAllowance:0,totalSpent:0,lastAllowanceAge:null};
+ state.childMoney.wallet??=0;
+ state.childMoney.saved??=0;
+ state.childMoney.totalAllowance??=0;
+ state.childMoney.totalSpent??=0;
+ state.childMoney.lastAllowanceAge??=null;
  state.migrationHistory??=[];
  state.pendingInheritance??=[];
  state.activityMemory??={};
@@ -30,6 +36,18 @@ export function ensureStateSchema(state){
  state.parentCare??=null;
  state.unemployment??=null;
  state.retraining??=null;
+ state.householdDynamics??={financialPressure:0,maintenanceBurden:0,familySupportBurden:0,emergencyReserveMonths:0,stability:65,recentShock:null};
+ state.lifeMemory??={memories:[],tags:{},resilience:50,scarLoad:0,lastRecordedAge:null};
+ state.storyletCooldowns??={};
+ state.consequenceChains??=[];
+ state.lifeGoals??={active:null,completed:[],history:[]};
+ state.lifeGoals.completed??=[];
+ state.lifeGoals.history??=[];
+ state.narrativeEcho??={lastAge:null,total:0};
+ state.npcInitiatives??={pending:[],history:[],nextId:1};
+ state.npcInitiatives.pending??=[];
+ state.npcInitiatives.history??=[];
+ state.npcInitiatives.nextId??=1;
  if(state.finance){
   state.finance.debts??={consumer:0,medical:0,housing:0,car:0,emergency:0};
   for(const key of ['consumer','medical','housing','car','emergency'])state.finance.debts[key]??=0;
