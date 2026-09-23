@@ -5,7 +5,7 @@ import { setLifestyle, lifestyleMonthlyCost } from '../lifestyle/lifestyle_syste
 import { affordableCarOptions, affordableHomeOptions, buyCar, buyHome, sellCar, sellHome, moveHousing } from '../assets/asset_system.js';
 import { generateJobOffers } from '../career/job_market.js';
 import { switchJob } from '../career/career_system.js';
-import { ensureLifeFinale } from '../life/ending_system.js';
+import { ensureLifeFinale, ENDING_ARCHETYPES } from '../life/ending_system.js';
 import { ensureCounterfactualChoice } from '../life/counterfactual_system.js';
 import {loadDiscovery,saveDiscovery,recordCompletedLife,recordSimulatedChoice,discoveryStatus,discoveryStats,choiceKey} from '../life/discovery_system.js';
 
@@ -629,6 +629,26 @@ function renderLifeTree() {
       </div>`;
   }).join('');
 
+  const endingGallery=`
+    <div class="section-divider">Keşfedilen Sonlar</div>
+    <div class="ending-gallery">
+      ${ENDING_ARCHETYPES.map(ending=>{
+        const found=discovery.endings?.[ending.id];
+        const current=finale?.ending?.id===ending.id;
+        return found?`
+          <article class="ending-gallery-card discovered ${current?'current':''}">
+            <small>${current?'BU HAYATIN SONU':'KEŞFEDİLDİ'}</small>
+            <strong>${ending.title}</strong>
+            <span>${found.timesReached} kez ulaşıldı</span>
+          </article>`:`
+          <article class="ending-gallery-card locked">
+            <small>KEŞFEDİLMEDİ</small>
+            <strong>???</strong>
+            <span>Başka bir yaşam yolu</span>
+          </article>`;
+      }).join('')}
+    </div>`;
+
   const finaleMarkup=finale?`
     <div class="tree-spine final-spine"></div>
     <article class="tree-ending-node">
@@ -668,6 +688,7 @@ function renderLifeTree() {
     </article>
     <div class="tree-root"><b>Doğum</b><small>${game.state.year-game.state.player.age}</small></div>
     <div class="life-tree-map">${branches}${finaleMarkup}</div>
+    ${endingGallery}
     ${memory?`<div class="section-divider">Hayat İzleri</div><article class="summary-card"><p>Dayanıklılık: <strong>${Math.round(memory.resilience??50)}/100</strong> • Yük: <strong>${Math.round(memory.scarLoad??0)}/100</strong></p>${memories.length?memories.map(x=>`<p><strong>${x.age}:</strong> ${x.label}</p>`).join(''):'<p class="muted">Henüz belirgin bir hayat izi yok.</p>'}</article>`:''}
   `;
   $('#lifeTree').querySelectorAll('[data-counterfactual-node]').forEach(button=>button.addEventListener('click',()=>{
