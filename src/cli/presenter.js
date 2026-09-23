@@ -45,6 +45,9 @@ export function printHeader(game){
  if(s.inheritanceHistory?.length){
   console.log('Alınan miras: ₺'+Math.round(s.inheritanceHistory.reduce((sum,x)=>sum+x.amount,0)).toLocaleString('tr-TR'));
  }
+ if(s.lifeGoals?.active){
+  console.log('Yaşam hedefi: '+s.lifeGoals.active.label+' | İlerleme '+Math.round(s.lifeGoals.active.progress??0)+'/100');
+ }
  if(s.healthProfile){
   const conditions=s.healthProfile.conditions.length?s.healthProfile.conditions.map(c=>c.label).join(', '):'tanı yok';
   console.log('Sağlık profili: stres '+Math.round(s.healthProfile.stress)+'/100 | fitness '+Math.round(s.healthProfile.fitness)+'/100 | '+conditions);
@@ -68,9 +71,19 @@ export function printEvent(game,event){
 }
 
 export function printActivities(game){
- const list=game.availableActivities();
- console.log('\nAktiviteler:');
- list.forEach((activity,index)=>console.log('  '+(index+1)+') '+activity.label));
+ const activities=game.availableActivities().map(x=>({...x,kind:'activity'}));
+ const lifeActions=game.availableLifeActions().map(x=>({...x,kind:'life-action'}));
+ const list=[...lifeActions,...activities];
+ console.log('\nAksiyonlar:');
+ list.forEach((action,index)=>console.log('  '+(index+1)+') '+action.label+(action.kind==='life-action'?' [yaşam]':'')));
  console.log('  0) Yılı bitir');
+ return list;
+}
+
+export function printLifeGoals(game){
+ const list=game.availableLifeGoals();
+ console.log('\nUzun vadeli bir yaşam hedefi seçebilirsin:');
+ list.forEach((goal,index)=>console.log('  '+(index+1)+') '+goal.label));
+ console.log('  0) Şimdilik seçme');
  return list;
 }
