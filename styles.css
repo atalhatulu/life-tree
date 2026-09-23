@@ -604,3 +604,189 @@ body{
 }
 .partner-card{border-color:#d7e7dc;}
 .child-card{border-color:#e0e6ef;}
+
+
+/* --- UI polish v2 --- */
+:root{
+  --surface:#ffffff;
+  --surface-soft:#f7f9fc;
+  --line:#e3e8ef;
+  --text:#263142;
+  --muted:#7f8a9d;
+  --accent:#4ca55f;
+  --accent-soft:#edf8f0;
+}
+.phone-frame{
+  background:linear-gradient(180deg,#fbfcfe 0%,#f5f7fa 100%);
+}
+.topbar{
+  border-bottom:1px solid #eef1f5;
+}
+.brand-row .eyebrow{
+  letter-spacing:.18em;
+}
+.quick-strip{
+  background:#edf0f4;
+}
+.quick-strip div{
+  min-height:50px;
+  justify-content:center;
+}
+.quick-strip span{
+  opacity:.78;
+}
+.quick-strip b{
+  font-size:11px;
+  letter-spacing:-.01em;
+}
+.screen-panel{
+  padding-top:16px;
+}
+.section-head h2{
+  font-size:15px;
+  font-weight:850;
+}
+.section-divider{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-top:19px;
+}
+.section-divider::after{
+  content:'';
+  height:1px;
+  background:#e3e8ef;
+  flex:1;
+}
+.summary-card,.person-card{
+  border-radius:16px;
+  padding:14px;
+}
+.summary-card h3,.person-card h3{
+  color:#293547;
+  letter-spacing:-.01em;
+}
+.person-card:hover,.summary-card:hover{
+  border-color:#d9e1ea;
+}
+.partner-card{
+  background:linear-gradient(180deg,#ffffff,#fbfefc);
+  box-shadow:0 8px 24px rgba(69,137,84,.06);
+}
+.child-card,.child-wallet-card{
+  background:linear-gradient(180deg,#ffffff,#fbfcff);
+}
+.child-wallet-card strong{
+  font-size:14px;
+  color:#2f8a45;
+}
+.activity-grid{
+  gap:9px;
+}
+.activity-button{
+  min-height:42px;
+  background:linear-gradient(180deg,#ffffff,#f8fafc);
+  border-color:#dde4ec;
+  box-shadow:0 2px 7px rgba(43,54,73,.025);
+}
+.activity-button:hover{
+  border-color:#bcd8c3;
+  box-shadow:0 5px 14px rgba(66,126,80,.08);
+}
+.activity-button small{
+  display:block;
+  margin-top:3px;
+  color:#8d97a7;
+  font-size:8px;
+  font-weight:700;
+}
+.choice-button.career-offer{
+  width:100%;
+  margin:7px 0 0;
+  line-height:1.45;
+  background:linear-gradient(180deg,#fff,#f8fbf9);
+}
+.relationship-pill{
+  box-shadow:inset 0 0 0 1px rgba(78,157,96,.08);
+}
+.person-action-panel{
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8);
+}
+.person-action-grid button{
+  min-height:42px;
+}
+.event-card{
+  position:relative;
+  overflow:hidden;
+}
+.event-card::before{
+  content:'';
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:4px;
+  background:linear-gradient(180deg,#66bd76,#469f59);
+}
+.event-card h3,.event-card p,.event-card .choice-list{
+  margin-left:3px;
+}
+.life-entry{
+  position:relative;
+  overflow:hidden;
+}
+.life-entry::before{
+  content:'';
+  position:absolute;
+  left:0;
+  top:10px;
+  bottom:10px;
+  width:2px;
+  background:#edf0f4;
+}
+.life-age{
+  font-weight:900;
+  color:#7f8a9a;
+}
+.age-zone{
+  box-shadow:0 -8px 24px rgba(43,54,73,.035);
+}
+.age-actions{
+  align-items:stretch;
+}
+.age-button,.auto-button,.speed-select{
+  min-height:44px;
+}
+.auto-button{
+  background:linear-gradient(180deg,#f7faf8,#eef6f0);
+}
+.auto-button.running{
+  background:linear-gradient(180deg,#eaf7ed,#dff1e3);
+}
+.bottom-nav{
+  background:rgba(255,255,255,.96);
+  backdrop-filter:blur(12px);
+}
+.nav-item.active{
+  position:relative;
+}
+.nav-item.active::after{
+  content:'';
+  position:absolute;
+  bottom:4px;
+  width:18px;
+  height:3px;
+  border-radius:999px;
+  background:#58ad69;
+}
+.auto-status{
+  max-width:82%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+@media (max-width:560px){
+  .quick-strip div{padding:9px 6px;}
+  .person-action-grid{grid-template-columns:1fr;}
+  .age-actions{grid-template-columns:1.15fr 1fr .85fr;}
+}
