@@ -7,6 +7,7 @@ import { generateJobOffers } from '../career/job_market.js';
 import { switchJob } from '../career/career_system.js';
 import { ensureLifeFinale } from '../life/ending_system.js';
 import { ensureCounterfactualChoice } from '../life/counterfactual_system.js';
+import {loadDiscovery,saveDiscovery,recordCompletedLife,recordSimulatedChoice,discoveryStatus,discoveryStats} from '../life/discovery_system.js';
 
 let game;
 let pendingEvent = null;
@@ -19,6 +20,8 @@ let leisurePicker = null;
 let personActionTarget = null;
 let lastRenderedAge = null;
 let toastTimer = null;
+let discovery = loadDiscovery();
+let recordedCompletedSeed = null;
 const sleep = (ms) => new Promise(resolve=>setTimeout(resolve,ms));
 
 const $ = (selector) => document.querySelector(selector);
@@ -584,12 +587,16 @@ function renderLifeTree() {
     const analyzed=node.counterfactual?.alternatives??[];
     const alternatives=(node.alternatives??[]).map(a=>{
       const result=analyzed.find(x=>x.choiceId===a.id);
+      const metaStatus=discoveryStatus(discovery,node.eventId,a.id);
       const distribution=result?.endingDistribution?.slice(0,3)??[];
+      const livedElsewhere=metaStatus==='lived';
+      const simulatedBefore=metaStatus==='simulated'&&!result;
       return `
-      <div class="tree-alt-branch counterfactual-branch">
+      <div class="tree-alt-branch counterfactual-branch ${livedElsewhere?'meta-lived':''}">
         <div class="tree-alt-line"></div>
         <div class="tree-alt-choice">
           <strong>${a.label}</strong>
+          ${livedElsewhere?'<span class="meta-path-badge lived">● Daha önce yaşandı</span>':simulatedBefore?'<span class="meta-path-badge simulated">◇ Daha önce simüle edildi</span>':''}
           ${result?`
             <div class="counterfactual-result">
               <span>${result.completedSamples}/${result.requestedSamples} olası hayat</span>
@@ -602,11 +609,11 @@ function renderLifeTree() {
             </div>
           `:`
             <button class="counterfactual-button" data-counterfactual-node="${index}" data-counterfactual-choice="${a.id}" ${dead?'':'disabled'}>
-              ${dead?'12 olası hayatı simüle et':'Ölümden sonra analiz edilir'}
+              ${dead?(livedElsewhere?'Yine de 12 olası hayatı simüle et':'12 olası hayatı simüle et'):'Ölümden sonra analiz edilir'}
             </button>
           `}
         </div>
-        <div class="tree-unknown-node ${result?'resolved':''}" title="${result?.mostLikelyEnding?.title??'Bu yol henüz yaşanmadı'}">${result?'◇':'?'}</div>
+        <div class="tree-unknown-node ${result?'resolved':livedElsewhere?'lived-meta':simulatedBefore?'simulated-meta':''}" title="${result?.mostLikelyEnding?.title??(livedElsewhere?'Bu yol başka bir yaşamda gerçekten yaşandı':simulatedBefore?'Bu yol daha önce simüle edildi':'Bu yol henüz yaşanmadı')}">${result?'◇':livedElsewhere?'●':simulatedBefore?'◇':'?'}</div>
       </div>`;
     }).join('');
     return `
@@ -645,12 +652,19 @@ function renderLifeTree() {
     </article>
   `:'';
 
+  const meta=discoveryStats(discovery);
   $('#lifeTree').innerHTML=`
     <div class="life-tree-intro">
       <span class="tree-legend lived">● Yaşadığın yol</span>
       <span class="tree-legend unknown">? Yaşanmamış yol</span>
       <span class="tree-legend simulated">◇ Simüle edilmiş olasılık</span>
     </div>
+    <article class="tree-meta-summary">
+      <span>${meta.livesCompleted} tamamlanan hayat</span>
+      <span>${meta.livedChoices} yaşanmış kritik yol</span>
+      <span>${meta.simulatedChoices} simüle edilmiş yol</span>
+      <span>${meta.endings} keşfedilmiş son</span>
+    </article>
     <div class="tree-root"><b>Doğum</b><small>${game.state.year-game.state.player.age}</small></div>
     <div class="life-tree-map">${branches}${finaleMarkup}</div>
     ${memory?`<div class="section-divider">Hayat İzleri</div><article class="summary-card"><p>Dayanıklılık: <strong>${Math.round(memory.resilience??50)}/100</strong> • Yük: <strong>${Math.round(memory.scarLoad??0)}/100</strong></p>${memories.length?memories.map(x=>`<p><strong>${x.age}:</strong> ${x.label}</p>`).join(''):'<p class="muted">Henüz belirgin bir hayat izi yok.</p>'}</article>`:''}
@@ -662,8 +676,10 @@ function renderLifeTree() {
     button.textContent='Simüle ediliyor…';
     requestAnimationFrame(()=>setTimeout(()=>{
       try{
-        ensureCounterfactualChoice(game.state,game.seedText,nodeIndex,choiceId,{samples:12,maxAge:110});
-        showToast('12 alternatif yaşam hesaplandı.');
+        const result=ensureCounterfactualChoice(game.state,game.seedText,nodeIndex,choiceId,{samples:12,maxAge:110});
+        discovery=recordSimulatedChoice(discovery,game.state.lifeTree.nodes[nodeIndex],result);
+        saveDiscovery(discovery);
+        showToast('12 alternatif yaşam hesaplandı ve Life Tree keşfine eklendi.');
       }catch(error){
         showToast('Olasılık analizi başarısız: '+error.message);
       }
@@ -769,6 +785,11 @@ function renderEvent() {
     if(dead){
       const d=game.state.death??{};
       const finale=ensureLifeFinale(game.state);
+      if(recordedCompletedSeed!==game.seedText){
+        discovery=recordCompletedLife(discovery,game.state,{seedText:game.seedText});
+        saveDiscovery(discovery);
+        recordedCompletedSeed=game.seedText;
+      }
       card.classList.add('death-card');
       card.innerHTML=`<small class="death-kicker">BİR HAYAT TAMAMLANDI</small><h3>${finale.ending.title}</h3><p>${finale.ending.description}</p><p><strong>${game.state.player.age} yaş</strong> • ${d.cause??'Bilinmeyen neden'}</p><div class="death-stats"><span>${finale.majorDecisions} kritik karar</span><span>${finale.children} çocuk</span><span>${money(finale.netWorth)}</span></div><button class="choice-button finale-tree-button" data-open-life-tree>HAYAT AĞACINI GÖR →</button>`;
       card.querySelector('[data-open-life-tree]')?.addEventListener('click',()=>switchScreen('treeScreen'));
@@ -978,7 +999,7 @@ function switchScreen(id){
 }
 function newLife(seed=$('#seedInput').value.trim()||String(Date.now())){
   autoLifeRunning=false;autoLifeToken++;setAutoStatus('');
-  game=new Game(seed);pendingEvent=null;yearMoment=null;leisurePicker=null;personActionTarget=null;activityMessage='';autoLifeRng=null;lastRenderedAge=null;
+  game=new Game(seed);pendingEvent=null;yearMoment=null;leisurePicker=null;personActionTarget=null;activityMessage='';autoLifeRng=null;lastRenderedAge=null;recordedCompletedSeed=null;
   $('#autoLife')?.classList.remove('running');
   if($('#autoLife'))$('#autoLife').textContent='▶ AUTO LIFE';
   switchScreen('lifeScreen');render();
