@@ -1,3 +1,4 @@
+import {ensureNpcGoal,updateNpcGoal} from '../life/npc_goal_system.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export function ensureFriendLife(friend){
@@ -16,6 +17,7 @@ export function processFriendLivesYear(state,rng){
  const entries=[];
  for(const friend of state.social?.friends??[]){
   const life=ensureFriendLife(friend);
+  ensureNpcGoal(friend);
   life.personalStress=clamp(life.personalStress+rng.fork(friend.id+'-stress').int(-3,4));
   life.workStability=clamp(life.workStability+rng.fork(friend.id+'-work').int(-4,4));
   life.lifeSatisfaction=clamp(
@@ -25,6 +27,12 @@ export function processFriendLivesYear(state,rng){
     life.personalStress*.16+
     (friend.closeFriend?8:0)
   );
+  updateNpcGoal(friend,{
+   careerSatisfaction:life.workStability,
+   financialStability:life.workStability,
+   relationshipQuality:friend.relationship??55,
+   wellbeing:life.lifeSatisfaction
+  });
 
   if(life.relationshipStatus==='single'&&friend.age>=20&&rng.fork(friend.id+'-partner').chance(.08+(friend.personality?.sociability??50)*.001)){
     life.relationshipStatus='partnered';
