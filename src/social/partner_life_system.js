@@ -1,4 +1,5 @@
 import {JOBS} from '../data/catalog.js';
+import {ensureNpcGoal,updateNpcGoal,applyPartnerGoalAlignment} from '../life/npc_goal_system.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 function ensurePartnerLife(partner){
@@ -29,6 +30,7 @@ export function processPartnerLifeYear(state,rng){
  const partner=state.social?.romance;
  if(!partner||state.player.age<19)return entries;
  const life=ensurePartnerLife(partner);
+ const npcGoal=ensureNpcGoal(partner);
  life.careerYears+=1;
 
  const ambition=life.ambition??50;
@@ -43,6 +45,18 @@ export function processPartnerLifeYear(state,rng){
   life.workStress*.15+
   Math.min(12,(life.personalSavings??0)/100000)
  );
+ updateNpcGoal(partner,{
+  careerSatisfaction:life.careerSatisfaction,
+  financialStability:Math.min(100,(life.personalSavings??0)/5000),
+  relationshipQuality:partner.relationship??60,
+  wellbeing:life.lifeSatisfaction
+ });
+ const alignment=applyPartnerGoalAlignment(state);
+ if(alignment?.alignment<0&&rng.fork('goal-conflict').chance(.18)){
+  entries.push({age:state.player.age,kind:'partner-life',text:partner.name+' ile hayattan beklediklerinizin farklılaştığını daha belirgin hissetmeye başladınız.'});
+ }else if(alignment?.alignment>0&&rng.fork('goal-alignment').chance(.16)){
+  entries.push({age:state.player.age,kind:'partner-life',text:partner.name+' ile benzer uzun vadeli hedeflere yönelmeniz ilişkinizi güçlendirdi.'});
+ }
 
  if(life.careerSatisfaction<=30&&life.careerYears>=2&&rng.fork('partner-job-change').chance(.20)){
   const old=partner.job;
