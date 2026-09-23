@@ -1,5 +1,5 @@
 import { Game } from '../core/game.js';
-import { autoplay, humanLikeChoice, activityOrder } from '../simulation/autoplay.js';
+import { autoplay, humanLikeChoice, activityOrder, simulateToEnd } from '../simulation/autoplay.js';
 import { RNG } from '../core/rng.js';
 import { setLifestyle, lifestyleMonthlyCost } from '../lifestyle/lifestyle_system.js';
 import { affordableCarOptions, affordableHomeOptions, buyCar, buyHome, sellCar, sellHome, moveHousing } from '../assets/asset_system.js';
@@ -1016,6 +1016,56 @@ function toggleAutoLife(){
   autoLifeLoop(autoLifeToken);
 }
 
+async function fastForwardToEnd(){
+  if(!game.state.player.alive){
+    switchScreen('treeScreen');
+    render();
+    return;
+  }
+  if(autoLifeRunning){
+    autoLifeRunning=false;
+    autoLifeToken++;
+    $('#autoLife').classList.remove('running');
+    $('#autoLife').textContent='▶ AUTO LIFE';
+  }
+  pendingEvent=null;
+  yearMoment=null;
+  leisurePicker=null;
+  const button=$('#simulateEnd');
+  button.disabled=true;
+  $('#ageUp').disabled=true;
+  $('#autoLife').disabled=true;
+  $('#autoSpeed').disabled=true;
+  setAutoStatus('Hayatın sonu simüle ediliyor…');
+  switchScreen('lifeScreen');
+  render();
+  await sleep(30);
+  try{
+    const result=simulateToEnd(game,{policy:'human-like',maxAge:130});
+    pendingEvent=null;
+    yearMoment=null;
+    leisurePicker=null;
+    render();
+    if(result.reachedEnd){
+      showToast(result.yearsSimulated+' yıl simüle edildi • hayat tamamlandı.');
+      setAutoStatus('Hayat tamamlandı');
+    }else{
+      showToast('Simülasyon güvenlik sınırında durdu.');
+      setAutoStatus('Simülasyon '+result.finalAge+' yaşta durdu');
+    }
+  }catch(error){
+    showToast('Simülasyon başarısız: '+error.message);
+    setAutoStatus('Simülasyon durdu');
+    render();
+  }finally{
+    button.disabled=!game.state.player.alive;
+    $('#ageUp').disabled=!game.state.player.alive;
+    $('#autoLife').disabled=false;
+    $('#autoSpeed').disabled=false;
+    if(!game.state.player.alive)button.textContent='✓ HAYAT TAMAMLANDI';
+  }
+}
+
 function switchScreen(id){
   document.querySelectorAll('.screen-panel').forEach(panel=>panel.classList.toggle('active',panel.id===id));
   document.querySelectorAll('.nav-item').forEach(button=>button.classList.toggle('active',button.dataset.screen===id));
@@ -1027,6 +1077,7 @@ function newLife(seed=$('#seedInput').value.trim()||String(Date.now())){
   game=new Game(seed);pendingEvent=null;yearMoment=null;leisurePicker=null;personActionTarget=null;activityMessage='';autoLifeRng=null;lastRenderedAge=null;recordedCompletedSeed=null;
   $('#autoLife')?.classList.remove('running');
   if($('#autoLife'))$('#autoLife').textContent='▶ AUTO LIFE';
+  if($('#simulateEnd')){$('#simulateEnd').disabled=false;$('#simulateEnd').textContent='⏩ SONA SİMÜLE ET';}
   switchScreen('lifeScreen');render();
 }
 
@@ -1043,5 +1094,6 @@ $('#ageUp').addEventListener('click',()=>{
 });
 
 $('#autoLife').addEventListener('click',toggleAutoLife);
+$('#simulateEnd').addEventListener('click',fastForwardToEnd);
 document.querySelectorAll('.nav-item').forEach(button=>button.addEventListener('click',()=>switchScreen(button.dataset.screen)));
 newLife('life-tree-demo');
