@@ -15,6 +15,8 @@ let autoLifeRng = null;
 let yearMoment = null;
 let leisurePicker = null;
 let personActionTarget = null;
+let lastRenderedAge = null;
+let toastTimer = null;
 const sleep = (ms) => new Promise(resolve=>setTimeout(resolve,ms));
 
 const $ = (selector) => document.querySelector(selector);
@@ -27,6 +29,27 @@ function money(value=0){ return '₺'+Math.round(value).toLocaleString('tr-TR');
 function netWorth(){
   const f=game.state.finance??{};
   return (f.cash??0)+(f.savings??0)+(game.state.assets?.home?.price??0)+(game.state.assets?.car?.price??0)-(f.debt??0);
+}
+function showToast(text){
+  if(!text)return;
+  let el=document.querySelector('.ui-toast');
+  if(!el){
+    el=document.createElement('div');
+    el.className='ui-toast';
+    document.querySelector('.phone-frame')?.appendChild(el);
+  }
+  el.textContent=text;
+  clearTimeout(toastTimer);
+  requestAnimationFrame(()=>el.classList.add('show'));
+  toastTimer=setTimeout(()=>el.classList.remove('show'),1700);
+}
+function pulseYear(){
+  const frame=document.querySelector('.phone-frame');
+  if(!frame)return;
+  frame.classList.remove('year-pulse');
+  void frame.offsetWidth;
+  frame.classList.add('year-pulse');
+  setTimeout(()=>frame.classList.remove('year-pulse'),480);
 }
 
 
@@ -637,6 +660,7 @@ function renderTimeline() {
 function renderEvent() {
   const card=$('#eventCard');
   const dead=!game.state.player.alive;
+  card.classList.toggle('major-event',Boolean(pendingEvent?.majorDecision));
   if(!pendingEvent){
     if(yearMoment&&!dead){
       card.classList.remove('hidden');
@@ -657,14 +681,27 @@ function renderEvent() {
   $('#ageUp').disabled=true;
   card.classList.remove('hidden');
   card.innerHTML=`<h3>${pendingEvent.title}</h3><p>${pendingEvent.majorDecision?'Bu seçim Life Tree üzerinde bir dönüm noktası olarak kaydedilecek.':'Bu yıl hayatında bir seçim yapman gerekiyor.'}</p><div class="choice-list">${game.eventChoices(pendingEvent).map(choice=>`<button class="choice-button" data-choice="${choice.id}">${choice.label}</button>`).join('')}</div>`;
-  card.querySelectorAll('[data-choice]').forEach(button=>button.addEventListener('click',()=>{game.makeChoice(pendingEvent,button.dataset.choice);pendingEvent=null;render();}));
+  card.querySelectorAll('[data-choice]').forEach(button=>button.addEventListener('click',()=>{
+    const event=pendingEvent;
+    const result=game.makeChoice(event,button.dataset.choice);
+    pendingEvent=null;
+    render();
+    showToast(result||'Kararın hayatına işlendi.');
+  }));
 }
 
 function render(){
   const {player,household,year,finance,social,children}=game.state;
+  const ageChanged=lastRenderedAge!=null&&lastRenderedAge!==player.age;
   $('#identity').textContent=`${player.name} ${player.surname}`;
   $('#subtitle').textContent=`${player.age} yaş • ${year} • ${household.economicClass} sınıf`;
   $('#seed').textContent=`seed: ${game.seedText}`;
+  $('#lifePhaseChip').textContent=lifeChapter(player.age);
+  const activeGoal=game.state.lifeGoals?.active;
+  $('#goalQuick').textContent=activeGoal?`Hedef: ${activeGoal.label}`:'Uzun vadeli hedef yok';
+  $('#goalQuick').title=activeGoal?activeGoal.label:'';
+  lastRenderedAge=player.age;
+  if(ageChanged)requestAnimationFrame(pulseYear);
 
   updateBar('health',getHealth(player));
   updateBar('stress',getStress());
@@ -834,10 +871,15 @@ function toggleAutoLife(){
   autoLifeLoop(autoLifeToken);
 }
 
-function switchScreen(id){document.querySelectorAll('.screen-panel').forEach(panel=>panel.classList.toggle('active',panel.id===id));document.querySelectorAll('.nav-item').forEach(button=>button.classList.toggle('active',button.dataset.screen===id));}
+function switchScreen(id){
+  document.querySelectorAll('.screen-panel').forEach(panel=>panel.classList.toggle('active',panel.id===id));
+  document.querySelectorAll('.nav-item').forEach(button=>button.classList.toggle('active',button.dataset.screen===id));
+  const active=document.getElementById(id);
+  if(active)active.scrollTop=0;
+}
 function newLife(seed=$('#seedInput').value.trim()||String(Date.now())){
   autoLifeRunning=false;autoLifeToken++;setAutoStatus('');
-  game=new Game(seed);pendingEvent=null;yearMoment=null;leisurePicker=null;personActionTarget=null;activityMessage='';autoLifeRng=null;
+  game=new Game(seed);pendingEvent=null;yearMoment=null;leisurePicker=null;personActionTarget=null;activityMessage='';autoLifeRng=null;lastRenderedAge=null;
   $('#autoLife')?.classList.remove('running');
   if($('#autoLife'))$('#autoLife').textContent='▶ AUTO LIFE';
   switchScreen('lifeScreen');render();
@@ -852,6 +894,7 @@ $('#ageUp').addEventListener('click',()=>{
   pendingEvent=game.ageOneYear();
   if(!pendingEvent&&game.state.player.alive)yearMoment=makeYearMoment();
   render();
+  if(!pendingEvent&&yearMoment)showToast(game.state.player.age+' yaş • yeni bir yıl');
 });
 
 $('#autoLife').addEventListener('click',toggleAutoLife);
