@@ -320,6 +320,8 @@ function personCard(person, relation, key=null) {
       </div>
       <p>Boy ${person.appearance?.heightCm??'—'} cm • Sağlık ${Math.round(person.health?.current??70)}/100 • Görünüş ${Math.round(person.appearance?.attractiveness??50)}/100</p>
       <p>İlgiler: ${interestText(person)}</p>
+      ${person.life?`<p>Kendi hayatı: ${person.life.relationshipStatus??'single'} • İş istikrarı ${Math.round(person.life.workStability??0)}/100 • Stres ${Math.round(person.life.personalStress??0)}/100 • Yaşam memnuniyeti ${Math.round(person.life.lifeSatisfaction??0)}/100</p>`:''}
+      ${person.needsSupport?'<p class="attention-note">Şu anda desteğe ihtiyacı var.</p>':''}
       ${person.background?.parentingStyle ? `<p>Ebeveynlik tarzı: ${person.background.parentingStyle.replace('_',' ')}</p>` : ''}
       ${key?`<div class="person-card-actions">${personActionButton(key)}</div>${personActionPanel(key)}`:''}
     </article>`;
@@ -546,7 +548,8 @@ function renderLifeTree() {
   if (!nodes.length) { $('#lifeTree').innerHTML = '<div class="empty-state">Henüz hayatının yönünü değiştiren büyük bir karar vermedin.</div>'; return; }
   const memory=game.state.lifeMemory;
   const memories=(memory?.memories??[]).slice(-6).reverse();
-  $('#lifeTree').innerHTML = `<div class="tree-root">Doğum</div>${nodes.map((node,index)=>`<div class="tree-connector"></div><article class="tree-node"><small>${node.age} yaş • Karar ${index+1}</small><h3>${node.title}</h3><p class="chosen-path">✓ ${node.label}</p>${node.alternatives.map(a=>`<p class="alternate-path">↳ ${a.label}</p>`).join('')}</article>`).join('')}${memory?`<div class="section-divider">Hayat İzleri</div><article class="summary-card"><p>Dayanıklılık: <strong>${Math.round(memory.resilience??50)}/100</strong> • Yük: <strong>${Math.round(memory.scarLoad??0)}/100</strong></p>${memories.length?memories.map(x=>`<p><strong>${x.age}:</strong> ${x.label}</p>`).join(''):'<p class="muted">Henüz belirgin bir hayat izi yok.</p>'}</article>`:''}`;
+  $('#lifeTree').innerHTML = `<div class="tree-root">Doğum</div>${nodes.map((node,index)=>`<div class="tree-connector"></div><article class="tree-node"><small>${node.age} yaş • Karar ${index+1}</small><h3>${node.title}</h3><p class="chosen-path">✓ ${node.label}</p>${node.alternatives.map(a=>`<p class="alternate-path">↳ ${a.label}</p>`).join('')}</article>`).join('')}${memory?`<div class="section-divider">Hayat İzleri</div><article class="summary-card"><p>Dayanıklılık: <strong>${Math.round(memory.resilience??50)}/100</strong> • Yük: <strong>${Math.round(memory.scarLoad??0)}/100</strong></p>${memories.length?memories.map(x=>`<p><strong>${x.age}:</strong> ${x.label}</p>`).join(''):'<p class="muted">Henüz belirgin bir hayat izi yok.</p>'}</article>`:''}
+${(game.state.consequenceChains??[]).some(x=>!x.resolved)?`<div class="section-divider">Devam Eden Etkiler</div>${game.state.consequenceChains.filter(x=>!x.resolved).map(x=>`<article class="summary-card consequence-card"><h3>${({ 'burnout-spiral':'Tükenmişlik Döngüsü','financial-strain':'Finansal Baskı','relationship-erosion':'İlişki Aşınması'})[x.type]??x.type}</h3><p>${x.startedAtAge} yaşında başladı • ${x.step}. yıl</p></article>`).join('')}`:''}`;
 }
 
 function baseTimelineEntries() {
