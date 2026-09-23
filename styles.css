@@ -399,7 +399,7 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 .age-actions{
   display:grid;
-  grid-template-columns:1.2fr 1.2fr .9fr;
+  grid-template-columns:1fr 1fr 1.25fr .8fr;
   gap:7px;
 }
 .sim-button{
@@ -1551,4 +1551,27 @@ body{
 }
 @media (max-width:420px){
   .ending-gallery{grid-template-columns:1fr;}
+}
+
+
+.simulate-end-button{
+  background:linear-gradient(180deg,#f7f3ff,#eee8fb);
+  border-color:#d8ccef;
+  color:#655184;
+  letter-spacing:.01em;
+}
+.simulate-end-button:hover{
+  background:#ebe4f8;
+}
+.simulate-end-button:disabled{
+  opacity:.55;
+  cursor:default;
+}
+@media (max-width:520px){
+  .age-actions{
+    grid-template-columns:1fr 1fr;
+  }
+  .speed-select{
+    min-height:42px;
+  }
 }
