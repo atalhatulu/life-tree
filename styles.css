@@ -1575,3 +1575,17 @@ body{
     min-height:42px;
   }
 }
+
+
+/* --- Post-death finale actions --- */
+.finale-actions{
+  display:grid;
+  gap:7px;
+  margin-top:8px;
+}
+.finale-alt-button{
+  border-color:#d7dfea;
+  background:linear-gradient(180deg,#f8faff,#eef3fb);
+  color:#5f7095;
+  font-weight:900;
+}
