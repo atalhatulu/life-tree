@@ -46,7 +46,11 @@ function livingCompanions(){
 const LEISURE={
  cinema:{label:'Sinemaya git',costs:[250,550,1100]},
  meal:{label:'Dışarıda yemek ye',costs:[350,850,1800]},
- shopping:{label:'Alışveriş yap',costs:[500,1500,4000]}
+ shopping:{label:'Alışveriş yap',costs:[500,1500,4000]},
+ cafe:{label:'Kafeye git',costs:[180,420,900]},
+ concert:{label:'Konser / etkinlik',costs:[700,1600,3500]},
+ trip:{label:'Günübirlik gezi',costs:[800,2200,5500]},
+ gaming:{label:'Oyun / eğlence gecesi',costs:[150,500,1200]}
 };
 function applyLeisure(kind,companionId,tier){
   if(game.state.actions.remaining<=0){activityMessage='Bu yıl aksiyon hakkın kalmadı.';return;}
@@ -76,16 +80,43 @@ function makeYearMoment(){
   if(!game.state.player.alive)return null;
   const age=game.state.player.age;
   const rng=new RNG(game.seedText+':year-moment:'+game.state.year);
-  if(age<7)return {title:'Küçük bir yıl',text:'Boş zamanında neye yöneldin?',choices:[
-    {id:'play',label:'Oyun oyna'},{id:'family',label:'Ailenle vakit geçir'},{id:'learn',label:'Bir şey öğren'}
-  ]};
-  if(age<18)return {title:'Bu yıl neye ağırlık verdin?',text:'Okul dışında zamanını nasıl geçirdin?',choices:[
-    {id:'friends',label:'Arkadaşlarla takıl'},{id:'study',label:'Derse ağırlık ver'},{id:'save',label:'Harçlığı biriktir'}
-  ]};
-  return rng.pick([
-    {title:'Hafta sonu planı',text:'Kendine biraz zaman ayıracaksın.',choices:[{id:'cinema',label:'Sinemaya git'},{id:'rest',label:'Evde dinlen'},{id:'social',label:'Birini ara'}]},
-    {title:'Küçük bir para kararı',text:'Bu ay elinde biraz serbest para kaldı.',choices:[{id:'save',label:'Biriktir'},{id:'shopping',label:'Kendine bir şey al'},{id:'meal',label:'Dışarıda yemek ye'}]}
-  ]);
+  let pool=[];
+  if(age<7)pool=[
+    {title:'Evde Bir Gün',text:'Bugün ne yapmak istiyorsun?',choices:[{id:'play',label:'Oyuncaklarla oyna'},{id:'family',label:'Ailenle vakit geçir'},{id:'learn',label:'Yeni bir şey öğren'}]},
+    {title:'Küçük Bir Merak',text:'Bir şeye uzun uzun bakıp merak ettin.',choices:[{id:'learn',label:'Sorup öğren'},{id:'play',label:'Kendi başına keşfet'},{id:'family',label:'Bir büyüğe anlat'}]},
+    {title:'Aile Ziyareti',text:'Akrabalarla geçirilen uzun bir gün var.',choices:[{id:'family',label:'Herkesle ilgilen'},{id:'play',label:'Çocuklarla oyna'},{id:'rest',label:'Sessiz bir köşe bul'}]}
+  ];
+  else if(age<13)pool=[
+    {title:'Okul Sonrası',text:'Bugün okuldan sonra ne yapacaksın?',choices:[{id:'friends',label:'Arkadaşlarla takıl'},{id:'study',label:'Ödevleri bitir'},{id:'play',label:'Oyun oyna'}]},
+    {title:'Harçlık Kararı',text:'Elinde biraz harçlık kaldı.',choices:[{id:'save',label:'Biriktir'},{id:'shopping',label:'Küçük bir şey al'},{id:'meal',label:'Atıştırmalık al'}]},
+    {title:'Yeni Bir Hobi',text:'Okulda yeni bir kulüp dikkatini çekti.',choices:[{id:'learn',label:'Kulübe katıl'},{id:'friends',label:'Arkadaşlarla git'},{id:'rest',label:'Boş zamanını koru'}]},
+    {title:'Aileyle Hafta Sonu',text:'Ailen hafta sonu planını sana soruyor.',choices:[{id:'family',label:'Birlikte dışarı çık'},{id:'play',label:'Evde kalıp eğlen'},{id:'learn',label:'Müze / gezi iste'}]}
+  ];
+  else if(age<18)pool=[
+    {title:'Bu Yıl Neye Ağırlık Vereceksin?',text:'Okul dışında zamanın sınırlı.',choices:[{id:'friends',label:'Arkadaş çevresi'},{id:'study',label:'Dersler'},{id:'save',label:'Harçlık biriktirme'}]},
+    {title:'Hafta Sonu Daveti',text:'Arkadaşların dışarı çağırdı.',choices:[{id:'cafe',label:'Kafeye git'},{id:'cinema',label:'Sinemaya git'},{id:'rest',label:'Evde kal'}]},
+    {title:'Kendine Bir Şey Almak',text:'Bir süredir istediğin bir şey var.',choices:[{id:'shopping',label:'Satın al'},{id:'save',label:'Paranı koru'},{id:'family',label:'Ailene danış'}]},
+    {title:'Yeni Çevre',text:'Yeni insanlarla tanışma fırsatı çıktı.',choices:[{id:'social',label:'Katıl'},{id:'friends',label:'Mevcut arkadaşlarla kal'},{id:'rest',label:'Bu kez pas geç'}]}
+  ];
+  else if(age<30)pool=[
+    {title:'Hafta Sonu Planı',text:'Kendine biraz zaman ayıracaksın.',choices:[{id:'cinema',label:'Sinemaya git'},{id:'cafe',label:'Kafeye git'},{id:'rest',label:'Evde dinlen'}]},
+    {title:'Sosyal Davet',text:'Bir etkinliğe çağrıldın.',choices:[{id:'concert',label:'Etkinliğe git'},{id:'social',label:'Daha sakin buluş'},{id:'rest',label:'Gitme'}]},
+    {title:'Küçük Para Kararı',text:'Bu ay biraz serbest paran kaldı.',choices:[{id:'save',label:'Biriktir'},{id:'shopping',label:'Kendine bir şey al'},{id:'meal',label:'Dışarıda yemek ye'}]},
+    {title:'Kısa Kaçamak',text:'Şehirden biraz uzaklaşma fikri cazip geliyor.',choices:[{id:'trip',label:'Günübirlik gezi'},{id:'friends',label:'Arkadaşlarla plan yap'},{id:'save',label:'Masraf etme'}]},
+    {title:'Akşam Planı',text:'Bugün tamamen sana ait.',choices:[{id:'gaming',label:'Oyun / eğlence gecesi'},{id:'social',label:'Birini ara'},{id:'learn',label:'Bir şey öğren'}]}
+  ];
+  else if(age<50)pool=[
+    {title:'Yoğun Bir Haftanın Sonu',text:'Enerjini nereye ayıracaksın?',choices:[{id:'family',label:'Aileyle vakit geçir'},{id:'rest',label:'Dinlen'},{id:'social',label:'Sosyal ol'}]},
+    {title:'Kendine Harcama',text:'Bütçede biraz alan oluştu.',choices:[{id:'shopping',label:'Kendine bir şey al'},{id:'meal',label:'İyi bir yemek ye'},{id:'save',label:'Birikime ekle'}]},
+    {title:'Kısa Tatil Fikri',text:'Bir günlüğüne uzaklaşmak iyi gelebilir.',choices:[{id:'trip',label:'Geziye çık'},{id:'family',label:'Ailece plan yap'},{id:'rest',label:'Evde kal'}]},
+    {title:'Eski Bir Arkadaş',text:'Uzun süredir görüşmediğin biri yazdı.',choices:[{id:'cafe',label:'Kahve iç'},{id:'social',label:'Uzun uzun konuş'},{id:'rest',label:'Başka zamana bırak'}]}
+  ];
+  else pool=[
+    {title:'Sakin Bir Gün',text:'Bugünü nasıl geçirmek istiyorsun?',choices:[{id:'family',label:'Aileyle vakit geçir'},{id:'cafe',label:'Birini görmeye git'},{id:'rest',label:'Dinlen'}]},
+    {title:'Eski Dostlar',text:'Eski çevrenden birileri buluşmak istiyor.',choices:[{id:'social',label:'Buluş'},{id:'meal',label:'Birlikte yemek ye'},{id:'rest',label:'Bu kez gitme'}]},
+    {title:'Kendine Küçük Bir İyilik',text:'Biraz keyif yapmak istiyorsun.',choices:[{id:'trip',label:'Kısa gezi'},{id:'cinema',label:'Sinemaya git'},{id:'save',label:'Paranı koru'}]}
+  ];
+  return rng.pick(pool);
 }
 function applyYearMoment(choice){
   const s=game.state;
@@ -96,7 +127,7 @@ function applyYearMoment(choice){
   if(choice==='learn'||choice==='study'){s.player.personality.discipline=clamp((s.player.personality.discipline??50)+1);text='Kendini geliştirmeye zaman ayırdın.';}
   if(choice==='friends'||choice==='social'){s.player.personality.sociability=clamp((s.player.personality.sociability??50)+1);text='Sosyal bağlarına vakit ayırdın.';}
   if(choice==='save'){if(s.finance)s.finance.cash=(s.finance.cash??0)+Math.round((s.familySupportMonthly??s.finance.familySupportMonthly??0)*.15);text='Harcamayıp kenara koymayı seçtin.';}
-  if(['cinema','shopping','meal'].includes(choice)){leisurePicker=choice;text='Bir aktivite planladın.';switchScreen('activitiesScreen');}
+  if(Object.hasOwn(LEISURE,choice)){leisurePicker=choice;text='Bir aktivite planladın.';switchScreen('activitiesScreen');}
   s.history.push({age:s.player.age,kind:'year-moment',text});
   yearMoment=null;render();
 }
@@ -132,27 +163,89 @@ function siblingLabel(person, index) {
   return `Kardeş ${index + 1}`;
 }
 
+
+function familyTarget(id){
+  const s=game.state;
+  if(id==='mother')return {type:'parent',person:s.parents.mother,label:'Anne'};
+  if(id==='father')return {type:'parent',person:s.parents.father,label:'Baba'};
+  if(id.startsWith('sibling:')){
+    const i=Number(id.split(':')[1]);return {type:'sibling',person:s.siblings[i],label:'Kardeş'};
+  }
+  if(id==='partner')return {type:'partner',person:s.social?.romance,label:'Partner'};
+  if(id.startsWith('friend:')){
+    const pid=id.slice(7);return {type:'friend',person:(s.social?.friends??[]).find(x=>x.id===pid),label:'Arkadaş'};
+  }
+  if(id.startsWith('child:')){
+    const i=Number(id.split(':')[1]);return {type:'child',person:(s.children??[])[i],label:'Çocuk'};
+  }
+  return null;
+}
+function actionCost(action){
+  return {gift:800,meal:700,coffee:300,outing:900,allowance:600,course:2500,support:1200}[action]??0;
+}
+function personActionOptions(type){
+  if(type==='partner')return [
+    ['talk','Uzun bir konuşma yap'],['coffee','Kahve iç'],['meal','Yemeğe çık'],['gift','Hediye al'],['outing','Birlikte gezi yap'],['resolve','Tartışmayı çözmeye çalış']
+  ];
+  if(type==='friend')return [
+    ['talk','Sohbet et'],['coffee','Kahve iç'],['gaming','Birlikte oyun oyna'],['meal','Yemeğe çık'],['support','Yardım et']
+  ];
+  if(type==='child')return [
+    ['talk','Konuş'],['play','Birlikte vakit geçir'],['allowance','Harçlık ver'],['study','Dersine yardım et'],['course','Kursa yazdır']
+  ];
+  if(type==='parent')return [
+    ['talk','Ara / konuş'],['visit','Ziyaret et'],['support','Maddi destek ol'],['meal','Birlikte yemek ye']
+  ];
+  return [['talk','Konuş'],['visit','Birlikte vakit geçir'],['support','Yardım et']];
+}
+function applyPersonAction(targetId,action){
+  if(game.state.actions.remaining<=0){activityMessage='Bu yıl aksiyon hakkın kalmadı.';return;}
+  const target=familyTarget(targetId);if(!target?.person)return;
+  const cost=actionCost(action);
+  if(cost&&!spendCash(cost)){activityMessage='Bu eylem için yeterli nakdin yok.';return;}
+  const p=target.person;
+  let gain=3,text='';
+  if(['gift','outing','course','support'].includes(action))gain=6;
+  if(['talk','visit','coffee','meal','gaming','play','study','allowance'].includes(action))gain=4;
+  if(action==='resolve'){
+    if(target.type==='partner'){
+      p.relationshipTension=clamp((p.relationshipTension??10)-12);
+      p.relationship=clamp((p.relationship??60)+3);text='Aranızdaki gerilimi konuşarak azaltmaya çalıştın.';
+    }
+  }else{
+    if(target.type==='partner'||target.type==='friend'||target.type==='child')p.relationship=clamp((p.relationship??60)+gain);
+    else if(p.id)game.state.player.relationships[p.id]=clamp((game.state.player.relationships?.[p.id]??60)+gain);
+    text=(p.name??target.label)+' ile '+personActionOptions(target.type).find(x=>x[0]===action)?.[1].toLocaleLowerCase('tr-TR')+'.';
+  }
+  game.state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
+  if(['talk','visit','coffee','meal','outing','play','gaming'].includes(action))game.state.healthProfile.stress=clamp(game.state.healthProfile.stress-2);
+  game.state.actions.remaining--;
+  game.state.history.push({age:game.state.player.age,kind:'person-action',targetId,action,text});
+  activityMessage=text+(cost?' '+money(cost)+' harcadın.':'');
+  render();
+}
+function personActionPanel(targetId,type,name){
+  return `<div class="person-actions">${personActionOptions(type).map(([id,label])=>`<button class="person-action" data-person-action="${id}" data-target="${targetId}">${label}${actionCost(id)?' • '+money(actionCost(id)):''}</button>`).join('')}</div>`;
+}
 function renderRelationships() {
   const { parents, siblings, grandparents, social } = game.state;
-  const family = [
-    personCard(parents.mother, 'Anne'),
-    personCard(parents.father, 'Baba'),
-    ...siblings.map((person, index) => personCard(person, siblingLabel(person,index))),
-    personCard(grandparents.maternal.grandmother, 'Anneanne'),
-    personCard(grandparents.maternal.grandfather, 'Anne tarafından dede'),
-    personCard(grandparents.paternal.grandmother, 'Babaanne'),
-    personCard(grandparents.paternal.grandfather, 'Baba tarafından dede')
+  const family=[
+    {id:'mother',person:parents.mother,label:'Anne',type:'parent'},
+    {id:'father',person:parents.father,label:'Baba',type:'parent'},
+    ...siblings.map((person,index)=>({id:'sibling:'+index,person,label:siblingLabel(person,index),type:'sibling'}))
   ];
-  const romance= social.romance
-    ? `<div class="section-divider">Partner</div><article class="summary-card"><h3>${social.romance.name??'Partner'}</h3><p>Durum: <strong>${social.romance.status??'dating'}</strong> • İlişki: <strong>${Math.round(social.romance.relationship??0)}/100</strong></p><p>Birlikte: ${social.romance.yearsTogether??0} yıl • Gerilim: ${Math.round(social.romance.relationshipTension??0)}/100</p></article>`
+  const familyHtml=family.map(x=>`<article class="person-card"><div class="card-row"><div><h3>${x.label}: ${x.person.name} ${x.person.surname}</h3><p>${x.person.age} yaş • ${x.person.job??'—'}</p></div><span class="relationship-pill">${relationScore(x.person)??'—'}/100</span></div>${personActionPanel(x.id,x.type,x.person.name)}</article>`).join('');
+  const romance=social.romance
+    ? `<div class="section-divider">Partner</div><article class="summary-card"><h3>${social.romance.name??'Partner'}</h3><p>Durum: <strong>${social.romance.status??'dating'}</strong> • İlişki: <strong>${Math.round(social.romance.relationship??0)}/100</strong></p><p>Birlikte: ${social.romance.yearsTogether??0} yıl • Gerilim: ${Math.round(social.romance.relationshipTension??0)}/100</p>${personActionPanel('partner','partner',social.romance.name)}</article>`
     : '<div class="section-divider">Partner</div><div class="empty-state compact">Aktif partner yok.</div>';
   const kids=(game.state.children??[]).length
-    ? `<div class="section-divider">Çocuklar</div>${game.state.children.map((child,i)=>`<article class="summary-card"><h3>${child.name??('Çocuk '+(i+1))}</h3><p>${child.age??0} yaş • ${child.educationPlan??child.education?.plan??'eğitim planı oluşuyor'}</p></article>`).join('')}`
+    ? `<div class="section-divider">Çocuklar</div>${game.state.children.map((child,i)=>`<article class="summary-card"><h3>${child.name??('Çocuk '+(i+1))}</h3><p>${child.age??0} yaş • ${child.educationPlan??child.education?.plan??'eğitim planı oluşuyor'}</p>${personActionPanel('child:'+i,'child',child.name)}</article>`).join('')}`
     : '';
-  const friends = social.friends.length
-    ? `<div class="section-divider">Arkadaşlar</div>${social.friends.map(f=>personCard(f,'Arkadaş')).join('')}`
+  const friends=social.friends.length
+    ? `<div class="section-divider">Arkadaşlar</div>${social.friends.map(f=>`<article class="person-card"><div class="card-row"><div><h3>${f.name}</h3><p>Arkadaş • ilişki ${Math.round(f.relationship??50)}/100</p></div></div>${personActionPanel('friend:'+f.id,'friend',f.name)}</article>`).join('')}`
     : '<div class="section-divider">Arkadaşlar</div><div class="empty-state compact">Henüz yakın bir arkadaşın yok.</div>';
-  $('#relationships').innerHTML = family.join('') + romance + kids + friends;
+  $('#relationships').innerHTML='<div class="section-divider">Aile</div>'+familyHtml+romance+kids+friends;
+  $('#relationships').querySelectorAll('[data-person-action]').forEach(b=>b.addEventListener('click',()=>applyPersonAction(b.dataset.target,b.dataset.personAction)));
 }
 
 function renderActivities() {
