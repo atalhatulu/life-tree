@@ -162,3 +162,16 @@ export function autoplay(game,{toAge=18,policy='balanced',onYear=null}={}){
  }
  return game.state;
 }
+
+
+export function simulateToEnd(game,{policy='human-like',maxAge=130,onYear=null}={}){
+ const startAge=game.state.player.age;
+ autoplay(game,{toAge:maxAge,policy,onYear});
+ return {
+  startAge,
+  finalAge:game.state.player.age,
+  alive:game.state.player.alive,
+  yearsSimulated:game.state.player.age-startAge,
+  reachedEnd:!game.state.player.alive
+ };
+}

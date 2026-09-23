@@ -1,10 +1,13 @@
 import { Game } from '../core/game.js';
-import { autoplay, humanLikeChoice, activityOrder } from '../simulation/autoplay.js';
+import { autoplay, humanLikeChoice, activityOrder, simulateToEnd } from '../simulation/autoplay.js';
 import { RNG } from '../core/rng.js';
 import { setLifestyle, lifestyleMonthlyCost } from '../lifestyle/lifestyle_system.js';
 import { affordableCarOptions, affordableHomeOptions, buyCar, buyHome, sellCar, sellHome, moveHousing } from '../assets/asset_system.js';
 import { generateJobOffers } from '../career/job_market.js';
 import { switchJob } from '../career/career_system.js';
+import { ensureLifeFinale, ENDING_ARCHETYPES } from '../life/ending_system.js';
+import { ensureCounterfactualChoice } from '../life/counterfactual_system.js';
+import {loadDiscovery,saveDiscovery,recordCompletedLife,recordSimulatedChoice,discoveryStatus,discoveryStats,choiceKey} from '../life/discovery_system.js';
 
 let game;
 let pendingEvent = null;
@@ -17,6 +20,8 @@ let leisurePicker = null;
 let personActionTarget = null;
 let lastRenderedAge = null;
 let toastTimer = null;
+let discovery = loadDiscovery();
+let recordedCompletedSeed = null;
 const sleep = (ms) => new Promise(resolve=>setTimeout(resolve,ms));
 
 const $ = (selector) => document.querySelector(selector);
@@ -42,6 +47,13 @@ function showToast(text){
   clearTimeout(toastTimer);
   requestAnimationFrame(()=>el.classList.add('show'));
   toastTimer=setTimeout(()=>el.classList.remove('show'),1700);
+}
+function syncCompletedLifeDiscovery(){
+  if(!game||game.state.player.alive||recordedCompletedSeed===game.seedText)return;
+  ensureLifeFinale(game.state);
+  discovery=recordCompletedLife(discovery,game.state,{seedText:game.seedText});
+  saveDiscovery(discovery);
+  recordedCompletedSeed=game.seedText;
 }
 function pulseYear(){
   const frame=document.querySelector('.phone-frame');
@@ -567,14 +579,143 @@ function renderCareer() {
 }
 
 function renderLifeTree() {
-  const nodes = game.state.lifeTree?.nodes ?? [];
-  if (!nodes.length) { $('#lifeTree').innerHTML = '<div class="empty-state">Henüz hayatının yönünü değiştiren büyük bir karar vermedin.</div>'; return; }
+  const nodes=game.state.lifeTree?.nodes??[];
+  const dead=!game.state.player.alive;
+  const finale=dead?ensureLifeFinale(game.state):game.state.lifeTree?.finale;
   const memory=game.state.lifeMemory;
-  const memories=(memory?.memories??[]).slice(-6).reverse();
-  $('#lifeTree').innerHTML = `<div class="tree-root">Doğum</div>${nodes.map((node,index)=>`<div class="tree-connector"></div><article class="tree-node"><small>${node.age} yaş • Karar ${index+1}</small><h3>${node.title}</h3><p class="chosen-path">✓ ${node.label}</p>${node.alternatives.map(a=>`<p class="alternate-path">↳ ${a.label}</p>`).join('')}</article>`).join('')}${memory?`<div class="section-divider">Hayat İzleri</div><article class="summary-card"><p>Dayanıklılık: <strong>${Math.round(memory.resilience??50)}/100</strong> • Yük: <strong>${Math.round(memory.scarLoad??0)}/100</strong></p>${memories.length?memories.map(x=>`<p><strong>${x.age}:</strong> ${x.label}</p>`).join(''):'<p class="muted">Henüz belirgin bir hayat izi yok.</p>'}</article>`:''}
-${(game.state.consequenceChains??[]).some(x=>!x.resolved)?`<div class="section-divider">Devam Eden Etkiler</div>${game.state.consequenceChains.filter(x=>!x.resolved).map(x=>`<article class="summary-card consequence-card"><h3>${({ 'burnout-spiral':'Tükenmişlik Döngüsü','financial-strain':'Finansal Baskı','relationship-erosion':'İlişki Aşınması'})[x.type]??x.type}</h3><p>${x.startedAtAge} yaşında başladı • ${x.step}. yıl</p></article>`).join('')}`:''}`;
-}
+  const memories=(memory?.memories??[]).slice(-5).reverse();
 
+  if(!nodes.length&&!finale){
+    $('#lifeTree').innerHTML='<div class="empty-state">Henüz hayatının yönünü değiştiren büyük bir karar vermedin.</div>';
+    return;
+  }
+
+  const branches=nodes.map((node,index)=>{
+    const analyzed=node.counterfactual?.alternatives??[];
+    const alternatives=(node.alternatives??[]).map(a=>{
+      const metaStatus=discoveryStatus(discovery,node.eventId,a.id);
+      const persistedResult=discovery.simulatedChoices?.[choiceKey(node.eventId,a.id)]?.lastResult??null;
+      const result=analyzed.find(x=>x.choiceId===a.id)??persistedResult;
+      const distribution=result?.endingDistribution?.slice(0,3)??[];
+      const livedElsewhere=metaStatus==='lived';
+      const simulatedBefore=metaStatus==='simulated'&&!analyzed.find(x=>x.choiceId===a.id);
+      return `
+      <div class="tree-alt-branch counterfactual-branch ${livedElsewhere?'meta-lived':''}">
+        <div class="tree-alt-line"></div>
+        <div class="tree-alt-choice">
+          <strong>${a.label}</strong>
+          ${livedElsewhere?'<span class="meta-path-badge lived">● Daha önce yaşandı</span>':simulatedBefore?'<span class="meta-path-badge simulated">◇ Daha önce simüle edildi</span>':''}
+          ${result?`
+            <div class="counterfactual-result">
+              <span>${result.completedSamples}/${result.requestedSamples} olası hayat</span>
+              <span>Ort. ölüm yaşı: ${result.averageAge}</span>
+              <span>Çocuk ihtimali: %${result.childrenProbability}</span>
+              <span>Güçlü kariyer: %${result.strongCareerProbability}</span>
+              <div class="counterfactual-endings">
+                ${distribution.map(e=>`<small><b>%${e.probability}</b> ${e.title}</small>`).join('')}
+              </div>
+            </div>
+          `:`
+            <button class="counterfactual-button" data-counterfactual-node="${index}" data-counterfactual-choice="${a.id}" ${dead?'':'disabled'}>
+              ${dead?(livedElsewhere?'12 yeni olası hayat simüle et':'12 olası hayatı simüle et'):'Ölümden sonra analiz edilir'}
+            </button>
+          `}
+        </div>
+        <div class="tree-unknown-node ${result?'resolved':livedElsewhere?'lived-meta':simulatedBefore?'simulated-meta':''}" title="${result?.mostLikelyEnding?.title??(livedElsewhere?'Bu yol başka bir yaşamda gerçekten yaşandı':simulatedBefore?'Bu yol daha önce simüle edildi':'Bu yol henüz yaşanmadı')}">${result?'◇':livedElsewhere?'●':simulatedBefore?'◇':'?'}</div>
+      </div>`;
+    }).join('');
+    return `
+      <div class="life-tree-stage">
+        <div class="tree-spine"></div>
+        <article class="tree-node lived-node">
+          <small>${node.age} yaş • Kritik karar ${index+1}</small>
+          <h3>${node.title}</h3>
+          <p class="chosen-path">● ${node.label}</p>
+        </article>
+        ${alternatives?`<div class="tree-alternatives"><div class="tree-alt-title">Diğer yollar</div>${alternatives}</div>`:''}
+      </div>`;
+  }).join('');
+
+  const endingGallery=`
+    <div class="section-divider">Keşfedilen Sonlar</div>
+    <div class="ending-gallery">
+      ${ENDING_ARCHETYPES.map(ending=>{
+        const found=discovery.endings?.[ending.id];
+        const current=finale?.ending?.id===ending.id;
+        return found?`
+          <article class="ending-gallery-card discovered ${current?'current':''}">
+            <small>${current?'BU HAYATIN SONU':'KEŞFEDİLDİ'}</small>
+            <strong>${ending.title}</strong>
+            <span>${found.timesReached} kez ulaşıldı</span>
+          </article>`:`
+          <article class="ending-gallery-card locked">
+            <small>KEŞFEDİLMEDİ</small>
+            <strong>???</strong>
+            <span>Başka bir yaşam yolu</span>
+          </article>`;
+      }).join('')}
+    </div>`;
+
+  const finaleMarkup=finale?`
+    <div class="tree-spine final-spine"></div>
+    <article class="tree-ending-node">
+      <small>ULAŞTIĞIN SON</small>
+      <h2>${finale.ending.title}</h2>
+      <p>${finale.ending.description}</p>
+      <div class="ending-meta">
+        <span>${finale.lifespan.age} yaş</span>
+        <span>${finale.ending.cause}</span>
+        <span>${finale.majorDecisions} kritik karar</span>
+      </div>
+    </article>
+    <div class="ending-horizon">
+      <div class="ending-shadow"><b>?</b><span>Keşfedilmemiş son</span></div>
+      <div class="ending-shadow current"><b>●</b><span>${finale.ending.title}</span></div>
+      <div class="ending-shadow"><b>?</b><span>Keşfedilmemiş son</span></div>
+    </div>
+    <div class="section-divider">Bu hayatın özeti</div>
+    <article class="summary-card finale-recap">
+      ${finale.highlights.map(x=>`<p>• ${x.text}</p>`).join('')}
+      <p class="muted">Net worth: ${money(finale.netWorth)} • Çocuk: ${finale.children} • Tamamlanan hedef: ${finale.completedGoals}</p>
+    </article>
+  `:'';
+
+  const meta=discoveryStats(discovery);
+  $('#lifeTree').innerHTML=`
+    <div class="life-tree-intro">
+      <span class="tree-legend lived">● Yaşadığın yol</span>
+      <span class="tree-legend unknown">? Yaşanmamış yol</span>
+      <span class="tree-legend simulated">◇ Simüle edilmiş olasılık</span>
+    </div>
+    <article class="tree-meta-summary">
+      <span>${meta.livesCompleted} tamamlanan hayat</span>
+      <span>${meta.livedChoices} yaşanmış kritik yol</span>
+      <span>${meta.simulatedChoices} simüle edilmiş yol</span>
+      <span>${meta.endings} keşfedilmiş son</span>
+    </article>
+    <div class="tree-root"><b>Doğum</b><small>${game.state.year-game.state.player.age}</small></div>
+    <div class="life-tree-map">${branches}${finaleMarkup}</div>
+    ${endingGallery}
+    ${memory?`<div class="section-divider">Hayat İzleri</div><article class="summary-card"><p>Dayanıklılık: <strong>${Math.round(memory.resilience??50)}/100</strong> • Yük: <strong>${Math.round(memory.scarLoad??0)}/100</strong></p>${memories.length?memories.map(x=>`<p><strong>${x.age}:</strong> ${x.label}</p>`).join(''):'<p class="muted">Henüz belirgin bir hayat izi yok.</p>'}</article>`:''}
+  `;
+  $('#lifeTree').querySelectorAll('[data-counterfactual-node]').forEach(button=>button.addEventListener('click',()=>{
+    const nodeIndex=Number(button.dataset.counterfactualNode);
+    const choiceId=button.dataset.counterfactualChoice;
+    button.disabled=true;
+    button.textContent='Simüle ediliyor…';
+    requestAnimationFrame(()=>setTimeout(()=>{
+      try{
+        const result=ensureCounterfactualChoice(game.state,game.seedText,nodeIndex,choiceId,{samples:12,maxAge:110});
+        discovery=recordSimulatedChoice(discovery,game.state.lifeTree.nodes[nodeIndex],result);
+        saveDiscovery(discovery);
+        showToast('12 alternatif yaşam hesaplandı ve Life Tree keşfine eklendi.');
+      }catch(error){
+        showToast('Olasılık analizi başarısız: '+error.message);
+      }
+      renderLifeTree();
+    },0));
+  }));
+}
 function baseTimelineEntries() {
   const { player, parents, siblings, household } = game.state;
   const older = siblings.filter(s=>s.age>player.age).length;
@@ -672,7 +813,10 @@ function renderEvent() {
     card.classList.toggle('hidden',!dead);
     if(dead){
       const d=game.state.death??{};
-      card.innerHTML=`<h3>Hayat sona erdi</h3><p><strong>${game.state.player.age} yaş</strong> • ${d.cause??'Bilinmeyen neden'}</p><p>Net worth: <strong>${money(netWorth())}</strong> • Çocuk: <strong>${game.state.children?.length??0}</strong></p><p>Kariyer: <strong>${game.state.career?.title??game.state.player.job??'—'}</strong> • ${game.state.career?.levelTitle??'—'}</p><p>Büyük karar: <strong>${game.state.lifeTree?.nodes?.length??0}</strong></p>`;
+      const finale=ensureLifeFinale(game.state);
+      card.classList.add('death-card');
+      card.innerHTML=`<small class="death-kicker">BİR HAYAT TAMAMLANDI</small><h3>${finale.ending.title}</h3><p>${finale.ending.description}</p><p><strong>${game.state.player.age} yaş</strong> • ${d.cause??'Bilinmeyen neden'}</p><div class="death-stats"><span>${finale.majorDecisions} kritik karar</span><span>${finale.children} çocuk</span><span>${money(finale.netWorth)}</span></div><button class="choice-button finale-tree-button" data-open-life-tree>HAYAT AĞACINI GÖR →</button>`;
+      card.querySelector('[data-open-life-tree]')?.addEventListener('click',()=>switchScreen('treeScreen'));
     }else card.innerHTML='';
     $('#ageUp').disabled=dead;
     $('#autoLife').disabled=false;
@@ -691,6 +835,7 @@ function renderEvent() {
 }
 
 function render(){
+  syncCompletedLifeDiscovery();
   const {player,household,year,finance,social,children}=game.state;
   const ageChanged=lastRenderedAge!=null&&lastRenderedAge!==player.age;
   $('#identity').textContent=`${player.name} ${player.surname}`;
@@ -871,6 +1016,56 @@ function toggleAutoLife(){
   autoLifeLoop(autoLifeToken);
 }
 
+async function fastForwardToEnd(){
+  if(!game.state.player.alive){
+    switchScreen('treeScreen');
+    render();
+    return;
+  }
+  if(autoLifeRunning){
+    autoLifeRunning=false;
+    autoLifeToken++;
+    $('#autoLife').classList.remove('running');
+    $('#autoLife').textContent='▶ AUTO LIFE';
+  }
+  pendingEvent=null;
+  yearMoment=null;
+  leisurePicker=null;
+  const button=$('#simulateEnd');
+  button.disabled=true;
+  $('#ageUp').disabled=true;
+  $('#autoLife').disabled=true;
+  $('#autoSpeed').disabled=true;
+  setAutoStatus('Hayatın sonu simüle ediliyor…');
+  switchScreen('lifeScreen');
+  render();
+  await sleep(30);
+  try{
+    const result=simulateToEnd(game,{policy:'human-like',maxAge:130});
+    pendingEvent=null;
+    yearMoment=null;
+    leisurePicker=null;
+    render();
+    if(result.reachedEnd){
+      showToast(result.yearsSimulated+' yıl simüle edildi • hayat tamamlandı.');
+      setAutoStatus('Hayat tamamlandı');
+    }else{
+      showToast('Simülasyon güvenlik sınırında durdu.');
+      setAutoStatus('Simülasyon '+result.finalAge+' yaşta durdu');
+    }
+  }catch(error){
+    showToast('Simülasyon başarısız: '+error.message);
+    setAutoStatus('Simülasyon durdu');
+    render();
+  }finally{
+    button.disabled=!game.state.player.alive;
+    $('#ageUp').disabled=!game.state.player.alive;
+    $('#autoLife').disabled=false;
+    $('#autoSpeed').disabled=false;
+    if(!game.state.player.alive)button.textContent='✓ HAYAT TAMAMLANDI';
+  }
+}
+
 function switchScreen(id){
   document.querySelectorAll('.screen-panel').forEach(panel=>panel.classList.toggle('active',panel.id===id));
   document.querySelectorAll('.nav-item').forEach(button=>button.classList.toggle('active',button.dataset.screen===id));
@@ -879,9 +1074,10 @@ function switchScreen(id){
 }
 function newLife(seed=$('#seedInput').value.trim()||String(Date.now())){
   autoLifeRunning=false;autoLifeToken++;setAutoStatus('');
-  game=new Game(seed);pendingEvent=null;yearMoment=null;leisurePicker=null;personActionTarget=null;activityMessage='';autoLifeRng=null;lastRenderedAge=null;
+  game=new Game(seed);pendingEvent=null;yearMoment=null;leisurePicker=null;personActionTarget=null;activityMessage='';autoLifeRng=null;lastRenderedAge=null;recordedCompletedSeed=null;
   $('#autoLife')?.classList.remove('running');
   if($('#autoLife'))$('#autoLife').textContent='▶ AUTO LIFE';
+  if($('#simulateEnd')){$('#simulateEnd').disabled=false;$('#simulateEnd').textContent='⏩ SONA SİMÜLE ET';}
   switchScreen('lifeScreen');render();
 }
 
@@ -898,5 +1094,6 @@ $('#ageUp').addEventListener('click',()=>{
 });
 
 $('#autoLife').addEventListener('click',toggleAutoLife);
+$('#simulateEnd').addEventListener('click',fastForwardToEnd);
 document.querySelectorAll('.nav-item').forEach(button=>button.addEventListener('click',()=>switchScreen(button.dataset.screen)));
 newLife('life-tree-demo');

@@ -12,6 +12,7 @@ export function ensureStateSchema(state){
  state.lifeTree.nodes??=[];
  state.lifeTree.branches??=[];
  state.lifeTree.nextBranchId??=1;
+ state.lifeTree.finale??=null;
  state.social=object(state.social);
  state.social.friends??=[];
  state.social.romance??=null;
