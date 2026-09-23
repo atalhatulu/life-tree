@@ -135,9 +135,35 @@ export function analyzeDecisionNode(seedText,node,options={}){
  };
 }
 
+export function ensureCounterfactualChoice(state,seedText,nodeIndex,choiceId,options={}){
+ const node=state.lifeTree?.nodes?.[nodeIndex];
+ if(!node)throw new Error('Life Tree node not found.');
+ node.counterfactual??={
+  eventId:node.eventId,
+  age:node.age,
+  title:node.title,
+  livedChoice:{id:node.choiceId,label:node.label},
+  alternatives:[]
+ };
+ const existing=node.counterfactual.alternatives.find(x=>x.choiceId===choiceId);
+ if(existing)return existing;
+ const result=simulateCounterfactualChoice(seedText,node,choiceId,options);
+ node.counterfactual.alternatives.push(result);
+ return result;
+}
+
 export function ensureCounterfactualAnalysis(state,seedText,nodeIndex,options={}){
  const node=state.lifeTree?.nodes?.[nodeIndex];
  if(!node)throw new Error('Life Tree node not found.');
- node.counterfactual??=analyzeDecisionNode(seedText,node,options);
+ node.counterfactual??={
+  eventId:node.eventId,
+  age:node.age,
+  title:node.title,
+  livedChoice:{id:node.choiceId,label:node.label},
+  alternatives:[]
+ };
+ for(const alternative of node.alternatives??[]){
+  ensureCounterfactualChoice(state,seedText,nodeIndex,alternative.id,options);
+ }
  return node.counterfactual;
 }
