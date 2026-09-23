@@ -48,6 +48,13 @@ function showToast(text){
   requestAnimationFrame(()=>el.classList.add('show'));
   toastTimer=setTimeout(()=>el.classList.remove('show'),1700);
 }
+function syncCompletedLifeDiscovery(){
+  if(!game||game.state.player.alive||recordedCompletedSeed===game.seedText)return;
+  ensureLifeFinale(game.state);
+  discovery=recordCompletedLife(discovery,game.state,{seedText:game.seedText});
+  saveDiscovery(discovery);
+  recordedCompletedSeed=game.seedText;
+}
 function pulseYear(){
   const frame=document.querySelector('.phone-frame');
   if(!frame)return;
@@ -807,11 +814,6 @@ function renderEvent() {
     if(dead){
       const d=game.state.death??{};
       const finale=ensureLifeFinale(game.state);
-      if(recordedCompletedSeed!==game.seedText){
-        discovery=recordCompletedLife(discovery,game.state,{seedText:game.seedText});
-        saveDiscovery(discovery);
-        recordedCompletedSeed=game.seedText;
-      }
       card.classList.add('death-card');
       card.innerHTML=`<small class="death-kicker">BİR HAYAT TAMAMLANDI</small><h3>${finale.ending.title}</h3><p>${finale.ending.description}</p><p><strong>${game.state.player.age} yaş</strong> • ${d.cause??'Bilinmeyen neden'}</p><div class="death-stats"><span>${finale.majorDecisions} kritik karar</span><span>${finale.children} çocuk</span><span>${money(finale.netWorth)}</span></div><button class="choice-button finale-tree-button" data-open-life-tree>HAYAT AĞACINI GÖR →</button>`;
       card.querySelector('[data-open-life-tree]')?.addEventListener('click',()=>switchScreen('treeScreen'));
@@ -833,6 +835,7 @@ function renderEvent() {
 }
 
 function render(){
+  syncCompletedLifeDiscovery();
   const {player,household,year,finance,social,children}=game.state;
   const ageChanged=lastRenderedAge!=null&&lastRenderedAge!==player.age;
   $('#identity').textContent=`${player.name} ${player.surname}`;
