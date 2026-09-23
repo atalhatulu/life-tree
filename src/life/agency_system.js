@@ -3,7 +3,8 @@ const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export function availableLifeActions(state){
  const actions=[];
- if(state.lifeGoals?.active)actions.push({id:'focus-goal',label:'Uzun vadeli hedefime odaklan'});
+ const activeGoal=state.lifeGoals?.active;
+ if(activeGoal&&(activeGoal.lastFocusedAge==null||state.player.age-activeGoal.lastFocusedAge>=2))actions.push({id:'focus-goal',label:'Uzun vadeli hedefime odaklan'});
  const partner=state.social?.romance;
  if(partner?.life?.workStress>=60||partner?.resentment>=55)actions.push({id:'support-partner',label:'Partnerime destek ol'});
  const friend=(state.social?.friends??[]).find(f=>f.needsSupport);
