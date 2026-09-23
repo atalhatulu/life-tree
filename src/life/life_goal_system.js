@@ -67,9 +67,10 @@ export function focusLifeGoal(state){
  const active=goals.active;
  if(!active)throw new Error('Önce bir yaşam hedefi seçmelisin.');
  if(state.actions?.remaining<=0)throw new Error('Bu yıl için aksiyon hakkın kalmadı.');
+ if(active.lastFocusedAge!=null&&state.player.age-active.lastFocusedAge<2)throw new Error('Bu hedefe yakın zamanda zaten özel olarak odaklandın.');
  active.lastFocusedAge=state.player.age;
  active.focusYears=(active.focusYears??0)+1;
- active.progress=clamp(Math.max(active.progress??0,scoreGoal(state,active.id))+5);
+ active.progress=clamp((active.progress??0)+1);
  state.actions.remaining-=1;
  return active.label+' hedefin için bilinçli bir adım attın.';
 }
@@ -81,8 +82,8 @@ export function processLifeGoalsYear(state){
  const active=goals.active;
  const score=scoreGoal(state,active.id);
  const focused=active.lastFocusedAge===state.player.age-1;
- active.progress=clamp(Math.round((active.progress??0)*.72+score*.28+(focused?3:0)));
- if(active.progress>=88&&(state.player.age-active.startedAtAge)>=2){
+ active.progress=clamp(Math.round((active.progress??0)*.76+score*.24+(focused?4:0)));
+ if(active.progress>=88&&(state.player.age-active.startedAtAge)>=4){
   goals.completed.push(active.id);
   goals.history.push({...active,completedAtAge:state.player.age,status:'completed'});
   entries.push({age:state.player.age,kind:'life-goal',paceBlock:true,text:'Uzun vadeli hedefin gerçekleşti: '+active.label+'.'});

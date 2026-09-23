@@ -119,7 +119,7 @@ export const adultEvents=[
  },
  {
   id:'adult-dating',title:'Yeni Biriyle Tanışma',minAge:18,maxAge:65,once:false,majorDecision:false,priority:42,
-  condition:s=>!s.social?.romance&&s.player.age>=(s.nextDatingAge??18)&&(s.preferences?.partnershipDesire??50)>=35&&(s.datingAttempts??0)<10,
+  condition:s=>!s.social?.romance&&s.player.age>=(s.nextDatingAge??18)&&(s.preferences?.partnershipDesire??50)>=35&&(s.datingAttempts??0)<7,
   choices:[
    {
     id:'meet',label:'Tanışmaya açık ol',result:s=>s.social.romance?s.social.romance.name+' ile görüşmeye başladın.':'Bu kez bir ilişkiye dönüşmedi.',
@@ -127,10 +127,10 @@ export const adultEvents=[
       const chance=Math.min(.88,.28+s.player.personality.sociability/200+s.player.appearance.attractiveness/300);
       s.datingAttempts=(s.datingAttempts??0)+1;
       if(rng.chance(chance))s.social.romance=createRomanticInterest(s,rng.fork('adult-date'),'romance-'+s.year);
-      s.nextDatingAge=s.player.age+(s.social.romance?2:rng.int(1,2));
+      s.nextDatingAge=s.player.age+(s.social.romance?3:rng.int(2,3));
     }
    },
-   {id:'focus-self',label:'Kendime odaklan',result:'Bu dönem ilişki aramamayı seçtin.',effect:s=>{s.datingAttempts=(s.datingAttempts??0)+1;s.nextDatingAge=s.player.age+2;}}
+   {id:'focus-self',label:'Kendime odaklan',result:'Bu dönem ilişki aramamayı seçtin.',effect:s=>{s.datingAttempts=(s.datingAttempts??0)+1;s.nextDatingAge=s.player.age+3;}}
   ]
  },
  {
@@ -183,7 +183,7 @@ export const adultEvents=[
     result:s=>s.lastParenthoodAttempt?.success?s.lastParenthoodAttempt.childName+' dünyaya geldi.':'Bu yıl çocuk sahibi olamadınız; daha sonra tekrar deneyebilirsiniz.',
     effect:(s,rng)=>{attemptChild(s,rng.fork('child-attempt'));s.nextChildDecisionAge=s.player.age+(s.lastParenthoodAttempt?.success?((s.children?.length??0)>=2?3:2):1);}
    },
-   {id:'wait-child',label:'Şimdilik bekle',result:'Çocuk kararını ertelediniz.',effect:s=>{s.nextChildDecisionAge=s.player.age+1;}}
+   {id:'wait-child',label:'Şimdilik bekle',result:'Çocuk kararını ertelediniz.',effect:s=>{s.nextChildDecisionAge=s.player.age+2;}}
   ]
  },
  {

@@ -38,6 +38,7 @@ export function availableActivities(state){
  return ACTIVITY_DEFS.filter(a=>{
   if(state.player.age<a.minAge|| (a.condition&&!a.condition(state)))return false;
   if(a.id==='checkup'&&state.healthProfile?.lastCheckupAge!=null&&state.player.age-state.healthProfile.lastCheckupAge<2)return false;
+  if(activityMemory(state,a.id).lastAge===state.player.age)return false;
   return true;
  });
 }
@@ -47,6 +48,7 @@ export function performActivity(state,id,rng){
  if(state.actions.remaining<=0)throw new Error('Bu yıl için aksiyon hakkın kalmadı.');
  const def=ACTIVITY_DEFS.find(a=>a.id===id);
  if(!def||state.player.age<def.minAge||(def.condition&&!def.condition(state)))throw new Error('Bu aktivite şu anda kullanılamıyor.');
+ if(activityMemory(state,id).lastAge===state.player.age)throw new Error('Bu aktiviteyi bu yıl zaten yaptın.');
  let result='';
  const repeat=repeatEfficiency(state,id);
 
