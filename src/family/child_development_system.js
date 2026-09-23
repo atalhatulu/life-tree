@@ -1,3 +1,4 @@
+import {ensureNpcGoal,updateNpcGoal} from '../life/npc_goal_system.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 function stage(age){
@@ -25,6 +26,7 @@ export function processChildDevelopmentYear(state,rng){
  const entries=[];
  for(const child of state.children??[]){
   const d=ensureChildDevelopment(child);
+  const childGoal=ensureNpcGoal(child,'child');
   const p=child.parenting??{};
   const currentStage=stage(child.age);
   const support=(p.involvement??55)*.35+(p.emotionalSecurity??70)*.35+(p.stability??65)*.2-(p.conflict??10)*.25;
@@ -49,6 +51,19 @@ export function processChildDevelopmentYear(state,rng){
   }
   if(child.age===16&&d.confidence>=72){
     entries.push({age:state.player.age,kind:'child-development',text:child.name+' kendine güveni yüksek bir genç olarak belirginleşmeye başladı.'});
+  }
+  if(child.age>=12){
+    updateNpcGoal(child,{
+      kind:'child',
+      careerSatisfaction:d.academicDrive,
+      financialStability:d.independence,
+      relationshipQuality:d.parentAttachment,
+      independence:d.independence,
+      wellbeing:100-d.identityStress
+    });
+  }
+  if(child.age===16&&childGoal.progress>=70){
+    entries.push({age:state.player.age,kind:'child-development',text:child.name+' kendi geleceği için “'+childGoal.label+'” yönünde belirgin bir hedef geliştirdi.'});
   }
   if(child.age===18){
     const score=d.academicDrive*.45+d.confidence*.2+d.independence*.2+d.socialSecurity*.15;
