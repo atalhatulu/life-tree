@@ -38,6 +38,7 @@ export function ensureStateSchema(state){
  state.retraining??=null;
  state.householdDynamics??={financialPressure:0,maintenanceBurden:0,familySupportBurden:0,emergencyReserveMonths:0,stability:65,recentShock:null};
  state.lifeMemory??={memories:[],tags:{},resilience:50,scarLoad:0,lastRecordedAge:null};
+ state.storyletCooldowns??={};
  if(state.finance){
   state.finance.debts??={consumer:0,medical:0,housing:0,car:0,emergency:0};
   for(const key of ['consumer','medical','housing','car','emergency'])state.finance.debts[key]??=0;
