@@ -40,6 +40,10 @@ export function ensureStateSchema(state){
  state.lifeMemory??={memories:[],tags:{},resilience:50,scarLoad:0,lastRecordedAge:null};
  state.storyletCooldowns??={};
  state.consequenceChains??=[];
+ state.lifeGoals??={active:null,completed:[],history:[]};
+ state.lifeGoals.completed??=[];
+ state.lifeGoals.history??=[];
+ state.narrativeEcho??={lastAge:null,total:0};
  if(state.finance){
   state.finance.debts??={consumer:0,medical:0,housing:0,car:0,emergency:0};
   for(const key of ['consumer','medical','housing','car','emergency'])state.finance.debts[key]??=0;
