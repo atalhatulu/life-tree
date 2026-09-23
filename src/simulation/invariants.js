@@ -40,6 +40,15 @@ export function validateState(state){
   if(state.lifeGoals.active&&!bounded(state.lifeGoals.active.progress??0))errors.push('life goal progress out of range');
  }
  if(state.narrativeEcho&&(!Number.isFinite(state.narrativeEcho.total)||state.narrativeEcho.total<0))errors.push('invalid narrative echo counter');
+ if(state.npcInitiatives){
+  if(!Array.isArray(state.npcInitiatives.pending)||!Array.isArray(state.npcInitiatives.history))errors.push('invalid npc initiative state');
+  const initiativeIds=new Set();
+  for(const item of [...(state.npcInitiatives.pending??[]),...(state.npcInitiatives.history??[])]){
+   if(!item.id)errors.push('npc initiative missing id');
+   if(initiativeIds.has(item.id)&&item.status==='pending')errors.push('duplicate pending npc initiative id');
+   initiativeIds.add(item.id);
+  }
+ }
 
  if(state.education){
   for(const key of ['quality','performance','motivation','attendance']){
