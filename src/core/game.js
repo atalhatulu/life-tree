@@ -52,6 +52,7 @@ export class Game{
   const payload=parseSave(payloadOrText);
   const game=new Game(payload.seedText);
   game.state=ensureStateSchema(structuredClone(payload.state));
+  refreshPrimaryStats(game.state);
   game.rng.seed=payload.rng.seed>>>0;
   game.rng.state=payload.rng.state>>>0;
   game.activeEventId=payload.activeEventId??null;
@@ -61,6 +62,7 @@ export class Game{
  static fromDecisionSnapshot(seedText,snapshot){
   const game=new Game(seedText);
   game.state=ensureStateSchema(restoreDecisionSnapshot(snapshot));
+  refreshPrimaryStats(game.state);
   const rng=snapshotRng(snapshot);
   if(rng){
    game.rng.seed=rng.seed;
@@ -165,6 +167,7 @@ export class Game{
  availableLifeGoals(){return availableLifeGoals(this.state);}
  setLifeGoal(id){
   const goal=setLifeGoal(this.state,id);
+  refreshPrimaryStats(this.state);
   this.state.history.push({age:this.state.player.age,kind:'life-goal',text:'Uzun vadeli hedef seçtin: '+goal.label+'.'});
   return goal;
  }
