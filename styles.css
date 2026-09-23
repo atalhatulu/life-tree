@@ -412,8 +412,9 @@ button { -webkit-tap-highlight-color: transparent; }
   cursor:pointer;
 }
 .sim-button:disabled{opacity:.45;cursor:default;}
-#stressBar{background:linear-gradient(90deg,#e8be5c,#dc7f48);}
-#mentalBar{background:linear-gradient(90deg,#8f9ce8,#8467c8);}
+#intelligenceBar{background:linear-gradient(90deg,#7396d8,#536fba);}
+#appearanceBar{background:linear-gradient(90deg,#cf86b2,#b46799);}
+#happinessBar{background:linear-gradient(90deg,#e3bd59,#d89a45);}
 
 .auto-button,.speed-select{
   border:1px solid #d7dee8;
@@ -1573,5 +1574,16 @@ body{
   }
   .speed-select{
     min-height:42px;
+  }
+}
+
+
+/* --- Primary stats v1 --- */
+.stats{
+  grid-template-columns:repeat(4,1fr);
+}
+@media (max-width:560px){
+  .stats{
+    grid-template-columns:repeat(2,1fr);
   }
 }
