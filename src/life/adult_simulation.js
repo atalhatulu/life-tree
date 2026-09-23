@@ -21,6 +21,8 @@ import {processRetrainingYear} from '../career/career_system.js';
 import {processMentalHealthYear} from '../health/mental_health_system.js';
 import {processMilitaryYear} from './military_service.js';
 import {processMiddleAgeYear} from './middle_age_system.js';
+import {processRelationshipDepthYear} from '../social/relationship_depth.js';
+import {processWorkplaceYear} from '../career/workplace_system.js';
 
 export function processAdultYear(state,rng){
  const entries=[];
@@ -48,11 +50,13 @@ export function processAdultYear(state,rng){
  entries.push(...progressCareerYear(state,rng.fork('career-progress')));
  recordCareerYear(state);
  entries.push(...processCareerDynamics(state,rng.fork('career-dynamics')));
+ entries.push(...processWorkplaceYear(state,rng.fork('workplace')));
  entries.push(...processUnemploymentYear(state));
  entries.push(...processRetrainingYear(state));
  entries.push(...processMilitaryYear(state));
  entries.push(...processMiddleAgeYear(state,rng.fork('middle-age')));
  entries.push(...processPartnershipYear(state,rng.fork('partnership')));
+ entries.push(...processRelationshipDepthYear(state,rng.fork('relationship-depth')));
  entries.push(...processChildrenYear(state,rng.fork('children')));
  entries.push(...processDescendantLives(state,rng.fork('descendants')));
  entries.push(...processInheritance(state));
