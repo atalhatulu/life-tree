@@ -21,6 +21,7 @@ import {lateLifeEvents} from '../events/late_life_events.js';
 import {parentingEvents} from '../events/parenting_events.js';
 import {lateAgeEvents} from '../events/late_age_events.js';
 import {systemicStorylets} from '../events/systemic_storylets.js';
+import {npcInitiativeEvents} from '../events/npc_initiative_events.js';
 import {createWorldState,processWorldYear} from '../world/world_state.js';
 import {processGeneticHealthYear} from '../health/genetic_system.js';
 import {processDiseaseProgressionYear} from '../health/disease_progression.js';
@@ -40,7 +41,7 @@ export class Game{
   this.state.actions={remaining:0,max:3};
   this.state.world=createWorldState(2026);
   ensureStateSchema(this.state);
-  this.events=new EventEngine([...childhoodEvents,...adolescenceEvents,...adultEvents,...lateLifeEvents,...parentingEvents,...lateAgeEvents,...systemicStorylets]);
+  this.events=new EventEngine([...childhoodEvents,...adolescenceEvents,...adultEvents,...lateLifeEvents,...parentingEvents,...lateAgeEvents,...systemicStorylets,...npcInitiativeEvents]);
   this.activeEventId=null;
  }
 
