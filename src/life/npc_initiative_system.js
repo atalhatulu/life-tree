@@ -63,7 +63,26 @@ function initiativeChance(state,base){
  const resolved=history.filter(x=>x.status==='resolved');
  const last=resolved.length?Math.max(...resolved.map(x=>x.resolvedAtAge??x.createdAtAge??-99)):-99;
  const years=state.player.age-last;
- return Math.min(.68,base+Math.max(0,years-4)*.035);
+ return Math.min(.60,base+Math.max(0,years-5)*.025);
+}
+
+function topicHistory(state,type,actorId){
+ return (state.npcInitiatives?.history??[])
+  .filter(x=>x.status==='resolved'&&x.type===type&&x.actorId===actorId)
+  .sort((a,b)=>(a.resolvedAtAge??a.createdAtAge)-(b.resolvedAtAge??b.createdAtAge));
+}
+
+function canRepeatTopic(state,type,actorId,currentSeverity){
+ const history=topicHistory(state,type,actorId);
+ if(!history.length)return {ok:true,stage:1};
+ if(history.length>=3)return {ok:false,stage:4};
+ const last=history.at(-1);
+ const gap=last.response==='accept'?8:last.response==='compromise'?7:5;
+ if(state.player.age-(last.resolvedAtAge??last.createdAtAge)<gap)return {ok:false,stage:history.length+1};
+ const oldSeverity=last.data?.severity??50;
+ const needed=last.response==='reject'?4:8;
+ if(currentSeverity<oldSeverity+needed)return {ok:false,stage:history.length+1};
+ return {ok:true,stage:history.length+1};
 }
 
 function partnerInitiative(state,rng){
@@ -73,30 +92,40 @@ function partnerInitiative(state,rng){
  const last=p.lastInitiativeAge??-99;
  if(state.player.age-last<3)return null;
 
- if((goal.id==='career'||(p.personality?.ambition??50)>=68)&&(p.life?.careerSatisfaction??55)<=48&&rng.fork('partner-relocate').chance(initiativeChance(state,.34))){
+ const partnerId=p.id??'partner';
+ const careerSeverity=clamp(100-(p.life?.careerSatisfaction??55));
+ const careerTopic=canRepeatTopic(state,'partner-relocation',partnerId,careerSeverity);
+ if(careerTopic.ok&&(goal.id==='career'||(p.personality?.ambition??50)>=68)&&(p.life?.careerSatisfaction??55)<=48&&rng.fork('partner-relocate').chance(initiativeChance(state,.30))){
   const alternatives=TURKEY_CITIES.filter(c=>c.id!==currentCityId(state));
   if(!alternatives.length)return null;
   const target=rng.fork('partner-city').weighted(alternatives.map(city=>({
    value:city,weight:Math.max(.1,city.jobs*city.wage/Math.max(.75,city.cost))
   })));
   p.lastInitiativeAge=state.player.age;
-  return addInitiative(state,'partner-relocation',p.id??'partner',p.name,{
+  return addInitiative(state,'partner-relocation',partnerId,p.name,{
    targetCityId:target.id,targetCityName:target.name,goalId:goal.id,
-   reason:'career',urgency:clamp(45+(70-(p.life?.careerSatisfaction??55)))
+   reason:'career',urgency:clamp(45+(70-(p.life?.careerSatisfaction??55))),
+   severity:careerSeverity,stage:careerTopic.stage
   });
  }
 
- if((goal.id==='family'||(p.sharedGoals??50)<58)&&(p.sharedGoals??50)<68&&rng.fork('partner-family').chance(initiativeChance(state,.30))){
+ const familySeverity=clamp(100-(p.sharedGoals??50));
+ const familyTopic=canRepeatTopic(state,'partner-family-priority',partnerId,familySeverity);
+ if(familyTopic.ok&&(goal.id==='family'||(p.sharedGoals??50)<58)&&(p.sharedGoals??50)<68&&rng.fork('partner-family').chance(initiativeChance(state,.27))){
   p.lastInitiativeAge=state.player.age;
-  return addInitiative(state,'partner-family-priority',p.id??'partner',p.name,{
-   goalId:goal.id,urgency:clamp(50+(65-(p.sharedGoals??50)))
+  return addInitiative(state,'partner-family-priority',partnerId,p.name,{
+   goalId:goal.id,urgency:clamp(50+(65-(p.sharedGoals??50))),
+   severity:familySeverity,stage:familyTopic.stage
   });
  }
 
- if((goal.id==='wellbeing'||(p.life?.workStress??25)>=68)&&(p.life?.workStress??25)>=58&&rng.fork('partner-balance').chance(initiativeChance(state,.32))){
+ const balanceSeverity=clamp(p.life?.workStress??25);
+ const balanceTopic=canRepeatTopic(state,'partner-life-balance',partnerId,balanceSeverity);
+ if(balanceTopic.ok&&(goal.id==='wellbeing'||(p.life?.workStress??25)>=68)&&(p.life?.workStress??25)>=58&&rng.fork('partner-balance').chance(initiativeChance(state,.28))){
   p.lastInitiativeAge=state.player.age;
-  return addInitiative(state,'partner-life-balance',p.id??'partner',p.name,{
-   goalId:goal.id,urgency:clamp(50+(p.life?.workStress??60)-60)
+  return addInitiative(state,'partner-life-balance',partnerId,p.name,{
+   goalId:goal.id,urgency:clamp(50+(p.life?.workStress??60)-60),
+   severity:balanceSeverity,stage:balanceTopic.stage
   });
  }
  return null;
@@ -117,15 +146,16 @@ function childInitiative(state,rng){
 
   const current=child.educationPlan??(child.age>=18?'work':null);
   if(current===desired)continue;
-  const similar=(state.npcInitiatives?.history??[]).filter(x=>x.type==='child-direction'&&x.actorId===child.id&&x.data?.desiredPlan===desired);
-  const lastSimilar=similar.length?Math.max(...similar.map(x=>x.resolvedAtAge??x.createdAtAge??-99)):-99;
-  if(state.player.age-lastSimilar<5)continue;
-  if(!rng.fork('child-direction-'+child.id).chance(initiativeChance(state,.46)))continue;
+  const childSeverity=clamp((goal.progress??35)*.55+(child.development?.independence??50)*.45);
+  const childTopic=canRepeatTopic(state,'child-direction',child.id,childSeverity);
+  if(!childTopic.ok)continue;
+  if(!rng.fork('child-direction-'+child.id).chance(initiativeChance(state,.42)))continue;
 
   child.lastInitiativeAge=state.player.age;
   return addInitiative(state,'child-direction',child.id,child.name,{
    desiredPlan:desired,currentPlan:current,goalId:goal.id,
-   urgency:clamp(45+(goal.progress??35)*.45)
+   urgency:clamp(45+(goal.progress??35)*.45),
+   severity:childSeverity,stage:childTopic.stage
   });
  }
  return null;
@@ -136,12 +166,16 @@ function friendInitiative(state,rng){
  if(!friend)return null;
  const last=friend.lastInitiativeAge??-99;
  if(state.player.age-last<3)return null;
- if(!rng.fork('friend-request-'+friend.id).chance(initiativeChance(state,.58)))return null;
+ const friendSeverity=clamp(friend.life?.personalStress??70);
+ const friendTopic=canRepeatTopic(state,'friend-support-request',friend.id,friendSeverity);
+ if(!friendTopic.ok)return null;
+ if(!rng.fork('friend-request-'+friend.id).chance(initiativeChance(state,.50)))return null;
  friend.lastInitiativeAge=state.player.age;
  return addInitiative(state,'friend-support-request',friend.id,friend.name,{
   goalId:ensureNpcGoal(friend).id,
   urgency:clamp(55+(friend.life?.personalStress??70)-70),
-  supportType:(friend.life?.workStability??50)<35?'career':'emotional'
+  supportType:(friend.life?.workStability??50)<35?'career':'emotional',
+  severity:friendSeverity,stage:friendTopic.stage
  });
 }
 
