@@ -121,6 +121,7 @@ test('gameplay audit v3: 100 player-like full lives',()=>{
   npcOver5Pct:pct(lives.filter(x=>x.npc>5).length,lives.length),
   maxNpcInLife:Math.max(...lives.map(x=>x.npc)),maxSameTopic:Math.max(...lives.map(x=>x.maxNpcTopic)),
   sameTopic3PlusPct:pct(lives.filter(x=>x.maxNpcTopic>=3).length,lives.length),
+  sameTopic4PlusPct:pct(lives.filter(x=>x.maxNpcTopic>=4).length,lives.length),
   avgFollowups:avg('followups'),avgEchoes:avg('echoes'),avgLongTerm:avg('longTerm'),avgMajor:avg('major'),
   avgActionTypes:avg('actionTypes'),actionSpamPct:pct(lives.filter(x=>x.topActionPct>=55).length,lives.length),
   maxTopActionPct:Math.max(...lives.map(x=>x.topActionPct)),
@@ -134,7 +135,7 @@ test('gameplay audit v3: 100 player-like full lives',()=>{
  console.log('GAMEPLAY_AUDIT_V3_100_END\n');
 
  assert.equal(lives.length,100);
- assert.equal(lives.filter(x=>x.maxNpcTopic>=3).length,0,'same NPC topic should not reach spam territory');
+ assert.equal(lives.filter(x=>x.maxNpcTopic>=4).length,0,'same NPC topic should not continue beyond the stage-3 crossroads');
  assert.equal(lives.filter(x=>x.topActionPct>=55).length,0,'action spam regression returned');
  assert.ok(summary.quiet5PlusPct<=20,'too many lives contain 5+ year quiet streaks');
  assert.ok(summary.npcOver5Pct<=10,'NPC initiative volume regressed into spam');
