@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {Game} from '../src/core/game.js';
 import {RNG} from '../src/core/rng.js';
 import {humanLikeChoice} from '../src/simulation/autoplay.js';
-import {simulateCounterfactualChoice,analyzeDecisionNode} from '../src/life/counterfactual_system.js';
+import {simulateCounterfactualChoice,analyzeDecisionNode,ensureCounterfactualChoice} from '../src/life/counterfactual_system.js';
 
 function firstMajorNode(seed='counterfactual-fixture'){
  const g=new Game(seed);
@@ -51,4 +51,17 @@ test('decision analysis preserves lived choice and analyzes every alternative',(
   assert.equal(alt.requestedSamples,2);
   assert.ok(alt.completedSamples>=1);
  }
+});
+
+
+test('lazy counterfactual choice is cached on the Life Tree node',()=>{
+ const {g,node}=firstMajorNode('counterfactual-cache');
+ const nodeIndex=g.state.lifeTree.nodes.indexOf(node);
+ const alt=node.alternatives[0];
+ const first=ensureCounterfactualChoice(g.state,g.seedText,nodeIndex,alt.id,{samples:2,maxAge:110});
+ const snapshot=JSON.stringify(g.state.lifeTree.nodes[nodeIndex].counterfactual);
+ const second=ensureCounterfactualChoice(g.state,g.seedText,nodeIndex,alt.id,{samples:9,maxAge:110});
+ assert.deepEqual(second,first);
+ assert.equal(JSON.stringify(g.state.lifeTree.nodes[nodeIndex].counterfactual),snapshot);
+ assert.equal(g.state.lifeTree.nodes[nodeIndex].counterfactual.alternatives.length,1);
 });
