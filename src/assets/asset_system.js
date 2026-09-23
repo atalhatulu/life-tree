@@ -45,3 +45,44 @@ export function buyHome(state,id){
  state.finance.lifestyle.housing='owned';
  return option;
 }
+
+
+export function sellCar(state){
+ const car=state.assets?.car;
+ if(!car)throw new Error('Satılacak aracın yok.');
+ const sale=Math.round((car.price??0)*.72);
+ const debt=Math.max(0,state.finance?.debts?.car??car.remainingDebt??0);
+ const payoff=Math.min(sale,debt);
+ if(state.finance?.debts)state.finance.debts.car=Math.max(0,(state.finance.debts.car??0)-payoff);
+ state.finance.debt=Math.max(0,(state.finance.debt??0)-payoff);
+ state.finance.cash=(state.finance.cash??0)+Math.max(0,sale-payoff);
+ state.assets.car=null;
+ if(state.finance?.lifestyle)state.finance.lifestyle.transport='public';
+ return {sale,payoff,net:sale-payoff};
+}
+
+export function sellHome(state){
+ const home=state.assets?.home;
+ if(!home)throw new Error('Satılacak evin yok.');
+ const sale=Math.round((home.price??0)*.90);
+ const debt=Math.max(0,state.finance?.debts?.housing??home.remainingDebt??0);
+ const payoff=Math.min(sale,debt);
+ if(state.finance?.debts)state.finance.debts.housing=Math.max(0,(state.finance.debts.housing??0)-payoff);
+ state.finance.debt=Math.max(0,(state.finance.debt??0)-payoff);
+ state.finance.cash=(state.finance.cash??0)+Math.max(0,sale-payoff);
+ state.assets.home=null;
+ if(state.finance?.lifestyle)state.finance.lifestyle.housing='shared';
+ return {sale,payoff,net:sale-payoff};
+}
+
+export function moveHousing(state,mode){
+ const allowed=['family','shared','studio','apartment'];
+ if(!allowed.includes(mode))throw new Error('Bu konut düzeni seçilemez.');
+ if(state.assets?.home)throw new Error('Önce sahip olduğun evi satmalısın.');
+ const deposits={family:0,shared:12000,studio:24000,apartment:38000};
+ const cost=deposits[mode]??0;
+ if((state.finance?.cash??0)<cost)throw new Error('Taşınma/depozito için yeterli nakdin yok.');
+ state.finance.cash-=cost;
+ state.finance.lifestyle.housing=mode;
+ return {mode,cost};
+}
