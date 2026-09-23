@@ -1366,3 +1366,79 @@ body{
   .tree-alternatives{width:96%;}
   .tree-ending-node{width:92%;}
 }
+
+
+/* --- Counterfactual Life Engine v1 --- */
+.tree-legend.simulated{
+  color:#5d6fa5;
+  border-color:#d7dff2;
+  background:#f3f6fc;
+}
+.counterfactual-branch{
+  grid-template-columns:18px 1fr 30px;
+}
+.counterfactual-branch .tree-alt-choice{
+  display:block;
+}
+.counterfactual-branch .tree-alt-choice>strong{
+  display:block;
+  color:#687487;
+  font-size:9px;
+}
+.counterfactual-button{
+  width:100%;
+  margin-top:7px;
+  padding:7px 8px;
+  border:1px solid #d8deea;
+  border-radius:9px;
+  background:linear-gradient(180deg,#fff,#f2f5fa);
+  color:#667493;
+  font-size:8px;
+  font-weight:900;
+  cursor:pointer;
+}
+.counterfactual-button:hover{
+  border-color:#bfcbe4;
+  background:#eef3fb;
+}
+.counterfactual-button:disabled{
+  opacity:.58;
+  cursor:default;
+}
+.counterfactual-result{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:5px;
+  margin-top:7px;
+}
+.counterfactual-result>span{
+  padding:5px 6px;
+  border-radius:8px;
+  background:#f1f4fa;
+  color:#71809a;
+  font-size:7px;
+  font-weight:800;
+}
+.counterfactual-endings{
+  grid-column:1/-1;
+  display:grid;
+  gap:4px;
+  margin-top:2px;
+}
+.counterfactual-endings small{
+  display:block;
+  padding:5px 6px;
+  border-radius:8px;
+  background:#edf1f8;
+  color:#64718b;
+  font-size:8px;
+}
+.counterfactual-endings b{
+  color:#50638f;
+}
+.tree-unknown-node.resolved{
+  border-style:solid;
+  border-color:#c5d1e9;
+  color:#5f73a5;
+  background:#eef3fb;
+}
