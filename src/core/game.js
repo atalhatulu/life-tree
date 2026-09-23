@@ -27,6 +27,7 @@ import {processGeneticHealthYear} from '../health/genetic_system.js';
 import {processDiseaseProgressionYear} from '../health/disease_progression.js';
 import {availableLifeGoals,setLifeGoal} from '../life/life_goal_system.js';
 import {availableLifeActions,performLifeAction} from '../life/agency_system.js';
+import {ensureLifeFinale} from '../life/ending_system.js';
 
 export class Game{
  constructor(seed=String(Date.now())){
@@ -96,7 +97,11 @@ export class Game{
    ...processAdultYear(this.state,yearRng.fork('adult'))
   ];
   this.state.history.push(...auto);
-  if(!this.state.player.alive){this.activeEventId=null;return null;}
+  if(!this.state.player.alive){
+   ensureLifeFinale(this.state);
+   this.activeEventId=null;
+   return null;
+  }
   const event=this.events.choose(this.state,yearRng.fork('event'));
   this.activeEventId=event?.id??null;
   return event;
