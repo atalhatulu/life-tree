@@ -31,6 +31,7 @@ import {processFriendLivesYear} from '../social/friend_life_system.js';
 import {processConsequenceChainsYear} from './consequence_chain_system.js';
 import {processLifeGoalsYear} from './life_goal_system.js';
 import {processNarrativeEchoesYear} from './narrative_echo_system.js';
+import {processLongTermConsequences} from './long_term_consequence_system.js';
 
 export function processAdultYear(state,rng){
  const entries=[];
@@ -88,6 +89,7 @@ export function processAdultYear(state,rng){
   entries.push(...processConsequenceChainsYear(state,rng.fork('consequence-chains')));
   entries.push(...processLifeGoalsYear(state));
   entries.push(...processNarrativeEchoesYear(state,rng.fork('narrative-echo')));
+  entries.push(...processLongTermConsequences(state));
  }
 
  entries.push(...processMentalHealthYear(state,rng.fork('mental-health')));

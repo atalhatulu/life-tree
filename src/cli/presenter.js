@@ -25,10 +25,12 @@ export function printHeader(game){
  if(r){
   const status={dating:'Sevgili',cohabiting:'Birlikte yaşıyor',married:'Evli'}[r.status]??'İlişki';
   console.log('İlişki: '+r.name+' '+r.surname+' | '+status+' | '+Math.round(r.relationship)+'/100 | '+r.yearsTogether+' yıl');
+  if(r.lifeGoals?.active)console.log('Partner hedefi: '+r.lifeGoals.active.label+' | İlerleme '+Math.round(r.lifeGoals.active.progress??0)+'/100'+(r.goalAlignment!=null?' | Hedef uyumu '+(r.goalAlignment>0?'uyumlu':r.goalAlignment<0?'çatışıyor':'nötr'):''));
+
  }else console.log('İlişki: Yok');
 
  if(s.children?.length){
-  console.log('Çocuklar: '+s.children.map(c=>c.name+' ('+c.age+')'+(c.adultLife?.jobTitle?' — '+c.adultLife.jobTitle:'')).join(', '));
+  console.log('Çocuklar: '+s.children.map(c=>c.name+' ('+c.age+')'+(c.adultLife?.jobTitle?' — '+c.adultLife.jobTitle:'')+(c.lifeGoals?.active?' ['+c.lifeGoals.active.label+']':'')).join(', '));
   if((s.grandchildren??0)>0)console.log('Torunlar: '+s.grandchildren);
  }else if(s.player.age>=19) console.log('Çocuklar: Yok');
 
