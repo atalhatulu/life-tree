@@ -11,6 +11,7 @@ let autoLifeToken = 0;
 let autoLifeRng = null;
 let yearMoment = null;
 let leisurePicker = null;
+let personActionTarget = null;
 const sleep = (ms) => new Promise(resolve=>setTimeout(resolve,ms));
 
 const $ = (selector) => document.querySelector(selector);
@@ -23,6 +24,110 @@ function money(value=0){ return '₺'+Math.round(value).toLocaleString('tr-TR');
 function netWorth(){
   const f=game.state.finance??{};
   return (f.cash??0)+(f.savings??0)+(game.state.assets?.home?.price??0)+(game.state.assets?.car?.price??0)-(f.debt??0);
+}
+
+
+function personTarget(key){
+  const s=game.state;
+  if(key==='partner')return s.social?.romance?{key,type:'partner',person:s.social.romance,label:s.social.romance.name??'Partner'}:null;
+  if(key.startsWith('child:')){
+    const i=Number(key.split(':')[1]), person=s.children?.[i];
+    return person?{key,type:'child',person,label:person.name??('Çocuk '+(i+1))}:null;
+  }
+  if(key.startsWith('friend:')){
+    const id=key.slice(7), person=s.social?.friends?.find(x=>String(x.id)===id);
+    return person?{key,type:'friend',person,label:person.name??'Arkadaş'}:null;
+  }
+  const familyMap={
+    mother:['parent',s.parents?.mother,'Anne'],
+    father:['parent',s.parents?.father,'Baba']
+  };
+  if(key.startsWith('sibling:')){
+    const i=Number(key.split(':')[1]), person=s.siblings?.[i];
+    return person?{key,type:'family',person,label:person.name??'Kardeş'}:null;
+  }
+  const entry=familyMap[key];
+  return entry?.[1]?{key,type:entry[0],person:entry[1],label:entry[2]}:null;
+}
+function changePersonRelationship(target,delta){
+  const p=target.person;
+  if(target.type==='parent'||target.type==='family'){
+    game.state.player.relationships??={};
+    const current=game.state.player.relationships[p.id]??p.relationship??60;
+    game.state.player.relationships[p.id]=clamp(current+delta);
+  }else{
+    p.relationship=clamp((p.relationship??60)+delta);
+  }
+}
+function personActions(target){
+  const actions=[];
+  if(target.type==='partner'){
+    actions.push({id:'talk',label:'Uzun konuş',cost:0,rel:4,stress:-2});
+    actions.push({id:'date',label:'Birlikte dışarı çık',cost:900,rel:6,stress:-3});
+    actions.push({id:'gift',label:'Hediye al',cost:1800,rel:7,stress:0});
+    if(game.state.player.age>=18)actions.push({id:'trip',label:'Kısa kaçamak yap',cost:6500,rel:10,stress:-6});
+  }else if(target.type==='child'){
+    actions.push({id:'time',label:'Birlikte vakit geçir',cost:0,rel:6,stress:-2});
+    if((target.person.age??0)>=6)actions.push({id:'homework',label:'Derslerine yardım et',cost:0,rel:4,stress:1});
+    actions.push({id:'allowance',label:'Harçlık ver',cost:(target.person.age??0)>=13?1000:500,rel:4,stress:0});
+    if((target.person.age??0)>=6&&target.person.age<18)actions.push({id:'course',label:'Kursa yazdır',cost:3500,rel:5,stress:0});
+  }else if(target.type==='friend'){
+    actions.push({id:'call',label:'Ara ve sohbet et',cost:0,rel:4,stress:-2});
+    actions.push({id:'meet',label:'Buluş',cost:650,rel:6,stress:-3});
+    actions.push({id:'gift',label:'Küçük hediye al',cost:1200,rel:5,stress:0});
+  }else{
+    actions.push({id:'call',label:'Ara ve konuş',cost:0,rel:4,stress:-2});
+    actions.push({id:'visit',label:'Ziyaret et',cost:350,rel:6,stress:-3});
+    actions.push({id:'help',label:'Bir işine yardım et',cost:0,rel:7,stress:1});
+  }
+  return actions;
+}
+function applyPersonAction(targetKey,actionId){
+  const target=personTarget(targetKey);
+  if(!target)return;
+  const action=personActions(target).find(x=>x.id===actionId);
+  if(!action)return;
+  if(game.state.actions.remaining<=0){activityMessage='Bu yıl aksiyon hakkın kalmadı.';return;}
+  if(action.cost&&!spendCash(action.cost)){activityMessage='Bu etkileşim için yeterli nakdin yok.';return;}
+
+  changePersonRelationship(target,action.rel);
+  game.state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
+  game.state.healthProfile.stress=clamp((game.state.healthProfile.stress??20)+action.stress);
+
+  if(target.type==='partner'){
+    target.person.relationshipTension=clamp((target.person.relationshipTension??10)-(action.id==='talk'?5:action.id==='trip'?6:3));
+    if(['date','trip'].includes(action.id))target.person.lastQualityTimeAge=game.state.player.age;
+  }
+  if(target.type==='child'){
+    target.person.parenting??={involvement:55,stability:68,emotionalSecurity:72,conflict:8,accumulatedSupport:0};
+    target.person.parenting.involvement=clamp(target.person.parenting.involvement+(action.id==='time'?5:3));
+    if(action.id==='homework'){
+      target.person.personality.discipline=clamp((target.person.personality?.discipline??50)+2);
+      target.person.parenting.accumulatedSupport=(target.person.parenting.accumulatedSupport??0)+3;
+    }
+    if(action.id==='course'){
+      target.person.personality.curiosity=clamp((target.person.personality?.curiosity??50)+3);
+      target.person.parenting.accumulatedSupport=(target.person.parenting.accumulatedSupport??0)+4;
+    }
+  }
+  if(target.type==='friend')target.person.lastContactAge=game.state.player.age;
+
+  game.state.actions.remaining--;
+  const spent=action.cost?' • '+money(action.cost):'';
+  const text=target.label+' ile '+action.label.toLocaleLowerCase('tr-TR')+'.'+spent;
+  game.state.history.push({age:game.state.player.age,kind:'relationship-action',personId:target.person.id,actionId,text});
+  activityMessage=text;
+  personActionTarget=null;
+  render();
+}
+function personActionButton(key){
+  return `<button class="person-action-toggle" data-person-target="${key}" ${game.state.actions.remaining<=0?'disabled':''}>Etkileşim</button>`;
+}
+function personActionPanel(key){
+  if(personActionTarget!==key)return '';
+  const target=personTarget(key);
+  if(!target)return '';
+  return `<div class="person-action-panel"><div class="person-action-head"><span>${target.label} ile ne yapmak istiyorsun?</span><small>${game.state.actions.remaining}/${game.state.actions.max} aksiyon</small></div><div class="person-action-grid">${personActions(target).map(a=>`<button data-person-action="${a.id}" data-person-key="${key}"><span>${a.label}</span><small>${a.cost?money(a.cost):'Ücretsiz'}</small></button>`).join('')}</div></div>`;
 }
 
 
@@ -112,18 +217,19 @@ function interestText(person) {
   return items.length ? items.map(([name]) => name).join(', ') : 'belirgin hobi yok';
 }
 
-function personCard(person, relation) {
+function personCard(person, relation, key=null) {
   const rel = relationScore(person);
   const education = person.education?.level ?? 0;
   return `
     <article class="person-card">
       <div class="card-row">
-        <div><h3>${relation}: ${person.name} ${person.surname}</h3><p>${person.age} yaş • ${person.job ?? 'Öğrenci/Çocuk'} • Eğitim ${education}/5</p></div>
-        ${rel == null ? '' : `<span class="relationship-pill">${rel}/100</span>`}
+        <div><h3>${relation}: ${person.name} ${person.surname??''}</h3><p>${person.age} yaş • ${person.job ?? 'Öğrenci/Çocuk'} • Eğitim ${education}/5</p></div>
+        ${rel == null ? '' : `<span class="relationship-pill">${Math.round(rel)}/100</span>`}
       </div>
-      <p>Boy ${person.appearance.heightCm} cm • Sağlık ${person.health.current}/100 • Görünüş ${person.appearance.attractiveness}/100</p>
+      <p>Boy ${person.appearance?.heightCm??'—'} cm • Sağlık ${Math.round(person.health?.current??70)}/100 • Görünüş ${Math.round(person.appearance?.attractiveness??50)}/100</p>
       <p>İlgiler: ${interestText(person)}</p>
       ${person.background?.parentingStyle ? `<p>Ebeveynlik tarzı: ${person.background.parentingStyle.replace('_',' ')}</p>` : ''}
+      ${key?`<div class="person-card-actions">${personActionButton(key)}</div>${personActionPanel(key)}`:''}
     </article>`;
 }
 
@@ -135,24 +241,31 @@ function siblingLabel(person, index) {
 function renderRelationships() {
   const { parents, siblings, grandparents, social } = game.state;
   const family = [
-    personCard(parents.mother, 'Anne'),
-    personCard(parents.father, 'Baba'),
-    ...siblings.map((person, index) => personCard(person, siblingLabel(person,index))),
+    personCard(parents.mother, 'Anne', 'mother'),
+    personCard(parents.father, 'Baba', 'father'),
+    ...siblings.map((person, index) => personCard(person, siblingLabel(person,index), 'sibling:'+index)),
     personCard(grandparents.maternal.grandmother, 'Anneanne'),
     personCard(grandparents.maternal.grandfather, 'Anne tarafından dede'),
     personCard(grandparents.paternal.grandmother, 'Babaanne'),
     personCard(grandparents.paternal.grandfather, 'Baba tarafından dede')
   ];
   const romance= social.romance
-    ? `<div class="section-divider">Partner</div><article class="summary-card"><h3>${social.romance.name??'Partner'}</h3><p>Durum: <strong>${social.romance.status??'dating'}</strong> • İlişki: <strong>${Math.round(social.romance.relationship??0)}/100</strong></p><p>Birlikte: ${social.romance.yearsTogether??0} yıl • Gerilim: ${Math.round(social.romance.relationshipTension??0)}/100</p></article>`
+    ? `<div class="section-divider">Partner</div><article class="summary-card partner-card"><div class="card-row"><div><h3>${social.romance.name??'Partner'} ${social.romance.surname??''}</h3><p>Durum: <strong>${social.romance.status??'dating'}</strong> • Birlikte: ${social.romance.yearsTogether??0} yıl</p></div><span class="relationship-pill">${Math.round(social.romance.relationship??0)}/100</span></div><p>Gerilim: ${Math.round(social.romance.relationshipTension??0)}/100 • ${social.romance.relationshipState??'stable'}</p><div class="person-card-actions">${personActionButton('partner')}</div>${personActionPanel('partner')}</article>`
     : '<div class="section-divider">Partner</div><div class="empty-state compact">Aktif partner yok.</div>';
   const kids=(game.state.children??[]).length
-    ? `<div class="section-divider">Çocuklar</div>${game.state.children.map((child,i)=>`<article class="summary-card"><h3>${child.name??('Çocuk '+(i+1))}</h3><p>${child.age??0} yaş • ${child.educationPlan??child.education?.plan??'eğitim planı oluşuyor'}</p></article>`).join('')}`
+    ? `<div class="section-divider">Çocuklar</div>${game.state.children.map((child,i)=>`<article class="summary-card child-card"><div class="card-row"><div><h3>${child.name??('Çocuk '+(i+1))}</h3><p>${child.age??0} yaş • ${child.educationPlan??child.education?.plan??'eğitim planı oluşuyor'}</p></div><span class="relationship-pill">${Math.round(child.relationship??70)}/100</span></div><p>İlgi: ${Math.round(child.parenting?.involvement??55)}/100 • Güven: ${Math.round(child.parenting?.emotionalSecurity??72)}/100</p><div class="person-card-actions">${personActionButton('child:'+i)}</div>${personActionPanel('child:'+i)}</article>`).join('')}`
     : '';
   const friends = social.friends.length
-    ? `<div class="section-divider">Arkadaşlar</div>${social.friends.map(f=>personCard(f,'Arkadaş')).join('')}`
+    ? `<div class="section-divider">Arkadaşlar</div>${social.friends.map(f=>personCard(f,'Arkadaş','friend:'+f.id)).join('')}`
     : '<div class="section-divider">Arkadaşlar</div><div class="empty-state compact">Henüz yakın bir arkadaşın yok.</div>';
   $('#relationships').innerHTML = family.join('') + romance + kids + friends;
+  $('#relationships').querySelectorAll('[data-person-target]').forEach(button=>button.addEventListener('click',()=>{
+    personActionTarget=personActionTarget===button.dataset.personTarget?null:button.dataset.personTarget;
+    renderRelationships();
+  }));
+  $('#relationships').querySelectorAll('[data-person-action]').forEach(button=>button.addEventListener('click',()=>{
+    applyPersonAction(button.dataset.personKey,button.dataset.personAction);
+  }));
 }
 
 function renderActivities() {
@@ -475,7 +588,7 @@ function toggleAutoLife(){
 function switchScreen(id){document.querySelectorAll('.screen-panel').forEach(panel=>panel.classList.toggle('active',panel.id===id));document.querySelectorAll('.nav-item').forEach(button=>button.classList.toggle('active',button.dataset.screen===id));}
 function newLife(seed=$('#seedInput').value.trim()||String(Date.now())){
   autoLifeRunning=false;autoLifeToken++;setAutoStatus('');
-  game=new Game(seed);pendingEvent=null;yearMoment=null;leisurePicker=null;activityMessage='';autoLifeRng=null;
+  game=new Game(seed);pendingEvent=null;yearMoment=null;leisurePicker=null;personActionTarget=null;activityMessage='';autoLifeRng=null;
   $('#autoLife')?.classList.remove('running');
   if($('#autoLife'))$('#autoLife').textContent='▶ AUTO LIFE';
   switchScreen('lifeScreen');render();
