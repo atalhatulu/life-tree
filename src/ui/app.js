@@ -6,7 +6,7 @@ import { affordableCarOptions, affordableHomeOptions, buyCar, buyHome, sellCar, 
 import { generateJobOffers } from '../career/job_market.js';
 import { switchJob } from '../career/career_system.js';
 import { ensureLifeFinale } from '../life/ending_system.js';
-import { ensureCounterfactualAnalysis } from '../life/counterfactual_system.js';
+import { ensureCounterfactualChoice } from '../life/counterfactual_system.js';
 
 let game;
 let pendingEvent = null;
@@ -662,16 +662,8 @@ function renderLifeTree() {
     button.textContent='Simüle ediliyor…';
     requestAnimationFrame(()=>setTimeout(()=>{
       try{
-        const node=game.state.lifeTree.nodes[nodeIndex];
-        if(!node.counterfactual){
-          node.counterfactual={eventId:node.eventId,age:node.age,title:node.title,livedChoice:{id:node.choiceId,label:node.label},alternatives:[]};
-        }
-        const existing=node.counterfactual.alternatives.find(x=>x.choiceId===choiceId);
-        if(!existing){
-          const analysis=ensureCounterfactualAnalysis(game.state,game.seedText,nodeIndex,{samples:12,maxAge:110});
-          node.counterfactual=analysis;
-        }
-        showToast('Alternatif yaşamlar hesaplandı.');
+        ensureCounterfactualChoice(game.state,game.seedText,nodeIndex,choiceId,{samples:12,maxAge:110});
+        showToast('12 alternatif yaşam hesaplandı.');
       }catch(error){
         showToast('Olasılık analizi başarısız: '+error.message);
       }
