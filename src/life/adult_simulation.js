@@ -23,6 +23,8 @@ import {processMilitaryYear} from './military_service.js';
 import {processMiddleAgeYear} from './middle_age_system.js';
 import {processRelationshipDepthYear} from '../social/relationship_depth.js';
 import {processWorkplaceYear} from '../career/workplace_system.js';
+import {processHouseholdDepthYear} from '../finance/household_depth.js';
+import {processMemoryConsequencesYear} from './memory_system.js';
 
 export function processAdultYear(state,rng){
  const entries=[];
@@ -72,6 +74,8 @@ export function processAdultYear(state,rng){
  const transitionPending=state.pendingUniversityApplications||state.pendingJobOffers||state.pendingCareerOffers;
  if(age>=20||state.career?.employed||state.higherEducation?.enrolled){
   if(!transitionPending||age>=20) entries.push(...processPersonalFinanceYear(state));
+  entries.push(...processHouseholdDepthYear(state,rng.fork('household-depth')));
+  entries.push(...processMemoryConsequencesYear(state));
  }
 
  entries.push(...processMentalHealthYear(state,rng.fork('mental-health')));
