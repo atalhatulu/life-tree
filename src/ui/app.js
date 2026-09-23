@@ -7,7 +7,7 @@ import { generateJobOffers } from '../career/job_market.js';
 import { switchJob } from '../career/career_system.js';
 import { ensureLifeFinale } from '../life/ending_system.js';
 import { ensureCounterfactualChoice } from '../life/counterfactual_system.js';
-import {loadDiscovery,saveDiscovery,recordCompletedLife,recordSimulatedChoice,discoveryStatus,discoveryStats} from '../life/discovery_system.js';
+import {loadDiscovery,saveDiscovery,recordCompletedLife,recordSimulatedChoice,discoveryStatus,discoveryStats,choiceKey} from '../life/discovery_system.js';
 
 let game;
 let pendingEvent = null;
@@ -586,11 +586,12 @@ function renderLifeTree() {
   const branches=nodes.map((node,index)=>{
     const analyzed=node.counterfactual?.alternatives??[];
     const alternatives=(node.alternatives??[]).map(a=>{
-      const result=analyzed.find(x=>x.choiceId===a.id);
       const metaStatus=discoveryStatus(discovery,node.eventId,a.id);
+      const persistedResult=discovery.simulatedChoices?.[choiceKey(node.eventId,a.id)]?.lastResult??null;
+      const result=analyzed.find(x=>x.choiceId===a.id)??persistedResult;
       const distribution=result?.endingDistribution?.slice(0,3)??[];
       const livedElsewhere=metaStatus==='lived';
-      const simulatedBefore=metaStatus==='simulated'&&!result;
+      const simulatedBefore=metaStatus==='simulated'&&!analyzed.find(x=>x.choiceId===a.id);
       return `
       <div class="tree-alt-branch counterfactual-branch ${livedElsewhere?'meta-lived':''}">
         <div class="tree-alt-line"></div>
@@ -609,7 +610,7 @@ function renderLifeTree() {
             </div>
           `:`
             <button class="counterfactual-button" data-counterfactual-node="${index}" data-counterfactual-choice="${a.id}" ${dead?'':'disabled'}>
-              ${dead?(livedElsewhere?'Yine de 12 olası hayatı simüle et':'12 olası hayatı simüle et'):'Ölümden sonra analiz edilir'}
+              ${dead?(livedElsewhere?'12 yeni olası hayat simüle et':'12 olası hayatı simüle et'):'Ölümden sonra analiz edilir'}
             </button>
           `}
         </div>
