@@ -467,6 +467,7 @@ function renderAssets() {
       <p>Net worth: <strong>${money(netWorth())}</strong></p>
       <p class="muted">Tüketici ${money(debts.consumer)} • Acil ${money(debts.emergency)} • Konut ${money(debts.housing)} • Araç ${money(debts.car)}</p>
     </article>
+    ${game.state.householdDynamics?`<article class="summary-card"><h3>Hane Dayanıklılığı</h3><p>Finansal baskı: <strong>${Math.round(game.state.householdDynamics.financialPressure)}/100</strong> • İstikrar: <strong>${Math.round(game.state.householdDynamics.stability)}/100</strong></p><p>Acil rezerv: ${game.state.householdDynamics.emergencyReserveMonths} ay • Bakım yükü: ${Math.round(game.state.householdDynamics.maintenanceBurden)}/100 • Aile yükü: ${Math.round(game.state.householdDynamics.familySupportBurden)}/100</p></article>`:''}
     <article class="summary-card">
       <h3>Varlıklar</h3>
       <p>Ev: <strong>${assets?.home ? assets.home.label : 'Yok'}</strong></p>
@@ -541,7 +542,9 @@ function renderCareer() {
 function renderLifeTree() {
   const nodes = game.state.lifeTree?.nodes ?? [];
   if (!nodes.length) { $('#lifeTree').innerHTML = '<div class="empty-state">Henüz hayatının yönünü değiştiren büyük bir karar vermedin.</div>'; return; }
-  $('#lifeTree').innerHTML = `<div class="tree-root">Doğum</div>${nodes.map((node,index)=>`<div class="tree-connector"></div><article class="tree-node"><small>${node.age} yaş • Karar ${index+1}</small><h3>${node.title}</h3><p class="chosen-path">✓ ${node.label}</p>${node.alternatives.map(a=>`<p class="alternate-path">↳ ${a.label}</p>`).join('')}</article>`).join('')}`;
+  const memory=game.state.lifeMemory;
+  const memories=(memory?.memories??[]).slice(-6).reverse();
+  $('#lifeTree').innerHTML = `<div class="tree-root">Doğum</div>${nodes.map((node,index)=>`<div class="tree-connector"></div><article class="tree-node"><small>${node.age} yaş • Karar ${index+1}</small><h3>${node.title}</h3><p class="chosen-path">✓ ${node.label}</p>${node.alternatives.map(a=>`<p class="alternate-path">↳ ${a.label}</p>`).join('')}</article>`).join('')}${memory?`<div class="section-divider">Hayat İzleri</div><article class="summary-card"><p>Dayanıklılık: <strong>${Math.round(memory.resilience??50)}/100</strong> • Yük: <strong>${Math.round(memory.scarLoad??0)}/100</strong></p>${memories.length?memories.map(x=>`<p><strong>${x.age}:</strong> ${x.label}</p>`).join(''):'<p class="muted">Henüz belirgin bir hayat izi yok.</p>'}</article>`:''}`;
 }
 
 function baseTimelineEntries() {
