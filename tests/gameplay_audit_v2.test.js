@@ -105,8 +105,11 @@ function playLife(index){
  const repeatedEvents=Object.entries(eventCounts).filter(([,n])=>n>=3);
  const histories=s.history??[];
  const kindCount=k=>histories.filter(h=>h.kind===k).length;
- const initiatives=s.npcInitiatives?.history??[];
+ const initiatives=(s.npcInitiatives?.history??[]).filter(x=>x.status==='resolved');
  const npcResponses=initiatives.reduce((o,x)=>(o[x.response]=(o[x.response]??0)+1,o),{});
+ const npcTopicCounts={};
+ for(const x of initiatives){const key=x.type+':'+x.actorId;npcTopicCounts[key]=(npcTopicCounts[key]??0)+1;}
+ const maxNpcSameTopic=Math.max(0,...Object.values(npcTopicCounts));
  const actionRows=histories.filter(h=>h.kind==='activity'||h.kind==='life-action');
  const activityCounts={};
  for(const h of actionRows){const id=h.activityId??h.actionId??'unknown';activityCounts[id]=(activityCounts[id]??0)+1;}
@@ -120,7 +123,7 @@ function playLife(index){
   maxQuietYears:maxQuiet,repeatedEvents,
   majorDecisions:s.lifeTree?.nodes?.length??0,
   lifeGoalActive:s.lifeGoals?.active?.id??null,lifeGoalsCompleted:s.lifeGoals?.completed??[],
-  npcInitiatives:initiatives.length,npcResponses,npcFollowups:kindCount('npc-followup'),
+  npcInitiatives:initiatives.length,npcResponses,npcFollowups:kindCount('npc-followup'),maxNpcSameTopic,
   narrativeEchoes:kindCount('narrative-echo'),longTermConsequences:kindCount('long-term-consequence'),
   consequenceChains:kindCount('consequence-chain'),
   partner:Boolean(s.social?.romance),divorces:s.social?.exSpouses?.length??0,
@@ -140,6 +143,7 @@ test('gameplay audit v2: 15 player-like full lives',()=>{
   if(life.maxQuietYears>=5)flags.push({seed:life.seed,type:'quiet-streak',value:life.maxQuietYears});
   if(life.eventYearPct<30)flags.push({seed:life.seed,type:'low-event-density',value:life.eventYearPct});
   if(life.npcInitiatives===0&&life.finalAge>=45)flags.push({seed:life.seed,type:'no-npc-initiative'});
+  if(life.maxNpcSameTopic>=3)flags.push({seed:life.seed,type:'npc-topic-repetition',value:life.maxNpcSameTopic});
   if(life.narrativeEchoes===0&&life.finalAge>=45)flags.push({seed:life.seed,type:'no-narrative-echo'});
   if(life.longTermConsequences===0&&life.majorDecisions>=3&&life.finalAge>=45)flags.push({seed:life.seed,type:'no-long-term-consequence'});
   if(life.topAction.sharePct>=55&&life.yearsPlayed>=30)flags.push({seed:life.seed,type:'action-repetition',value:life.topAction});
@@ -152,6 +156,7 @@ test('gameplay audit v2: 15 player-like full lives',()=>{
   avgMajorDecisions:avg('majorDecisions'),
   avgNpcInitiatives:avg('npcInitiatives'),
   avgNpcFollowups:avg('npcFollowups'),
+  avgMaxNpcSameTopic:avg('maxNpcSameTopic'),
   avgNarrativeEchoes:avg('narrativeEchoes'),
   avgLongTermConsequences:avg('longTermConsequences'),
   avgActionTypes:avg('actionTypes'),

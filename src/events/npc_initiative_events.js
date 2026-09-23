@@ -6,6 +6,9 @@ function planLabel(plan){
 function resolveEffect(type,response){
  return s=>resolveNpcInitiative(s,type,response);
 }
+function stageWord(i){
+ return (i?.data?.stage??1)>=3?'artık bir dönüm noktasına gelen':(i?.data?.stage??1)===2?'yeniden ağırlaşan':'';
+}
 
 export const npcInitiativeEvents=[
  {
@@ -13,8 +16,9 @@ export const npcInitiativeEvents=[
   condition:s=>Boolean(pendingInitiative(s,'partner-relocation')),
   choices:s=>{
    const i=pendingInitiative(s,'partner-relocation');
+   const repeat=stageWord(i);
    return [
-    {id:'accept',label:i.actorName+' ile '+i.data.targetCityName+' şehrine taşın',result:'Partnerinin kariyer hedefini birlikte sahiplenmeye karar verdiniz.',effect:resolveEffect('partner-relocation','accept')},
+    {id:'accept',label:(repeat?repeat+' kariyer meselesini çöz: ':'')+i.actorName+' ile '+i.data.targetCityName+' şehrine taşın',result:'Partnerinin kariyer hedefini birlikte sahiplenmeye karar verdiniz.',effect:resolveEffect('partner-relocation','accept')},
     {id:'compromise',label:'Taşınmadan başka bir çözüm arayın',result:'İkinizin de hayatını tamamen bozmadan orta yol aradınız.',effect:resolveEffect('partner-relocation','compromise')},
     {id:'reject',label:'Taşınmayı reddet',result:'Mevcut hayat düzenini korumayı seçtin.',effect:resolveEffect('partner-relocation','reject')}
    ];
@@ -23,20 +27,28 @@ export const npcInitiativeEvents=[
  {
   id:'npc-partner-family-priority',title:'Partnerin Daha Fazla Ortak Hayat İstiyor',minAge:22,maxAge:70,priority:116,majorDecision:true,
   condition:s=>Boolean(pendingInitiative(s,'partner-family-priority')),
-  choices:[
-   {id:'accept',label:'İlişki ve aile hayatını daha fazla öne al',result:'Partnerinin beklentisini ciddiye aldın.',effect:resolveEffect('partner-family-priority','accept')},
+  choices:s=>{
+   const i=pendingInitiative(s,'partner-family-priority');
+   const suffix=(i?.data?.stage??1)>=3?' — bu kez kalıcı bir plan yap':(i?.data?.stage??1)===2?' — bu kez somut değişiklik yap':'';
+   return [
+   {id:'accept',label:'İlişki ve aile hayatını daha fazla öne al'+suffix,result:'Partnerinin beklentisini ciddiye aldın.',effect:resolveEffect('partner-family-priority','accept')},
    {id:'compromise',label:'Ortak bir denge kurmayı teklif et',result:'Tamamen yön değiştirmeden alan açmayı seçtin.',effect:resolveEffect('partner-family-priority','compromise')},
    {id:'reject',label:'Önceliklerini değiştirme',result:'Kendi yaşam önceliklerini korudun.',effect:resolveEffect('partner-family-priority','reject')}
-  ]
+  ];
+  }
  },
  {
   id:'npc-partner-life-balance',title:'Partnerin Hayat Temposunu Değiştirmek İstiyor',minAge:22,maxAge:70,priority:114,majorDecision:true,
   condition:s=>Boolean(pendingInitiative(s,'partner-life-balance')),
-  choices:[
-   {id:'accept',label:'Birlikte tempoyu düşürün',result:'Daha dengeli bir yaşam için birlikte değişiklik yaptınız.',effect:resolveEffect('partner-life-balance','accept')},
+  choices:s=>{
+   const i=pendingInitiative(s,'partner-life-balance');
+   const suffix=(i?.data?.stage??1)>=3?' ve düzeni kökten değiştirin':(i?.data?.stage??1)===2?' ve çalışma düzenini yeniden kurun':'';
+   return [
+   {id:'accept',label:'Birlikte tempoyu düşürün'+suffix,result:'Daha dengeli bir yaşam için birlikte değişiklik yaptınız.',effect:resolveEffect('partner-life-balance','accept')},
    {id:'compromise',label:'Sadece bazı yükleri azaltın',result:'Kısmi bir denge planı yaptınız.',effect:resolveEffect('partner-life-balance','compromise')},
    {id:'reject',label:'Mevcut tempoya devam edin',result:'Hayat düzenini değiştirmemeyi seçtin.',effect:resolveEffect('partner-life-balance','reject')}
-  ]
+  ];
+  }
  },
  {
   id:'npc-child-direction-request',title:'Çocuğun Kendi Yolunu Seçmek İstiyor',minAge:34,maxAge:75,priority:118,majorDecision:true,
