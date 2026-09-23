@@ -815,8 +815,12 @@ function renderEvent() {
       const d=game.state.death??{};
       const finale=ensureLifeFinale(game.state);
       card.classList.add('death-card');
-      card.innerHTML=`<small class="death-kicker">BİR HAYAT TAMAMLANDI</small><h3>${finale.ending.title}</h3><p>${finale.ending.description}</p><p><strong>${game.state.player.age} yaş</strong> • ${d.cause??'Bilinmeyen neden'}</p><div class="death-stats"><span>${finale.majorDecisions} kritik karar</span><span>${finale.children} çocuk</span><span>${money(finale.netWorth)}</span></div><button class="choice-button finale-tree-button" data-open-life-tree>HAYAT AĞACINI GÖR →</button>`;
+      card.innerHTML=`<small class="death-kicker">BİR HAYAT TAMAMLANDI</small><h3>${finale.ending.title}</h3><p>${finale.ending.description}</p><p><strong>${game.state.player.age} yaş</strong> • ${d.cause??'Bilinmeyen neden'}</p><div class="death-stats"><span>${finale.majorDecisions} kritik karar</span><span>${finale.children} çocuk</span><span>${money(finale.netWorth)}</span></div><div class="finale-actions"><button class="choice-button finale-tree-button" data-open-life-tree>HAYAT AĞACINI GÖR →</button><button class="choice-button finale-alt-button" data-open-alternatives>ALTERNATİF HAYATLARI İNCELE ◇</button></div>`;
       card.querySelector('[data-open-life-tree]')?.addEventListener('click',()=>switchScreen('treeScreen'));
+      card.querySelector('[data-open-alternatives]')?.addEventListener('click',()=>{
+        switchScreen('treeScreen');
+        requestAnimationFrame(()=>document.querySelector('.tree-alternatives')?.scrollIntoView({behavior:'smooth',block:'center'}));
+      });
     }else card.innerHTML='';
     $('#ageUp').disabled=dead;
     $('#autoLife').disabled=false;
