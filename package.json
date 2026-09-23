@@ -9,6 +9,7 @@
     "test:simulation": "node --test tests/simulation.test.js",
     "test:adult": "node --test tests/adult.test.js",
     "play": "node src/cli/play.js",
+    "text": "node src/cli/text_mode.js",
     "simulate": "node src/cli/simulate.js",
     "fast-sim": "node src/cli/fast_simulate.js",
     "trace": "node src/cli/trace.js",
