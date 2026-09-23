@@ -57,7 +57,7 @@ function scoreGoal(state,id){
   const friends=state.social?.friends??[];
   const close=friends.filter(f=>f.closeFriend).length;
   const avg=friends.length?friends.reduce((s,f)=>s+(f.relationship??50),0)/friends.length:20;
-  return clamp(avg*.55+Math.min(35,close*12+friends.length*3));
+  return clamp(avg*.65+Math.min(45,close*12+friends.length*3));
  }
  return 0;
 }
