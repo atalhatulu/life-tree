@@ -179,30 +179,119 @@ function applyLeisure(kind,companionId,tier){
 }
 function makeYearMoment(){
   if(!game.state.player.alive)return null;
-  const age=game.state.player.age;
-  const rng=new RNG(game.seedText+':year-moment:'+game.state.year);
-  if(age<7)return {title:'Küçük bir yıl',text:'Boş zamanında neye yöneldin?',choices:[
-    {id:'play',label:'Oyun oyna'},{id:'family',label:'Ailenle vakit geçir'},{id:'learn',label:'Bir şey öğren'}
-  ]};
-  if(age<18)return {title:'Bu yıl neye ağırlık verdin?',text:'Okul dışında zamanını nasıl geçirdin?',choices:[
-    {id:'friends',label:'Arkadaşlarla takıl'},{id:'study',label:'Derse ağırlık ver'},{id:'save',label:'Harçlığı biriktir'}
-  ]};
-  return rng.pick([
-    {title:'Hafta sonu planı',text:'Kendine biraz zaman ayıracaksın.',choices:[{id:'cinema',label:'Sinemaya git'},{id:'rest',label:'Evde dinlen'},{id:'social',label:'Birini ara'}]},
-    {title:'Küçük bir para kararı',text:'Bu ay elinde biraz serbest para kaldı.',choices:[{id:'save',label:'Biriktir'},{id:'shopping',label:'Kendine bir şey al'},{id:'meal',label:'Dışarıda yemek ye'}]}
+  const s=game.state, age=s.player.age;
+  const rng=new RNG(game.seedText+':year-moment:'+s.year);
+  if(age<7)return rng.pick([
+    {title:'Küçük bir keşif',text:'Bugün seni ne çekiyor?',choices:[{id:'play',label:'Oyun kur'},{id:'family',label:'Ailenle vakit geçir'},{id:'learn',label:'Yeni bir şey öğren'}]},
+    {title:'Evde bir gün',text:'Kendi kendine oyalanıyorsun.',choices:[{id:'draw',label:'Resim yap'},{id:'help-home',label:'Ev işine yardım et'},{id:'rest',label:'Dinlen'}]}
   ]);
+  if(age<13)return rng.pick([
+    {title:'Okuldan sonra',text:'Günün geri kalanını nasıl geçireceksin?',choices:[{id:'friends',label:'Arkadaşlarla oyna'},{id:'study',label:'Ödevlerini bitir'},{id:'game-spend',label:'Oyuna/oyuncağa harca'}]},
+    {title:'Harçlık kararı',text:'Cebinde biraz harçlık var.',choices:[{id:'child-save',label:'Biriktir'},{id:'snack',label:'Atıştırmalık al'},{id:'book',label:'Kitap/dergi al'}]},
+    {title:'Hafta sonu',text:'Ailen sana seçim bıraktı.',choices:[{id:'family',label:'Ailece dışarı çık'},{id:'learn',label:'Bir hobiyle uğraş'},{id:'rest',label:'Evde kal'}]}
+  ]);
+  if(age<18)return rng.pick([
+    {title:'Okul ve sosyal hayat',text:'Bu hafta neye ağırlık vereceksin?',choices:[{id:'friends',label:'Arkadaşlarla takıl'},{id:'study',label:'Derse ağırlık ver'},{id:'club',label:'Kulüp/hobiye katıl'}]},
+    {title:'Harçlık kararı',text:'Küçük ama senin olan bir paran var.',choices:[{id:'child-save',label:'Biriktir'},{id:'meal-small',label:'Arkadaşlarla bir şeyler ye'},{id:'clothes-small',label:'Kendine bir şey al'}]},
+    {title:'Kendine yatırım',text:'Boş vaktini nasıl kullanacaksın?',choices:[{id:'exercise',label:'Spor yap'},{id:'learn',label:'Yeni beceri öğren'},{id:'social',label:'Sosyalleş'}]}
+  ]);
+
+  const pool=[
+    {title:'Hafta sonu planı',text:'Kendine biraz zaman ayıracaksın.',choices:[{id:'cinema',label:'Sinemaya git'},{id:'rest',label:'Evde dinlen'},{id:'social',label:'Birini ara'}]},
+    {title:'Küçük bir para kararı',text:'Bu ay elinde biraz serbest para kaldı.',choices:[{id:'adult-save',label:'Biriktir'},{id:'shopping',label:'Kendine bir şey al'},{id:'meal',label:'Dışarıda yemek ye'}]},
+    {title:'Yoğun bir dönem',text:'Enerjini nereye vereceksin?',choices:[{id:'work-focus',label:'İşe yüklen'},{id:'exercise',label:'Spora dön'},{id:'rest',label:'Dinlen'}]},
+    {title:'Sosyal çevre',text:'Bir süredir insanlarla görüşmedin.',choices:[{id:'social',label:'Birini ara'},{id:'family',label:'Aileyi ziyaret et'},{id:'solo',label:'Tek başına kal'}]},
+    {title:'Kendine yatırım',text:'Biraz zaman ve enerji ayırabilirsin.',choices:[{id:'learn',label:'Yeni beceri öğren'},{id:'exercise',label:'Sağlığına odaklan'},{id:'shopping',label:'Görünüşünü yenile'}]},
+    {title:'Akşam planı',text:'Günün sonunda ne yapmak istersin?',choices:[{id:'meal',label:'Dışarıda yemek'},{id:'cinema',label:'Bir şeyler izle'},{id:'rest',label:'Erken dinlen'}]}
+  ];
+  if(s.social?.romance)pool.push({title:'İlişkiye zaman ayır',text:'Partnerinle bir süredir baş başa kalmadınız.',choices:[{id:'partner-time',label:'Birlikte vakit geçir'},{id:'social',label:'Uzun konuş'},{id:'work-focus',label:'Bu hafta işe odaklan'}]});
+  if((s.children?.length??0)>0)pool.push({title:'Aile zamanı',text:'Evde senden ilgi bekleyenler var.',choices:[{id:'child-time',label:'Çocuklarla ilgilen'},{id:'family',label:'Ailece bir şey yap'},{id:'rest',label:'Biraz yalnız kal'}]});
+  if((s.finance?.debt??0)>250000)pool.push({title:'Bütçeyi toparlama',text:'Borç yükün kendini hissettiriyor.',choices:[{id:'adult-save',label:'Harcamayı kıs'},{id:'work-focus',label:'İşe odaklan'},{id:'rest',label:'Stresi azalt'}]});
+  return rng.pick(pool);
+}
+function spendChildMoney(amount,label){
+  const m=game.state.childMoney??={wallet:0,saved:0,totalAllowance:0,totalSpent:0};
+  if((m.wallet??0)<amount)return false;
+  m.wallet-=amount;
+  m.totalSpent=(m.totalSpent??0)+amount;
+  return label;
 }
 function applyYearMoment(choice){
   const s=game.state;
   s.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
+  s.childMoney??={wallet:0,saved:0,totalAllowance:0,totalSpent:0,lastAllowanceAge:null};
   let text='';
-  if(choice==='play'||choice==='rest'){s.healthProfile.stress=clamp(s.healthProfile.stress-3);text='Kendine zaman ayırdın.';}
-  if(choice==='family'){s.player.personality.sociability=clamp((s.player.personality.sociability??50)+1);text='Ailenle vakit geçirdin.';}
-  if(choice==='learn'||choice==='study'){s.player.personality.discipline=clamp((s.player.personality.discipline??50)+1);text='Kendini geliştirmeye zaman ayırdın.';}
-  if(choice==='friends'||choice==='social'){s.player.personality.sociability=clamp((s.player.personality.sociability??50)+1);text='Sosyal bağlarına vakit ayırdın.';}
-  if(choice==='save'){if(s.finance)s.finance.cash=(s.finance.cash??0)+Math.round((s.familySupportMonthly??s.finance.familySupportMonthly??0)*.15);text='Harcamayıp kenara koymayı seçtin.';}
-  if(['cinema','shopping','meal'].includes(choice)){leisurePicker=choice;text='Bir aktivite planladın.';switchScreen('activitiesScreen');}
-  s.history.push({age:s.player.age,kind:'year-moment',text});
+
+  if(['play','draw','rest','solo'].includes(choice)){
+    s.healthProfile.stress=clamp(s.healthProfile.stress-3);
+    if(choice==='draw')s.player.personality.curiosity=clamp((s.player.personality.curiosity??50)+1);
+    text='Kendine sakin bir alan açtın.';
+  }
+  if(['family','help-home'].includes(choice)){
+    s.player.personality.sociability=clamp((s.player.personality.sociability??50)+1);
+    text=choice==='help-home'?'Evde sorumluluk aldın.':'Ailene zaman ayırdın.';
+  }
+  if(['learn','study','club'].includes(choice)){
+    s.player.personality.discipline=clamp((s.player.personality.discipline??50)+1);
+    if(choice!=='study')s.player.personality.curiosity=clamp((s.player.personality.curiosity??50)+1);
+    if(s.education&&choice==='study')s.education.studyEffort=(s.education.studyEffort??0)+12;
+    text='Kendini geliştirmeye zaman ayırdın.';
+  }
+  if(['friends','social'].includes(choice)){
+    s.player.personality.sociability=clamp((s.player.personality.sociability??50)+1);
+    s.healthProfile.stress=clamp(s.healthProfile.stress-2);
+    text='Sosyal bağlarına vakit ayırdın.';
+  }
+  if(choice==='exercise'){
+    s.healthProfile.fitness=clamp((s.healthProfile.fitness??50)+3);
+    s.healthProfile.stress=clamp(s.healthProfile.stress-2);
+    text='Hareket edip kendine iyi baktın.';
+  }
+  if(choice==='work-focus'){
+    if(s.career?.employed)s.career.performance=clamp((s.career.performance??50)+3);
+    s.healthProfile.stress=clamp(s.healthProfile.stress+2);
+    text='İşine ekstra enerji ayırdın.';
+  }
+  if(choice==='child-save'){
+    const moved=Math.round((s.childMoney.wallet??0)*.6);
+    s.childMoney.wallet-=moved;s.childMoney.saved+=moved;
+    text=moved>0?'Harçlığından '+money(moved)+' biriktirdin.':'Biriktirmek istedin ama cebinde para yoktu.';
+  }
+  const childCosts={snack:120,book:280,'game-spend':450,'meal-small':300,'clothes-small':650};
+  if(childCosts[choice]){
+    const ok=spendChildMoney(childCosts[choice],choice);
+    if(ok){
+      if(choice==='book')s.player.personality.curiosity=clamp((s.player.personality.curiosity??50)+2);
+      if(choice==='meal-small')s.player.personality.sociability=clamp((s.player.personality.sociability??50)+1);
+      text=money(childCosts[choice])+' harcadın.';
+    }else text='Bunu almak istedin ama harçlığın yetmedi.';
+  }
+  if(choice==='adult-save'){
+    const f=s.finance;
+    if(f){
+      const moved=Math.min(f.cash??0,Math.max(500,Math.round((f.monthlyIncome??0)*.08)));
+      f.cash-=moved;f.savings=(f.savings??0)+moved;
+      text=moved>0?money(moved)+' birikime ayırdın.':'Bu ay birikime para ayıramadın.';
+    }
+  }
+  if(choice==='partner-time'&&s.social?.romance){
+    s.social.romance.relationship=clamp((s.social.romance.relationship??60)+5);
+    s.social.romance.relationshipTension=clamp((s.social.romance.relationshipTension??10)-4);
+    s.social.romance.lastQualityTimeAge=s.player.age;
+    text='Partnerinle kaliteli zaman geçirdin.';
+  }
+  if(choice==='child-time'&&(s.children?.length??0)>0){
+    for(const child of s.children){
+      child.relationship=clamp((child.relationship??70)+3);
+      if(child.parenting)child.parenting.involvement=clamp((child.parenting.involvement??55)+3);
+    }
+    text='Çocuklarına özellikle zaman ayırdın.';
+  }
+  if(['cinema','shopping','meal'].includes(choice)){
+    leisurePicker=choice;text='Bir aktivite planladın.';switchScreen('activitiesScreen');
+  }
+  if(!text)text='Bu yıl küçük ama sana ait bir seçim yaptın.';
+  s.history.push({age:s.player.age,kind:'year-moment',choiceId:choice,text});
   yearMoment=null;render();
 }
 
@@ -303,7 +392,9 @@ function renderActivities() {
 function renderAssets() {
   const { household, finance, assets } = game.state;
   const debts=finance?.debts??{};
+  const childWallet=game.state.player.age<18?`<article class="summary-card child-wallet-card"><h3>Harçlık & Birikim</h3><p>Cüzdan: <strong>${money(game.state.childMoney?.wallet??0)}</strong></p><p>Birikim: <strong>${money(game.state.childMoney?.saved??0)}</strong></p><p class="muted">Şimdiye kadar aldığın harçlık: ${money(game.state.childMoney?.totalAllowance??0)} • Harcadığın: ${money(game.state.childMoney?.totalSpent??0)}</p></article>`:'';
   $('#assets').innerHTML = `
+    ${childWallet}
     <article class="summary-card">
       <h3>Kişisel Finans</h3>
       <p>Nakit: <strong>${money(finance?.cash)}</strong></p>
