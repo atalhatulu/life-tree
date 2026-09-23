@@ -815,8 +815,12 @@ function renderEvent() {
       const d=game.state.death??{};
       const finale=ensureLifeFinale(game.state);
       card.classList.add('death-card');
-      card.innerHTML=`<small class="death-kicker">BİR HAYAT TAMAMLANDI</small><h3>${finale.ending.title}</h3><p>${finale.ending.description}</p><p><strong>${game.state.player.age} yaş</strong> • ${d.cause??'Bilinmeyen neden'}</p><div class="death-stats"><span>${finale.majorDecisions} kritik karar</span><span>${finale.children} çocuk</span><span>${money(finale.netWorth)}</span></div><button class="choice-button finale-tree-button" data-open-life-tree>HAYAT AĞACINI GÖR →</button>`;
+      card.innerHTML=`<small class="death-kicker">BİR HAYAT TAMAMLANDI</small><h3>${finale.ending.title}</h3><p>${finale.ending.description}</p><p><strong>${game.state.player.age} yaş</strong> • ${d.cause??'Bilinmeyen neden'}</p><div class="death-stats"><span>${finale.majorDecisions} kritik karar</span><span>${finale.children} çocuk</span><span>${money(finale.netWorth)}</span></div><div class="finale-actions"><button class="choice-button finale-tree-button" data-open-life-tree>HAYAT AĞACINI GÖR →</button><button class="choice-button finale-alt-button" data-open-alternatives>ALTERNATİF HAYATLARI İNCELE ◇</button></div>`;
       card.querySelector('[data-open-life-tree]')?.addEventListener('click',()=>switchScreen('treeScreen'));
+      card.querySelector('[data-open-alternatives]')?.addEventListener('click',()=>{
+        switchScreen('treeScreen');
+        requestAnimationFrame(()=>document.querySelector('.tree-alternatives')?.scrollIntoView({behavior:'smooth',block:'center'}));
+      });
     }else card.innerHTML='';
     $('#ageUp').disabled=dead;
     $('#autoLife').disabled=false;
@@ -1028,41 +1032,66 @@ async function fastForwardToEnd(){
     $('#autoLife').classList.remove('running');
     $('#autoLife').textContent='▶ AUTO LIFE';
   }
+
   pendingEvent=null;
   yearMoment=null;
   leisurePicker=null;
+
   const button=$('#simulateEnd');
+  const startAge=game.state.player.age;
   button.disabled=true;
+  button.textContent='⏩ SİMÜLE EDİLİYOR';
   $('#ageUp').disabled=true;
   $('#autoLife').disabled=true;
   $('#autoSpeed').disabled=true;
+
   setAutoStatus('Hayatın sonu simüle ediliyor…');
   switchScreen('lifeScreen');
   render();
-  await sleep(30);
+  await sleep(0);
+
   try{
-    const result=simulateToEnd(game,{policy:'human-like',maxAge:130});
-    pendingEvent=null;
-    yearMoment=null;
-    leisurePicker=null;
+    const maxAge=130;
+    while(game.state.player.alive&&game.state.player.age<maxAge){
+      const chunkTarget=Math.min(maxAge,game.state.player.age+4);
+      autoplay(game,{toAge:chunkTarget,policy:'human-like'});
+
+      pendingEvent=null;
+      yearMoment=null;
+      leisurePicker=null;
+
+      const simulated=game.state.player.age-startAge;
+      button.textContent='⏩ '+simulated+' YIL';
+      setAutoStatus(game.state.player.age+' yaş • sona simüle ediliyor');
+      render();
+
+      // Yield to the browser so button/status/UI visibly update instead of freezing.
+      await sleep(0);
+    }
+
+    const yearsSimulated=game.state.player.age-startAge;
     render();
-    if(result.reachedEnd){
-      showToast(result.yearsSimulated+' yıl simüle edildi • hayat tamamlandı.');
+
+    if(!game.state.player.alive){
+      showToast(yearsSimulated+' yıl simüle edildi • hayat tamamlandı.');
       setAutoStatus('Hayat tamamlandı');
+      button.textContent='✓ HAYAT TAMAMLANDI';
     }else{
-      showToast('Simülasyon güvenlik sınırında durdu.');
-      setAutoStatus('Simülasyon '+result.finalAge+' yaşta durdu');
+      showToast('Simülasyon '+game.state.player.age+' yaş güvenlik sınırında durdu.');
+      setAutoStatus('Simülasyon '+game.state.player.age+' yaşta durdu');
+      button.textContent='⏩ SONA SİMÜLE ET';
     }
   }catch(error){
+    console.error('Simulate to end failed',error);
     showToast('Simülasyon başarısız: '+error.message);
     setAutoStatus('Simülasyon durdu');
+    button.textContent='⏩ SONA SİMÜLE ET';
     render();
   }finally{
     button.disabled=!game.state.player.alive;
     $('#ageUp').disabled=!game.state.player.alive;
     $('#autoLife').disabled=false;
     $('#autoSpeed').disabled=false;
-    if(!game.state.player.alive)button.textContent='✓ HAYAT TAMAMLANDI';
   }
 }
 
