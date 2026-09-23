@@ -48,7 +48,7 @@ export const systemicStorylets=[
  },
  {
   id:'storylet-recognition-vs-life',title:'Görünür Bir Fırsat',minAge:26,maxAge:58,priority:59,
-  condition:s=>ready(s,'recognition-life',5)&&(s.career?.workplace?.recognition??0)>=72&&Boolean(s.social?.romance),
+  condition:s=>ready(s,'recognition-life',7)&&(s.career?.workplace?.recognition??0)>=72&&Boolean(s.social?.romance),
   choices:[
    {id:'take-project',label:'Büyük projeyi üstlen',result:'Kariyer fırsatını seçtin.',effect:s=>{s.career.performance=clamp(s.career.performance+5);s.career.workplace.recognition=clamp(s.career.workplace.recognition+6);s.career.workplace.workload=clamp(s.career.workplace.workload+8);relationship(s,-2,3);cool(s,'recognition-life');}},
    {id:'decline-project',label:'Özel hayatı koru',result:'Fırsatı geri çevirip hayat dengesini korudun.',effect:s=>{s.career.satisfaction=clamp((s.career.satisfaction??50)+2);relationship(s,4,-3);stress(s,-3);cool(s,'recognition-life');}}
@@ -68,7 +68,7 @@ export const systemicStorylets=[
  },
  {
   id:'storylet-close-friend-crisis',title:'Eski Bir Arkadaş Aradı',minAge:21,maxAge:75,priority:46,
-  condition:s=>ready(s,'friend-crisis',4)&&(s.social?.friends??[]).some(f=>f.closeFriend&&(f.trust??0)>=65),
+  condition:s=>ready(s,'friend-crisis',6)&&(s.social?.friends??[]).some(f=>f.closeFriend&&(f.trust??0)>=65),
   choices:s=>{
    const f=s.social.friends.find(x=>x.closeFriend&&(x.trust??0)>=65);
    return [
@@ -107,7 +107,7 @@ export const systemicStorylets=[
  },
  {
   id:'storylet-adult-child-request',title:'Yetişkin Çocuğundan Bir İstek',minAge:45,maxAge:78,priority:49,
-  condition:s=>ready(s,'adult-child-request',5)&&(s.children??[]).some(c=>c.age>=20),
+  condition:s=>ready(s,'adult-child-request',7)&&(s.children??[]).some(c=>c.age>=20),
   choices:s=>{
    const c=s.children.find(x=>x.age>=20);
    return [
