@@ -1442,3 +1442,60 @@ body{
   color:#5f73a5;
   background:#eef3fb;
 }
+
+
+/* --- Persistent Life Tree discovery --- */
+.tree-meta-summary{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:6px;
+  margin:0 0 12px;
+  padding:9px;
+  border:1px solid #e1e6ed;
+  border-radius:14px;
+  background:linear-gradient(180deg,#fff,#f8fafc);
+}
+.tree-meta-summary span{
+  padding:6px 7px;
+  border-radius:9px;
+  background:#f1f4f8;
+  color:#778397;
+  font-size:7px;
+  font-weight:850;
+  text-align:center;
+}
+.meta-path-badge{
+  display:inline-flex;
+  margin-top:5px;
+  padding:3px 6px;
+  border-radius:999px;
+  font-size:7px;
+  font-weight:900;
+}
+.meta-path-badge.lived{
+  background:#edf8f0;
+  color:#3f8950;
+  border:1px solid #d2e8d7;
+}
+.meta-path-badge.simulated{
+  background:#eef3fb;
+  color:#5e72a4;
+  border:1px solid #d4dff1;
+}
+.tree-unknown-node.lived-meta{
+  border-style:solid;
+  border-color:#bcdcc4;
+  background:#edf8f0;
+  color:#3e8a50;
+}
+.tree-unknown-node.simulated-meta{
+  border-style:solid;
+  border-color:#c8d4ea;
+  background:#eef3fb;
+  color:#6075a8;
+}
+.counterfactual-branch.meta-lived .tree-alt-choice{
+  border-style:solid;
+  border-color:#cfe3d4;
+  background:#f7fbf8;
+}
