@@ -2,7 +2,7 @@ import {createInterface} from 'node:readline/promises';
 import {stdin as input,stdout as output} from 'node:process';
 import {readFile,writeFile} from 'node:fs/promises';
 import {Game} from '../core/game.js';
-import {printHeader,printNewHistory,printEvent,printActivities} from './presenter.js';
+import {printHeader,printNewHistory,printEvent,printActivities,printLifeGoals} from './presenter.js';
 import {assertValidState} from '../simulation/invariants.js';
 import {serializeGame} from '../core/save_system.js';
 
@@ -47,13 +47,24 @@ while(game.state.player.age<targetAge&&game.state.player.alive){
   historyIndex=game.state.history.length;
  }
 
- while(game.state.actions.remaining>0&&game.availableActivities().length){
+ if(game.state.player.age>=18&&!game.state.lifeGoals?.active&&!(game.state.lifeGoals?.completed?.length)&&!(game.state.lifeGoals?.history?.length)){
+  const goals=printLifeGoals(game);
+  const pick=Number(await rl.question('Hedef: '));
+  if(pick>=1&&pick<=goals.length){
+   const goal=game.setLifeGoal(goals[pick-1].id);
+   console.log('→ Hedef seçildi: '+goal.label);
+  }
+ }
+
+ while(game.state.actions.remaining>0&&(game.availableActivities().length||game.availableLifeActions().length)){
   const activities=printActivities(game);
   const pick=Number(await rl.question('Aktivite: '));
   if(!pick) break;
   if(pick>=1&&pick<=activities.length){
-   try{console.log('→ '+game.performActivity(activities[pick-1].id));}
-   catch(error){console.log('! '+error.message);}
+   try{
+    const action=activities[pick-1];
+    console.log('→ '+(action.kind==='life-action'?game.performLifeAction(action.id):game.performActivity(action.id)));
+   }catch(error){console.log('! '+error.message);}
   }
  }
 

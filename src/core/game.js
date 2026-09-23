@@ -24,6 +24,8 @@ import {systemicStorylets} from '../events/systemic_storylets.js';
 import {createWorldState,processWorldYear} from '../world/world_state.js';
 import {processGeneticHealthYear} from '../health/genetic_system.js';
 import {processDiseaseProgressionYear} from '../health/disease_progression.js';
+import {availableLifeGoals,setLifeGoal} from '../life/life_goal_system.js';
+import {availableLifeActions,performLifeAction} from '../life/agency_system.js';
 
 export class Game{
  constructor(seed=String(Date.now())){
@@ -149,6 +151,18 @@ export class Game{
  }
 
  availableActivities(){return availableActivities(this.state);}
+ availableLifeGoals(){return availableLifeGoals(this.state);}
+ setLifeGoal(id){
+  const goal=setLifeGoal(this.state,id);
+  this.state.history.push({age:this.state.player.age,kind:'life-goal',text:'Uzun vadeli hedef seçtin: '+goal.label+'.'});
+  return goal;
+ }
+ availableLifeActions(){return availableLifeActions(this.state);}
+ performLifeAction(id){
+  const result=performLifeAction(this.state,id);
+  this.state.history.push({age:this.state.player.age,kind:'life-action',actionId:id,result});
+  return result;
+ }
  pendingEvent(){return this.activeEventId?this.events.events.find(event=>event.id===this.activeEventId)??null:null;}
  eventChoices(event){return this.events.choicesFor(this.state,event);}
 }
