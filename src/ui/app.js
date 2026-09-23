@@ -563,9 +563,75 @@ function baseTimelineEntries() {
   ];
 }
 
+function lifeChapter(age){
+  if(age<7)return 'Erken çocukluk';
+  if(age<13)return 'Çocukluk';
+  if(age<18)return 'Ergenlik';
+  if(age<25)return 'Genç yetişkinlik';
+  if(age<40)return 'Yetişkinlik';
+  if(age<60)return 'Orta yaş';
+  if(age<75)return 'Geç yetişkinlik';
+  return 'İleri yaş';
+}
+function timelineMeta(kind=''){
+  const map={
+    choice:['Karar','decision'],
+    'year-moment':['Günlük hayat','daily'],
+    relationship:['İlişki','relationship'],
+    'relationship-depth':['İlişki','relationship'],
+    'relationship-action':['İlişki','relationship'],
+    'partner-life':['Partner','relationship'],
+    social:['Sosyal','social'],
+    'friend-life':['Arkadaş','social'],
+    family:['Aile','family'],
+    'child-development':['Çocuk','family'],
+    career:['Kariyer','career'],
+    'career-action':['Kariyer','career'],
+    workplace:['İş','career'],
+    finance:['Finans','finance'],
+    household:['Hane','finance'],
+    'asset-action':['Varlık','finance'],
+    memory:['Hayat izi','memory'],
+    'consequence-chain':['Devam eden etki','warning'],
+    health:['Sağlık','health'],
+    activity:['Aktivite','daily']
+  };
+  return map[kind]??['Hayat','neutral'];
+}
+function currentPressures(){
+  const s=game.state, items=[];
+  if((s.career?.workplace?.burnout??0)>=60)items.push('Tükenmişlik '+Math.round(s.career.workplace.burnout));
+  if((s.householdDynamics?.financialPressure??0)>=55)items.push('Finansal baskı '+Math.round(s.householdDynamics.financialPressure));
+  if((s.social?.romance?.resentment??0)>=55)items.push('İlişki kırgınlığı '+Math.round(s.social.romance.resentment));
+  if((s.healthProfile?.stress??0)>=65)items.push('Stres '+Math.round(s.healthProfile.stress));
+  const active=(s.consequenceChains??[]).filter(x=>!x.resolved).length;
+  if(active)items.push(active+' devam eden etki');
+  return items;
+}
 function renderTimeline() {
-  const entries=[...baseTimelineEntries(),...game.state.history.map(item=>({age:item.age,text:item.result ?? item.text}))];
-  $('#timeline').innerHTML=entries.filter(e=>e.text).sort((a,b)=>b.age-a.age).map(entry=>`<article class="life-entry"><div class="life-age">${entry.age} yaş</div><div class="life-copy">${entry.text}</div></article>`).join('');
+  const history=game.state.history.map(item=>({
+    age:item.age,
+    text:item.result ?? item.text,
+    kind:item.kind??'',
+    important:Boolean(item.paceBlock||item.kind==='choice'||item.kind==='memory'||item.kind==='consequence-chain')
+  }));
+  const entries=[...baseTimelineEntries().map(x=>({...x,kind:'family',important:true})),...history]
+    .filter(e=>e.text)
+    .sort((a,b)=>b.age-a.age);
+  let lastChapter=null;
+  const rows=[];
+  for(const entry of entries){
+    const chapter=lifeChapter(entry.age);
+    if(chapter!==lastChapter){
+      rows.push(`<div class="timeline-chapter"><span>${chapter}</span><small>${entry.age} yaş civarı</small></div>`);
+      lastChapter=chapter;
+    }
+    const [label,tone]=timelineMeta(entry.kind);
+    rows.push(`<article class="life-entry ${entry.important?'important':''}" data-tone="${tone}"><div class="life-age">${entry.age} yaş</div><div class="life-copy"><div class="timeline-tag">${label}</div>${entry.text}</div></article>`);
+  }
+  const pressures=currentPressures();
+  const overview=`<article class="life-overview"><div><small>ŞU AN</small><strong>${lifeChapter(game.state.player.age)}</strong></div><div class="pressure-list">${pressures.length?pressures.map(x=>`<span>${x}</span>`).join(''):'<span class="calm">Belirgin baskı yok</span>'}</div></article>`;
+  $('#timeline').innerHTML=overview+rows.join('');
 }
 
 function renderEvent() {
