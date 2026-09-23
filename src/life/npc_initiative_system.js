@@ -29,6 +29,43 @@ function addInitiative(state,type,actorId,actorName,data={}){
 
 function currentCityId(state){return state.location?.cityId??state.origin?.cityId;}
 
+function actorFor(state,initiative){
+ if(!initiative)return null;
+ if(initiative.type.startsWith('partner-')){
+  const p=state.social?.romance;
+  if(!p)return null;
+  const id=p.id??'partner';
+  return id===initiative.actorId?p:null;
+ }
+ if(initiative.type==='child-direction')return (state.children??[]).find(c=>c.id===initiative.actorId)??null;
+ if(initiative.type==='friend-support-request')return (state.social?.friends??[]).find(f=>f.id===initiative.actorId)??null;
+ return null;
+}
+
+function prunePending(state){
+ const store=ensureNpcInitiatives(state);
+ const keep=[];
+ for(const item of store.pending){
+  const valid=item.status==='pending'&&item.expiresAtAge>=state.player.age&&Boolean(actorFor(state,item));
+  if(valid)keep.push(item);
+  else{
+   item.status='expired';
+   item.expiredAtAge=state.player.age;
+   store.history.push(structuredClone(item));
+  }
+ }
+ store.pending=keep;
+ return store;
+}
+
+function initiativeChance(state,base){
+ const history=state.npcInitiatives?.history??[];
+ const resolved=history.filter(x=>x.status==='resolved');
+ const last=resolved.length?Math.max(...resolved.map(x=>x.resolvedAtAge??x.createdAtAge??-99)):-99;
+ const years=state.player.age-last;
+ return Math.min(.68,base+Math.max(0,years-4)*.035);
+}
+
 function partnerInitiative(state,rng){
  const p=state.social?.romance;
  if(!p||!['cohabiting','married'].includes(p.status))return null;
@@ -36,7 +73,7 @@ function partnerInitiative(state,rng){
  const last=p.lastInitiativeAge??-99;
  if(state.player.age-last<3)return null;
 
- if(goal.id==='career'&&(p.life?.careerSatisfaction??55)<=45&&rng.fork('partner-relocate').chance(.30)){
+ if((goal.id==='career'||(p.personality?.ambition??50)>=68)&&(p.life?.careerSatisfaction??55)<=48&&rng.fork('partner-relocate').chance(initiativeChance(state,.34))){
   const alternatives=TURKEY_CITIES.filter(c=>c.id!==currentCityId(state));
   if(!alternatives.length)return null;
   const target=rng.fork('partner-city').weighted(alternatives.map(city=>({
@@ -49,14 +86,14 @@ function partnerInitiative(state,rng){
   });
  }
 
- if(goal.id==='family'&&(p.sharedGoals??50)<65&&rng.fork('partner-family').chance(.26)){
+ if((goal.id==='family'||(p.sharedGoals??50)<58)&&(p.sharedGoals??50)<68&&rng.fork('partner-family').chance(initiativeChance(state,.30))){
   p.lastInitiativeAge=state.player.age;
   return addInitiative(state,'partner-family-priority',p.id??'partner',p.name,{
    goalId:goal.id,urgency:clamp(50+(65-(p.sharedGoals??50)))
   });
  }
 
- if(goal.id==='wellbeing'&&(p.life?.workStress??25)>=60&&rng.fork('partner-balance').chance(.28)){
+ if((goal.id==='wellbeing'||(p.life?.workStress??25)>=68)&&(p.life?.workStress??25)>=58&&rng.fork('partner-balance').chance(initiativeChance(state,.32))){
   p.lastInitiativeAge=state.player.age;
   return addInitiative(state,'partner-life-balance',p.id??'partner',p.name,{
    goalId:goal.id,urgency:clamp(50+(p.life?.workStress??60)-60)
@@ -80,7 +117,10 @@ function childInitiative(state,rng){
 
   const current=child.educationPlan??(child.age>=18?'work':null);
   if(current===desired)continue;
-  if(!rng.fork('child-direction-'+child.id).chance(.40))continue;
+  const similar=(state.npcInitiatives?.history??[]).filter(x=>x.type==='child-direction'&&x.actorId===child.id&&x.data?.desiredPlan===desired);
+  const lastSimilar=similar.length?Math.max(...similar.map(x=>x.resolvedAtAge??x.createdAtAge??-99)):-99;
+  if(state.player.age-lastSimilar<5)continue;
+  if(!rng.fork('child-direction-'+child.id).chance(initiativeChance(state,.46)))continue;
 
   child.lastInitiativeAge=state.player.age;
   return addInitiative(state,'child-direction',child.id,child.name,{
@@ -96,7 +136,7 @@ function friendInitiative(state,rng){
  if(!friend)return null;
  const last=friend.lastInitiativeAge??-99;
  if(state.player.age-last<3)return null;
- if(!rng.fork('friend-request-'+friend.id).chance(.50))return null;
+ if(!rng.fork('friend-request-'+friend.id).chance(initiativeChance(state,.58)))return null;
  friend.lastInitiativeAge=state.player.age;
  return addInitiative(state,'friend-support-request',friend.id,friend.name,{
   goalId:ensureNpcGoal(friend).id,
@@ -106,8 +146,7 @@ function friendInitiative(state,rng){
 }
 
 export function generateNpcInitiatives(state,rng){
- const store=ensureNpcInitiatives(state);
- store.pending=store.pending.filter(x=>x.status==='pending'&&x.expiresAtAge>=state.player.age);
+ const store=prunePending(state);
  if(store.pending.length)return [];
  const created=[
   partnerInitiative(state,rng.fork('partner')),
@@ -118,7 +157,7 @@ export function generateNpcInitiatives(state,rng){
 }
 
 export function pendingInitiative(state,type){
- return ensureNpcInitiatives(state).pending.find(x=>x.status==='pending'&&(!type||x.type===type))??null;
+ return ensureNpcInitiatives(state).pending.find(x=>x.status==='pending'&&x.expiresAtAge>=state.player.age&&Boolean(actorFor(state,x))&&(!type||x.type===type))??null;
 }
 
 function archive(state,initiative,response){
@@ -133,10 +172,12 @@ function archive(state,initiative,response){
 
 export function resolveNpcInitiative(state,type,response){
  const initiative=pendingInitiative(state,type);
- if(!initiative)throw new Error('Bekleyen NPC isteği bulunamadı.');
+ if(!initiative)throw new Error('Bekleyen NPC isteği artık geçerli değil.');
+ const actor=actorFor(state,initiative);
+ if(!actor)throw new Error('Bu isteği başlatan kişi artık aktif yaşamında değil.');
 
  if(type==='partner-relocation'){
-  const p=state.social.romance;
+  const p=actor;
   if(response==='accept'){
    moveToCity(state,initiative.data.targetCityId,'partner-job',{costMultiplier:.85});
    p.trust=clamp((p.trust??60)+7);p.sharedGoals=clamp((p.sharedGoals??55)+6);p.resentment=clamp((p.resentment??20)-4);
@@ -148,19 +189,19 @@ export function resolveNpcInitiative(state,type,response){
   }
  }
  if(type==='partner-family-priority'){
-  const p=state.social.romance;
+  const p=actor;
   if(response==='accept'){p.trust=clamp((p.trust??60)+6);p.intimacy=clamp((p.intimacy??60)+5);p.sharedGoals=clamp((p.sharedGoals??55)+7);}
   else if(response==='compromise'){p.trust=clamp((p.trust??60)+2);p.sharedGoals=clamp((p.sharedGoals??55)+2);}
   else{p.resentment=clamp((p.resentment??20)+7);p.sharedGoals=clamp((p.sharedGoals??55)-6);}
  }
  if(type==='partner-life-balance'){
-  const p=state.social.romance;
-  if(response==='accept'){p.life.workStress=clamp((p.life.workStress??60)-12);p.trust=clamp((p.trust??60)+5);p.intimacy=clamp((p.intimacy??60)+4);}
+  const p=actor;
+  if(response==='accept'){p.life??={};p.life.workStress=clamp((p.life.workStress??60)-12);p.trust=clamp((p.trust??60)+5);p.intimacy=clamp((p.intimacy??60)+4);}
   else if(response==='compromise'){p.life.workStress=clamp((p.life.workStress??60)-5);p.trust=clamp((p.trust??60)+2);}
   else{p.life.workStress=clamp((p.life.workStress??60)+4);p.resentment=clamp((p.resentment??20)+6);}
  }
  if(type==='child-direction'){
-  const child=(state.children??[]).find(c=>c.id===initiative.actorId);
+  const child=actor;
   if(response==='accept'){
    child.educationPlan=initiative.data.desiredPlan;
    child.relationship=clamp((child.relationship??65)+7);
@@ -174,7 +215,7 @@ export function resolveNpcInitiative(state,type,response){
   }
  }
  if(type==='friend-support-request'){
-  const f=(state.social?.friends??[]).find(x=>x.id===initiative.actorId);
+  const f=actor;
   if(response==='accept'){
    f.relationship=clamp((f.relationship??55)+8);f.trust=clamp((f.trust??55)+9);f.reciprocity=clamp((f.reciprocity??50)+6);
    if(f.life)f.life.personalStress=clamp((f.life.personalStress??70)-12);
@@ -196,8 +237,9 @@ export function processNpcInitiativeFollowups(state){
  for(const item of history){
   if(item.followedUp||item.followUpAtAge!==state.player.age)continue;
   item.followedUp=true;
-  if(item.type.startsWith('partner-')&&state.social?.romance){
-   const p=state.social.romance;
+  if(item.type.startsWith('partner-')){
+   const p=actorFor(state,item);
+   if(!p)continue;
    if(item.response==='accept'){
     p.trust=clamp((p.trust??60)+2);p.sharedGoals=clamp((p.sharedGoals??55)+2);
     entries.push({age:state.player.age,kind:'npc-followup',text:item.actorName+' iki yıl önce onu ciddiye almış olmanı hâlâ hatırlıyor.'});
