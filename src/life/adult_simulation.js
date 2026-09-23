@@ -27,6 +27,8 @@ import {processHouseholdDepthYear} from '../finance/household_depth.js';
 import {processMemoryConsequencesYear} from './memory_system.js';
 import {processChildDevelopmentYear} from '../family/child_development_system.js';
 import {processPartnerLifeYear} from '../social/partner_life_system.js';
+import {processFriendLivesYear} from '../social/friend_life_system.js';
+import {processConsequenceChainsYear} from './consequence_chain_system.js';
 
 export function processAdultYear(state,rng){
  const entries=[];
@@ -62,6 +64,7 @@ export function processAdultYear(state,rng){
  entries.push(...processPartnershipYear(state,rng.fork('partnership')));
  entries.push(...processRelationshipDepthYear(state,rng.fork('relationship-depth')));
  entries.push(...processPartnerLifeYear(state,rng.fork('partner-life')));
+ entries.push(...processFriendLivesYear(state,rng.fork('friend-lives')));
  entries.push(...processChildrenYear(state,rng.fork('children')));
  entries.push(...processChildDevelopmentYear(state,rng.fork('child-development')));
  entries.push(...processDescendantLives(state,rng.fork('descendants')));
@@ -80,6 +83,7 @@ export function processAdultYear(state,rng){
   if(!transitionPending||age>=20) entries.push(...processPersonalFinanceYear(state));
   entries.push(...processHouseholdDepthYear(state,rng.fork('household-depth')));
   entries.push(...processMemoryConsequencesYear(state));
+  entries.push(...processConsequenceChainsYear(state,rng.fork('consequence-chains')));
  }
 
  entries.push(...processMentalHealthYear(state,rng.fork('mental-health')));
