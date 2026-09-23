@@ -7,6 +7,7 @@ export function processChildhoodYear(state, rng) {
   if (player.age > 18) return entries;
 
   const homeSupport = (state.household.educationSupport + state.household.hobbySupport) / 2;
+  state.childMoney??={wallet:0,saved:0,totalAllowance:0,totalSpent:0,lastAllowanceAge:null};
   const familyBond = ((player.relationships.mother ?? 60) + (player.relationships.father ?? 60)) / 2;
 
   if (player.age <= 5) {
@@ -18,6 +19,18 @@ export function processChildhoodYear(state, rng) {
       player.personality.sociability = growTrait(player.personality.sociability,delta);
       entries.push({ age: player.age, kind: 'development', text: 'Ailenle geçirdiğin zaman sosyal gelişimini etkiledi.' });
     }
+  }
+
+  if (player.age >= 7 && player.age <= 17 && state.childMoney.lastAllowanceAge !== player.age) {
+    const classBase={düşük:350,orta:700,'üst-orta':1200,yüksek:2200}[state.household.economicClass]??600;
+    const ageFactor=player.age<10?.65:player.age<14?1:1.35;
+    const relationship=((player.relationships.mother??60)+(player.relationships.father??60))/2;
+    const relationFactor=relationship>=70?1.12:relationship<45?.72:1;
+    const allowance=Math.max(100,Math.round(classBase*ageFactor*relationFactor));
+    state.childMoney.wallet+=allowance;
+    state.childMoney.totalAllowance+=allowance;
+    state.childMoney.lastAllowanceAge=player.age;
+    entries.push({age:player.age,kind:'child-money',text:'Bu yıl harçlık olarak ₺'+allowance.toLocaleString('tr-TR')+' aldın.'});
   }
 
   if (state.education?.enrolled) {
