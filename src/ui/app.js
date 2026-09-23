@@ -2,6 +2,9 @@ import { Game } from '../core/game.js';
 import { autoplay, humanLikeChoice, activityOrder } from '../simulation/autoplay.js';
 import { RNG } from '../core/rng.js';
 import { setLifestyle, lifestyleMonthlyCost } from '../lifestyle/lifestyle_system.js';
+import { affordableCarOptions, affordableHomeOptions, buyCar, buyHome, sellCar, sellHome, moveHousing } from '../assets/asset_system.js';
+import { generateJobOffers } from '../career/job_market.js';
+import { switchJob } from '../career/career_system.js';
 
 let game;
 let pendingEvent = null;
@@ -389,6 +392,65 @@ function renderActivities() {
   }));
 }
 
+function useAction(){
+  if(game.state.actions.remaining<=0){activityMessage='Bu yıl aksiyon hakkın kalmadı.';return false;}
+  game.state.actions.remaining--;return true;
+}
+function requestRaise(){
+  const c=game.state.career;
+  if(!c?.employed){activityMessage='Aktif bir işin yok.';return;}
+  if(!useAction())return;
+  const rng=new RNG(game.seedText+':raise:'+game.state.year);
+  const chance=clamp(28+(c.performance??50)*.45+(c.network??50)*.2+(c.companyFit??50)*.12,10,88);
+  if(rng.int(1,100)<=chance){
+    const pct=rng.int(5,12);
+    c.monthlyIncome=Math.round(c.monthlyIncome*(1+pct/100));
+    game.state.player.monthlyIncome=c.monthlyIncome;
+    activityMessage='Zam talebin kabul edildi. Maaşın %'+pct+' arttı.';
+  }else{
+    c.satisfaction=clamp((c.satisfaction??50)-2);
+    activityMessage='Zam talebin bu kez kabul edilmedi.';
+  }
+  game.state.history.push({age:game.state.player.age,kind:'career-action',text:activityMessage});
+  render();
+}
+function networkCareer(){
+  const c=game.state.career;
+  if(!c?.employed){activityMessage='Aktif bir işin yok.';return;}
+  if(!useAction())return;
+  c.network=clamp((c.network??50)+6);
+  c.performance=clamp((c.performance??50)+1);
+  game.state.healthProfile.stress=clamp((game.state.healthProfile?.stress??20)+1);
+  activityMessage='Profesyonel çevreni genişlettin.';
+  game.state.history.push({age:game.state.player.age,kind:'career-action',text:activityMessage});
+  render();
+}
+function refreshCareerOffers(){
+  const c=game.state.career;
+  if(!c?.employed){activityMessage='Şimdilik iş değişikliği yalnız aktif kariyerde kullanılabilir.';render();return;}
+  const rng=new RNG(game.seedText+':manual-career-offers:'+game.state.year);
+  game.state.pendingCareerOffers=generateJobOffers(game.state,rng,3,{mode:'career-switch'});
+  activityMessage=game.state.pendingCareerOffers.length?'Yeni iş fırsatlarına baktın.':'Uygun bir teklif bulamadın.';
+  render();
+}
+function acceptCareerOffer(id){
+  const offer=(game.state.pendingCareerOffers??[]).find(x=>x.id===id);
+  if(!offer)return;
+  if(!useAction())return;
+  const result=switchJob(game.state,offer);
+  activityMessage=result.moveResult?'Yeni iş için taşındın ve '+result.job.title+' olarak başladın.':result.job.title+' olarak yeni işe başladın.';
+  game.state.history.push({age:game.state.player.age,kind:'career-action',text:activityMessage});
+  render();
+}
+function assetAction(fn,success){
+  try{
+    const result=fn();
+    activityMessage=typeof success==='function'?success(result):success;
+    game.state.history.push({age:game.state.player.age,kind:'asset-action',text:activityMessage});
+  }catch(error){activityMessage=error.message;}
+  render();
+}
+
 function renderAssets() {
   const { household, finance, assets } = game.state;
   const debts=finance?.debts??{};
@@ -420,7 +482,19 @@ function renderAssets() {
       <h3>Aile Hanesi</h3>
       <p>Başlangıç sınıfı: <strong>${household.economicClass}</strong></p>
       <p>Aylık hane geliri: <strong>${money(household.monthlyIncome)}</strong></p>
+    </article>
+    <article class="summary-card"><h3>Konut Kararları</h3><div class="activity-grid">
+      ${!assets?.home?['family','shared','studio','apartment'].map(x=>`<button class="activity-button" data-housing="${x}">${({family:'Aile evi',shared:'Paylaşımlı ev',studio:'Stüdyo',apartment:'Daire'})[x]}</button>`).join(''):`<button class="activity-button" data-sell-home>Evi sat</button>`}
+    </div></article>
+    <article class="summary-card"><h3>Araç & Ev Satın Alma</h3>
+      <div class="activity-grid">${!assets?.car?affordableCarOptions(game.state).slice(0,3).map(x=>`<button class="activity-button" data-buy-car="${x.id}">${x.label}<br><small>${money(x.price)}</small></button>`).join(''):`<button class="activity-button" data-sell-car>Arabayı sat</button>`}</div>
+      <div class="activity-grid">${!assets?.home?affordableHomeOptions(game.state).slice(0,3).map(x=>`<button class="activity-button" data-buy-home="${x.id}">${x.label}<br><small>${money(x.price)}</small></button>`).join(''):''}</div>
     </article>`;
+  $('#assets').querySelectorAll('[data-housing]').forEach(b=>b.addEventListener('click',()=>assetAction(()=>moveHousing(game.state,b.dataset.housing),r=>'Taşındın. Masraf: '+money(r.cost))));
+  $('#assets').querySelectorAll('[data-buy-car]').forEach(b=>b.addEventListener('click',()=>assetAction(()=>buyCar(game.state,b.dataset.buyCar),r=>r.label+' satın aldın.')));
+  $('#assets').querySelectorAll('[data-buy-home]').forEach(b=>b.addEventListener('click',()=>assetAction(()=>buyHome(game.state,b.dataset.buyHome),r=>r.label+' satın aldın.')));
+  $('#assets').querySelector('[data-sell-car]')?.addEventListener('click',()=>assetAction(()=>sellCar(game.state),r=>'Arabanı sattın. Net: '+money(r.net)));
+  $('#assets').querySelector('[data-sell-home]')?.addEventListener('click',()=>assetAction(()=>sellHome(game.state),r=>'Evini sattın. Net: '+money(r.net)));
   $('#assets').querySelectorAll('[data-lifestyle]').forEach(sel=>{
     const key=sel.dataset.lifestyle;
     sel.value=finance?.lifestyle?.[key]??sel.value;
@@ -438,20 +512,27 @@ function renderCareer() {
   const e=game.state.education;
   const c=game.state.career;
   const higher=game.state.higherEducation;
+  const offers=game.state.pendingCareerOffers??[];
   $('#career').innerHTML=`
     <article class="summary-card">
-      <h3>Kariyer</h3>
+      <div class="card-row"><h3>Kariyer</h3><span class="relationship-pill">${game.state.actions.remaining}/${game.state.actions.max}</span></div>
       <p>İş: <strong>${c?.title ?? game.state.player.job ?? 'Çalışmıyor'}</strong></p>
       <p>Seviye: <strong>${c?.levelTitle ?? '—'}</strong> • Sektör: <strong>${c?.sector ?? '—'}</strong></p>
       <p>Aylık gelir: <strong>${money(c?.monthlyIncome ?? game.state.player.monthlyIncome)}</strong></p>
       <p>Performans: ${Math.round(c?.performance ?? 0)}/100 • Memnuniyet: ${Math.round(c?.satisfaction ?? 0)}/100</p>
       <p>Network: ${Math.round(c?.network ?? 0)}/100 • Company fit: ${Math.round(c?.companyFit ?? 0)}/100</p>
+      ${c?.employed?`<div class="activity-grid"><button class="activity-button" data-career="network">Network yap</button><button class="activity-button" data-career="raise">Zam iste</button><button class="activity-button" data-career="offers">İş fırsatlarına bak</button></div>`:''}
     </article>
+    ${offers.length?`<article class="summary-card"><h3>İş Teklifleri</h3>${offers.map(o=>`<button class="choice-button career-offer" data-offer="${o.id}"><strong>${o.title}</strong> • ${money(o.salary)}/ay • ${o.cityName??''} • ${o.sector??'private'}</button>`).join('')}</article>`:''}
     <article class="summary-card">
       <h3>Eğitim</h3>
       <p>${higher?.completed ? 'Üniversite mezunu' : higher?.enrolled ? 'Üniversitede' : e?.schoolName ?? 'Temel eğitim'}</p>
       <p>${higher?.programTitle ?? higher?.programId ?? ''}</p>
     </article>`;
+  $('#career').querySelector('[data-career="network"]')?.addEventListener('click',networkCareer);
+  $('#career').querySelector('[data-career="raise"]')?.addEventListener('click',requestRaise);
+  $('#career').querySelector('[data-career="offers"]')?.addEventListener('click',refreshCareerOffers);
+  $('#career').querySelectorAll('[data-offer]').forEach(b=>b.addEventListener('click',()=>acceptCareerOffer(b.dataset.offer)));
 }
 
 function renderLifeTree() {
