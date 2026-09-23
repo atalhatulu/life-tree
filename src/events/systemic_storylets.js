@@ -8,6 +8,11 @@ function ready(s,id,years=4){
 function cool(s,id){
  s.storyletCooldowns??={};
  s.storyletCooldowns[id]=s.player.age;
+ s.storyletCounts??={};
+ s.storyletCounts[id]=(s.storyletCounts[id]??0)+1;
+}
+function underLimit(s,id,max=2){
+ return (s.storyletCounts?.[id]??0)<max;
 }
 function stress(s,d){if(s.healthProfile)s.healthProfile.stress=clamp((s.healthProfile.stress??20)+d);}
 function relationship(s,d,tension=0){
@@ -21,7 +26,7 @@ function relationship(s,d,tension=0){
 export const systemicStorylets=[
  {
   id:'storylet-work-follows-home',title:'İş Eve Taşındı',minAge:23,maxAge:62,priority:66,
-  condition:s=>ready(s,'work-home',4)&&(s.career?.workplace?.burnout??0)>=62&&Boolean(s.social?.romance),
+  condition:s=>ready(s,'work-home',6)&&underLimit(s,'work-home',2)&&(s.career?.workplace?.burnout??0)>=62&&Boolean(s.social?.romance),
   choices:[
    {id:'open-up',label:'Partnerinle açıkça konuş',result:'İş stresini saklamak yerine paylaştın.',effect:s=>{relationship(s,5,-5);stress(s,-4);cool(s,'work-home');}},
    {id:'push-through',label:'Bir süre daha işe odaklan',result:'İşi öne koydun; evdeki gerilim büyüdü.',effect:s=>{s.career.workplace.recognition=clamp(s.career.workplace.recognition+4);relationship(s,-4,7);stress(s,3);cool(s,'work-home');}},
@@ -48,7 +53,7 @@ export const systemicStorylets=[
  },
  {
   id:'storylet-recognition-vs-life',title:'Görünür Bir Fırsat',minAge:26,maxAge:58,priority:59,
-  condition:s=>ready(s,'recognition-life',7)&&(s.career?.workplace?.recognition??0)>=72&&Boolean(s.social?.romance),
+  condition:s=>ready(s,'recognition-life',7)&&underLimit(s,'recognition-life',2)&&(s.career?.workplace?.recognition??0)>=72&&Boolean(s.social?.romance),
   choices:[
    {id:'take-project',label:'Büyük projeyi üstlen',result:'Kariyer fırsatını seçtin.',effect:s=>{s.career.performance=clamp(s.career.performance+5);s.career.workplace.recognition=clamp(s.career.workplace.recognition+6);s.career.workplace.workload=clamp(s.career.workplace.workload+8);relationship(s,-2,3);cool(s,'recognition-life');}},
    {id:'decline-project',label:'Özel hayatı koru',result:'Fırsatı geri çevirip hayat dengesini korudun.',effect:s=>{s.career.satisfaction=clamp((s.career.satisfaction??50)+2);relationship(s,4,-3);stress(s,-3);cool(s,'recognition-life');}}
@@ -68,7 +73,7 @@ export const systemicStorylets=[
  },
  {
   id:'storylet-close-friend-crisis',title:'Eski Bir Arkadaş Aradı',minAge:21,maxAge:75,priority:46,
-  condition:s=>ready(s,'friend-crisis',6)&&(s.social?.friends??[]).some(f=>f.closeFriend&&(f.trust??0)>=65),
+  condition:s=>ready(s,'friend-crisis',6)&&underLimit(s,'friend-crisis',2)&&(s.social?.friends??[]).some(f=>f.closeFriend&&(f.trust??0)>=65),
   choices:s=>{
    const f=s.social.friends.find(x=>x.closeFriend&&(x.trust??0)>=65);
    return [
@@ -89,7 +94,7 @@ export const systemicStorylets=[
  },
  {
   id:'storylet-secure-couple-future',title:'Birlikte Gelecek Planı',minAge:27,maxAge:62,priority:44,
-  condition:s=>ready(s,'future-plan',6)&&(s.social?.romance?.trust??0)>=78&&(s.social?.romance?.sharedGoals??0)>=68,
+  condition:s=>ready(s,'future-plan',7)&&underLimit(s,'future-plan',2)&&(s.social?.romance?.trust??0)>=78&&(s.social?.romance?.sharedGoals??0)>=68,
   choices:[
    {id:'financial-goal',label:'Ortak birikim hedefi koyun',result:'Ortak finans hedefi belirlediniz.',effect:s=>{s.social.romance.moneyAlignment=clamp(s.social.romance.moneyAlignment+6);s.social.romance.sharedGoals=clamp(s.social.romance.sharedGoals+5);if(s.finance)s.finance.savings=(s.finance.savings??0)+Math.min(s.finance.cash??0,5000);cool(s,'future-plan');}},
    {id:'family-goal',label:'Aile hayatını konuşun',result:'Aile ve yaşam beklentilerinizi açıkça konuştunuz.',effect:s=>{s.social.romance.sharedGoals=clamp(s.social.romance.sharedGoals+8);s.social.romance.trust=clamp(s.social.romance.trust+3);cool(s,'future-plan');}},
@@ -107,7 +112,7 @@ export const systemicStorylets=[
  },
  {
   id:'storylet-adult-child-request',title:'Yetişkin Çocuğundan Bir İstek',minAge:45,maxAge:78,priority:49,
-  condition:s=>ready(s,'adult-child-request',7)&&(s.children??[]).some(c=>c.age>=20),
+  condition:s=>ready(s,'adult-child-request',7)&&underLimit(s,'adult-child-request',2)&&(s.children??[]).some(c=>c.age>=20),
   choices:s=>{
    const c=s.children.find(x=>x.age>=20);
    return [
@@ -127,7 +132,7 @@ export const systemicStorylets=[
  },
  {
   id:'storylet-old-scar-trigger',title:'Eski Bir Yara Hatırlattı',minAge:30,maxAge:80,priority:38,
-  condition:s=>ready(s,'scar-trigger',7)&&(s.lifeMemory?.scarLoad??0)>=30,
+  condition:s=>ready(s,'scar-trigger',8)&&underLimit(s,'scar-trigger',2)&&(s.lifeMemory?.scarLoad??0)>=30,
   choices:[
    {id:'reflect',label:'Üzerine düşün ve kabullen',result:'Geçmişi bastırmak yerine anlamlandırmaya çalıştın.',effect:s=>{s.lifeMemory.resilience=clamp((s.lifeMemory.resilience??50)+5);s.lifeMemory.scarLoad=clamp((s.lifeMemory.scarLoad??0)-3);stress(s,-4);cool(s,'scar-trigger');}},
    {id:'avoid',label:'Üzerini kapat',result:'Eski meseleyi tekrar açmamayı seçtin.',effect:s=>{stress(s,2);cool(s,'scar-trigger');}},
