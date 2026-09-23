@@ -39,7 +39,7 @@ export function processMemoryConsequencesYear(state){
  const positive=(m.tags.support??0)+(m.tags.confidence??0);
  const negative=(m.tags.scar??0)+(m.tags.loss??0)+(m.tags.grief??0);
  m.scarLoad=clamp(Math.round(negative*.8));
- m.resilience=clamp(50+Math.round(positive*.7)-Math.round(negative*.25)+(state.player.personality?.patience??50-50)*.1);
+ m.resilience=clamp(50+Math.round(positive*.7)-Math.round(negative*.25)+((state.player.personality?.patience??50)-50)*.1);
  if(m.scarLoad>=35)state.healthProfile.stress=clamp((state.healthProfile?.stress??20)+2);
  if(m.resilience>=65)state.healthProfile.stress=clamp((state.healthProfile?.stress??20)-2);
  m.memories=m.memories.slice(-40);
