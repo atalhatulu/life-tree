@@ -1499,3 +1499,56 @@ body{
   border-color:#cfe3d4;
   background:#f7fbf8;
 }
+
+
+/* --- Ending discovery gallery --- */
+.ending-gallery{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:7px;
+  margin:8px 0 4px;
+}
+.ending-gallery-card{
+  min-height:72px;
+  padding:10px;
+  border-radius:13px;
+  border:1px solid #e1e6ed;
+  display:grid;
+  align-content:center;
+  gap:4px;
+}
+.ending-gallery-card small{
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.08em;
+}
+.ending-gallery-card strong{
+  font-size:10px;
+  line-height:1.25;
+}
+.ending-gallery-card span{
+  font-size:7px;
+  font-weight:750;
+}
+.ending-gallery-card.discovered{
+  background:linear-gradient(180deg,#fffdf8,#f8f1df);
+  border-color:#e5d4a4;
+  color:#715d2e;
+}
+.ending-gallery-card.discovered small{color:#9b7b34;}
+.ending-gallery-card.current{
+  box-shadow:0 8px 22px rgba(130,100,35,.10);
+  border-color:#d8bd70;
+}
+.ending-gallery-card.locked{
+  background:#f4f6f8;
+  border-style:dashed;
+  color:#9ba3af;
+}
+.ending-gallery-card.locked strong{
+  letter-spacing:.16em;
+  font-size:13px;
+}
+@media (max-width:420px){
+  .ending-gallery{grid-template-columns:1fr;}
+}
