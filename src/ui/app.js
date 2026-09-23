@@ -5,6 +5,7 @@ import { setLifestyle, lifestyleMonthlyCost } from '../lifestyle/lifestyle_syste
 import { affordableCarOptions, affordableHomeOptions, buyCar, buyHome, sellCar, sellHome, moveHousing } from '../assets/asset_system.js';
 import { generateJobOffers } from '../career/job_market.js';
 import { switchJob } from '../career/career_system.js';
+import { ensureLifeFinale } from '../life/ending_system.js';
 
 let game;
 let pendingEvent = null;
@@ -567,14 +568,70 @@ function renderCareer() {
 }
 
 function renderLifeTree() {
-  const nodes = game.state.lifeTree?.nodes ?? [];
-  if (!nodes.length) { $('#lifeTree').innerHTML = '<div class="empty-state">Henüz hayatının yönünü değiştiren büyük bir karar vermedin.</div>'; return; }
+  const nodes=game.state.lifeTree?.nodes??[];
+  const dead=!game.state.player.alive;
+  const finale=dead?ensureLifeFinale(game.state):game.state.lifeTree?.finale;
   const memory=game.state.lifeMemory;
-  const memories=(memory?.memories??[]).slice(-6).reverse();
-  $('#lifeTree').innerHTML = `<div class="tree-root">Doğum</div>${nodes.map((node,index)=>`<div class="tree-connector"></div><article class="tree-node"><small>${node.age} yaş • Karar ${index+1}</small><h3>${node.title}</h3><p class="chosen-path">✓ ${node.label}</p>${node.alternatives.map(a=>`<p class="alternate-path">↳ ${a.label}</p>`).join('')}</article>`).join('')}${memory?`<div class="section-divider">Hayat İzleri</div><article class="summary-card"><p>Dayanıklılık: <strong>${Math.round(memory.resilience??50)}/100</strong> • Yük: <strong>${Math.round(memory.scarLoad??0)}/100</strong></p>${memories.length?memories.map(x=>`<p><strong>${x.age}:</strong> ${x.label}</p>`).join(''):'<p class="muted">Henüz belirgin bir hayat izi yok.</p>'}</article>`:''}
-${(game.state.consequenceChains??[]).some(x=>!x.resolved)?`<div class="section-divider">Devam Eden Etkiler</div>${game.state.consequenceChains.filter(x=>!x.resolved).map(x=>`<article class="summary-card consequence-card"><h3>${({ 'burnout-spiral':'Tükenmişlik Döngüsü','financial-strain':'Finansal Baskı','relationship-erosion':'İlişki Aşınması'})[x.type]??x.type}</h3><p>${x.startedAtAge} yaşında başladı • ${x.step}. yıl</p></article>`).join('')}`:''}`;
-}
+  const memories=(memory?.memories??[]).slice(-5).reverse();
 
+  if(!nodes.length&&!finale){
+    $('#lifeTree').innerHTML='<div class="empty-state">Henüz hayatının yönünü değiştiren büyük bir karar vermedin.</div>';
+    return;
+  }
+
+  const branches=nodes.map((node,index)=>{
+    const alternatives=(node.alternatives??[]).map(a=>`
+      <div class="tree-alt-branch">
+        <div class="tree-alt-line"></div>
+        <div class="tree-alt-choice">${a.label}</div>
+        <div class="tree-unknown-node" title="Bu yol henüz yaşanmadı">?</div>
+      </div>`).join('');
+    return `
+      <div class="life-tree-stage">
+        <div class="tree-spine"></div>
+        <article class="tree-node lived-node">
+          <small>${node.age} yaş • Kritik karar ${index+1}</small>
+          <h3>${node.title}</h3>
+          <p class="chosen-path">● ${node.label}</p>
+        </article>
+        ${alternatives?`<div class="tree-alternatives"><div class="tree-alt-title">Diğer yollar</div>${alternatives}</div>`:''}
+      </div>`;
+  }).join('');
+
+  const finaleMarkup=finale?`
+    <div class="tree-spine final-spine"></div>
+    <article class="tree-ending-node">
+      <small>ULAŞTIĞIN SON</small>
+      <h2>${finale.ending.title}</h2>
+      <p>${finale.ending.description}</p>
+      <div class="ending-meta">
+        <span>${finale.lifespan.age} yaş</span>
+        <span>${finale.ending.cause}</span>
+        <span>${finale.majorDecisions} kritik karar</span>
+      </div>
+    </article>
+    <div class="ending-horizon">
+      <div class="ending-shadow"><b>?</b><span>Keşfedilmemiş son</span></div>
+      <div class="ending-shadow current"><b>●</b><span>${finale.ending.title}</span></div>
+      <div class="ending-shadow"><b>?</b><span>Keşfedilmemiş son</span></div>
+    </div>
+    <div class="section-divider">Bu hayatın özeti</div>
+    <article class="summary-card finale-recap">
+      ${finale.highlights.map(x=>`<p>• ${x.text}</p>`).join('')}
+      <p class="muted">Net worth: ${money(finale.netWorth)} • Çocuk: ${finale.children} • Tamamlanan hedef: ${finale.completedGoals}</p>
+    </article>
+  `:'';
+
+  $('#lifeTree').innerHTML=`
+    <div class="life-tree-intro">
+      <span class="tree-legend lived">● Yaşadığın yol</span>
+      <span class="tree-legend unknown">? Yaşanmamış yol</span>
+    </div>
+    <div class="tree-root"><b>Doğum</b><small>${game.state.year-game.state.player.age}</small></div>
+    <div class="life-tree-map">${branches}${finaleMarkup}</div>
+    ${memory?`<div class="section-divider">Hayat İzleri</div><article class="summary-card"><p>Dayanıklılık: <strong>${Math.round(memory.resilience??50)}/100</strong> • Yük: <strong>${Math.round(memory.scarLoad??0)}/100</strong></p>${memories.length?memories.map(x=>`<p><strong>${x.age}:</strong> ${x.label}</p>`).join(''):'<p class="muted">Henüz belirgin bir hayat izi yok.</p>'}</article>`:''}
+  `;
+}
 function baseTimelineEntries() {
   const { player, parents, siblings, household } = game.state;
   const older = siblings.filter(s=>s.age>player.age).length;
@@ -672,7 +729,10 @@ function renderEvent() {
     card.classList.toggle('hidden',!dead);
     if(dead){
       const d=game.state.death??{};
-      card.innerHTML=`<h3>Hayat sona erdi</h3><p><strong>${game.state.player.age} yaş</strong> • ${d.cause??'Bilinmeyen neden'}</p><p>Net worth: <strong>${money(netWorth())}</strong> • Çocuk: <strong>${game.state.children?.length??0}</strong></p><p>Kariyer: <strong>${game.state.career?.title??game.state.player.job??'—'}</strong> • ${game.state.career?.levelTitle??'—'}</p><p>Büyük karar: <strong>${game.state.lifeTree?.nodes?.length??0}</strong></p>`;
+      const finale=ensureLifeFinale(game.state);
+      card.classList.add('death-card');
+      card.innerHTML=`<small class="death-kicker">BİR HAYAT TAMAMLANDI</small><h3>${finale.ending.title}</h3><p>${finale.ending.description}</p><p><strong>${game.state.player.age} yaş</strong> • ${d.cause??'Bilinmeyen neden'}</p><div class="death-stats"><span>${finale.majorDecisions} kritik karar</span><span>${finale.children} çocuk</span><span>${money(finale.netWorth)}</span></div><button class="choice-button finale-tree-button" data-open-life-tree>HAYAT AĞACINI GÖR →</button>`;
+      card.querySelector('[data-open-life-tree]')?.addEventListener('click',()=>switchScreen('treeScreen'));
     }else card.innerHTML='';
     $('#ageUp').disabled=dead;
     $('#autoLife').disabled=false;
