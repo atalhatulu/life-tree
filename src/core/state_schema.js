@@ -44,6 +44,10 @@ export function ensureStateSchema(state){
  state.lifeGoals.completed??=[];
  state.lifeGoals.history??=[];
  state.narrativeEcho??={lastAge:null,total:0};
+ state.npcInitiatives??={pending:[],history:[],nextId:1};
+ state.npcInitiatives.pending??=[];
+ state.npcInitiatives.history??=[];
+ state.npcInitiatives.nextId??=1;
  if(state.finance){
   state.finance.debts??={consumer:0,medical:0,housing:0,car:0,emergency:0};
   for(const key of ['consumer','medical','housing','car','emergency'])state.finance.debts[key]??=0;
