@@ -6,6 +6,7 @@ import { affordableCarOptions, affordableHomeOptions, buyCar, buyHome, sellCar, 
 import { generateJobOffers } from '../career/job_market.js';
 import { switchJob } from '../career/career_system.js';
 import { ensureLifeFinale } from '../life/ending_system.js';
+import { ensureCounterfactualAnalysis } from '../life/counterfactual_system.js';
 
 let game;
 let pendingEvent = null;
@@ -580,12 +581,34 @@ function renderLifeTree() {
   }
 
   const branches=nodes.map((node,index)=>{
-    const alternatives=(node.alternatives??[]).map(a=>`
-      <div class="tree-alt-branch">
+    const analyzed=node.counterfactual?.alternatives??[];
+    const alternatives=(node.alternatives??[]).map(a=>{
+      const result=analyzed.find(x=>x.choiceId===a.id);
+      const distribution=result?.endingDistribution?.slice(0,3)??[];
+      return `
+      <div class="tree-alt-branch counterfactual-branch">
         <div class="tree-alt-line"></div>
-        <div class="tree-alt-choice">${a.label}</div>
-        <div class="tree-unknown-node" title="Bu yol henüz yaşanmadı">?</div>
-      </div>`).join('');
+        <div class="tree-alt-choice">
+          <strong>${a.label}</strong>
+          ${result?`
+            <div class="counterfactual-result">
+              <span>${result.completedSamples}/${result.requestedSamples} olası hayat</span>
+              <span>Ort. ölüm yaşı: ${result.averageAge}</span>
+              <span>Çocuk ihtimali: %${result.childrenProbability}</span>
+              <span>Güçlü kariyer: %${result.strongCareerProbability}</span>
+              <div class="counterfactual-endings">
+                ${distribution.map(e=>`<small><b>%${e.probability}</b> ${e.title}</small>`).join('')}
+              </div>
+            </div>
+          `:`
+            <button class="counterfactual-button" data-counterfactual-node="${index}" data-counterfactual-choice="${a.id}" ${dead?'':'disabled'}>
+              ${dead?'12 olası hayatı simüle et':'Ölümden sonra analiz edilir'}
+            </button>
+          `}
+        </div>
+        <div class="tree-unknown-node ${result?'resolved':''}" title="${result?.mostLikelyEnding?.title??'Bu yol henüz yaşanmadı'}">${result?'◇':'?'}</div>
+      </div>`;
+    }).join('');
     return `
       <div class="life-tree-stage">
         <div class="tree-spine"></div>
@@ -626,11 +649,35 @@ function renderLifeTree() {
     <div class="life-tree-intro">
       <span class="tree-legend lived">● Yaşadığın yol</span>
       <span class="tree-legend unknown">? Yaşanmamış yol</span>
+      <span class="tree-legend simulated">◇ Simüle edilmiş olasılık</span>
     </div>
     <div class="tree-root"><b>Doğum</b><small>${game.state.year-game.state.player.age}</small></div>
     <div class="life-tree-map">${branches}${finaleMarkup}</div>
     ${memory?`<div class="section-divider">Hayat İzleri</div><article class="summary-card"><p>Dayanıklılık: <strong>${Math.round(memory.resilience??50)}/100</strong> • Yük: <strong>${Math.round(memory.scarLoad??0)}/100</strong></p>${memories.length?memories.map(x=>`<p><strong>${x.age}:</strong> ${x.label}</p>`).join(''):'<p class="muted">Henüz belirgin bir hayat izi yok.</p>'}</article>`:''}
   `;
+  $('#lifeTree').querySelectorAll('[data-counterfactual-node]').forEach(button=>button.addEventListener('click',()=>{
+    const nodeIndex=Number(button.dataset.counterfactualNode);
+    const choiceId=button.dataset.counterfactualChoice;
+    button.disabled=true;
+    button.textContent='Simüle ediliyor…';
+    requestAnimationFrame(()=>setTimeout(()=>{
+      try{
+        const node=game.state.lifeTree.nodes[nodeIndex];
+        if(!node.counterfactual){
+          node.counterfactual={eventId:node.eventId,age:node.age,title:node.title,livedChoice:{id:node.choiceId,label:node.label},alternatives:[]};
+        }
+        const existing=node.counterfactual.alternatives.find(x=>x.choiceId===choiceId);
+        if(!existing){
+          const analysis=ensureCounterfactualAnalysis(game.state,game.seedText,nodeIndex,{samples:12,maxAge:110});
+          node.counterfactual=analysis;
+        }
+        showToast('Alternatif yaşamlar hesaplandı.');
+      }catch(error){
+        showToast('Olasılık analizi başarısız: '+error.message);
+      }
+      renderLifeTree();
+    },0));
+  }));
 }
 function baseTimelineEntries() {
   const { player, parents, siblings, household } = game.state;
