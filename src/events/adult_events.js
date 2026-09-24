@@ -37,7 +37,7 @@ export const adultEvents=[
     label:'Şimdilik ertele',
     condition:next=>next.player.age<35,
     result:'Askerlik kararını bir süre erteledin.',
-    effect:next=>deferMilitaryService(next,next.higherEducation?.enrolled?2:1)
+    effect:next=>deferMilitaryService(next,next.higherEducation?.enrolled?3:2)
    }
   ]
  },
@@ -82,20 +82,30 @@ export const adultEvents=[
  {
   id:'university-application',title:'Üniversite Başvuruları',minAge:19,maxAge:35,once:false,majorDecision:true,priority:120,
   condition:s=>Array.isArray(s.pendingUniversityApplications)&&s.pendingUniversityApplications.length>0,
-  choices:s=>s.pendingUniversityApplications.map(program=>({
+  choices:s=>[
+   ...s.pendingUniversityApplications.map(program=>({
    id:'program:'+program.id,
    label:program.universityName+' / '+program.title+' ('+program.cityName+') — kabul %'+program.admissionChance,
    result:next=>next.higherEducation?.programId===program.id?program.universityName+' '+program.title+' bölümüne '+program.cityName+' şehrinde kabul edildin.':program.universityName+' başvurun kabul edilmedi.',
    effect:(next,rng)=>applyUniversityProgram(next,rng,program.id)
-  }))
+  })),
+   {id:'skip-applications',label:'Bu yıl başvurma, diğer yolları değerlendir',
+    result:'Başvurularını bu yıl yapmamaya karar verdin; gelecek yıl yeni bir yön belirleyebilirsin.',
+    effect:next=>{next.pendingUniversityApplications=null;next.nextPath='gap';next.nextGapDecisionAge=next.player.age+1;}}
+  ]
  },
  {
   id:'first-job',title:'İş Teklifleri',minAge:19,maxAge:72,once:false,majorDecision:true,priority:120,
   condition:s=>Array.isArray(s.pendingJobOffers)&&s.pendingJobOffers.length>0,
-  choices:s=>s.pendingJobOffers.map(job=>({
+  choices:s=>[
+   ...s.pendingJobOffers.map(job=>({
    id:'job:'+job.id,label:job.title+' — '+job.cityName+' — ₺'+job.salary.toLocaleString('tr-TR')+'/ay'+(job.requiresMove?' • taşınma ~₺'+job.moveCost.toLocaleString('tr-TR'):''),
    result:next=>job.requiresMove?job.cityName+' şehrine taşınıp '+job.title+' olarak çalışmaya başladın.':job.title+' olarak '+job.cityName+' şehrinde çalışmaya başladın.',effect:next=>acceptJob(next,job.id)
-  }))
+  })),
+   {id:'reject-job-offers',label:'Teklifleri reddet, iş aramaya devam et',
+    result:'Bu iş tekliflerini kabul etmedin. Yeni iş fırsatlarını değerlendirmek için bekleyeceksin.',
+    effect:next=>{next.pendingJobOffers=null;next.nextPath='work';next.nextJobSearchAge=next.player.age+2;}}
+  ]
  },
  {
   id:'career-switch',title:'Kariyerini Değiştirme Fırsatı',minAge:22,maxAge:65,once:false,majorDecision:false,priority:78,
@@ -110,11 +120,11 @@ export const adultEvents=[
  },
  {
   id:'gap-year-direction',title:'Bir Sonraki Adım',minAge:19,maxAge:35,once:false,majorDecision:true,priority:115,
-  condition:s=>s.nextPath==='gap'&&!s.pendingUniversityApplications&&!s.pendingJobOffers&&!s.higherEducation?.enrolled&&!s.career?.employed,
+  condition:s=>s.nextPath==='gap'&&s.player.age>=(s.nextGapDecisionAge??19)&&!s.pendingUniversityApplications&&!s.pendingJobOffers&&!s.higherEducation?.enrolled&&!s.career?.employed,
   choices:[
    {id:'retry-university',label:'Üniversiteyi tekrar dene',result:'Bir sonraki başvuru dönemi için üniversiteye hazırlanmayı seçtin.',effect:(s,rng)=>{s.nextPath='university';s.pendingUniversityApplications=generateUniversityApplications(s,rng.fork('retry-university'));}},
    {id:'seek-work',label:'İş aramaya başla',result:'Çalışma hayatına yönelmeye karar verdin.',effect:(s,rng)=>{s.nextPath='work';s.pendingJobOffers=generateJobOffers(s,rng.fork('gap-job-search'));}},
-   {id:'continue-gap',label:'Bir yıl daha bekle',result:'Bir yıl daha kendine zaman ayırmaya karar verdin.',effect:s=>{s.nextPath='gap';}}
+   {id:'continue-gap',label:'Bir süre daha bekle',result:'Yeni bir eğitim veya iş kararı almadan önce kendine zaman tanıdın.',effect:s=>{s.nextPath='gap';s.nextGapDecisionAge=s.player.age+2;}}
   ]
  },
  {
