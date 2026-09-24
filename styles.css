@@ -1840,3 +1840,62 @@ body{
   font-weight:800;
   line-height:1.4;
 }
+
+
+/* Life Tree horizontal navigation: visible controls on narrow/desktop layouts */
+.genealogy-navigation{
+  position:sticky;
+  top:0;
+  z-index:12;
+  display:grid;
+  grid-template-columns:1fr 1.1fr 1fr;
+  gap:6px;
+  align-items:center;
+  padding:8px;
+  margin:8px 0;
+  border:1px solid #d7e1ed;
+  border-radius:14px;
+  background:rgba(250,252,255,.97);
+  box-shadow:0 5px 16px rgba(47,71,105,.08);
+}
+.genealogy-nav-button{
+  min-width:0;
+  min-height:42px;
+  padding:8px 4px;
+  border:1px solid #c9d6e7;
+  border-radius:10px;
+  background:#edf3fb;
+  color:#4f6687;
+  font-size:10px;
+  font-weight:900;
+  cursor:pointer;
+  touch-action:manipulation;
+}
+.genealogy-nav-button:focus-visible{
+  outline:2px solid #5d83be;
+  outline-offset:2px;
+}
+.genealogy-nav-button:disabled{
+  opacity:.36;
+  cursor:default;
+}
+.genealogy-nav-center{
+  background:#e8f5eb;
+  border-color:#bfd9c6;
+  color:#397a4b;
+}
+.genealogy-pan-status{
+  grid-column:1/-1;
+  text-align:center;
+  font-size:9px;
+  font-weight:800;
+  color:#71839d;
+}
+.genealogy-scroll{
+  scroll-behavior:smooth;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-x pan-y;
+}
+@media(prefers-reduced-motion:reduce){
+  .genealogy-scroll{scroll-behavior:auto;}
+}
