@@ -111,6 +111,8 @@ test('choosing another gap gives a real two-year respite',()=>{
  autoplay(g,{toAge:18,policy:'balanced'});
  const first=g.ageOneYear();
  g.makeChoice(first,'skip-applications');
+ // Isolate gap pacing: military service is a separate, higher-priority event.
+ g.state.militaryService={eligible:false,status:'not-applicable'};
  const gap=g.ageOneYear();
  assert.equal(gap?.id,'gap-year-direction');
  g.makeChoice(gap,'continue-gap');
