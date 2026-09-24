@@ -656,7 +656,7 @@ function renderLifeTree(){
       const persisted=discovery.simulatedChoices?.[choiceKey(node.eventId,a.id)]?.lastResult;
       const local=node.counterfactual?.alternatives?.find(x=>x.choiceId===a.id);
       const originKey=continuationOriginKey(game.seedText,node);
-      const result=local?.continuation?.length?local:((persisted?.originKey===originKey)&&persisted.continuation?.length)?persisted:null;
+      const result=local?.version===3&&local.continuation?.length?local:((persisted?.version===3&&persisted.originKey===originKey)&&persisted.continuation?.length)?persisted:null;
       const livedElsewhere=discoveryStatus(discovery,node.eventId,a.id)==='lived';
       return `
         <div class="genealogy-branch ${result?'opened':''}" data-branch-key="${index}-${treeHtml(a.id)}">
