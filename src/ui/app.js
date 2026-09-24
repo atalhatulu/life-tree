@@ -6,7 +6,7 @@ import { affordableCarOptions, affordableHomeOptions, buyCar, buyHome, sellCar, 
 import { generateJobOffers } from '../career/job_market.js';
 import { switchJob } from '../career/career_system.js';
 import { ensureLifeFinale, ENDING_ARCHETYPES } from '../life/ending_system.js';
-import { ensureCounterfactualChoice } from '../life/counterfactual_system.js';
+import { simulateContinuation } from '../life/counterfactual_continuation.js';
 import {loadDiscovery,saveDiscovery,recordCompletedLife,recordSimulatedChoice,discoveryStatus,discoveryStats,choiceKey} from '../life/discovery_system.js';
 import {refreshPrimaryStats} from '../life/primary_stats.js';
 
@@ -579,7 +579,39 @@ function renderCareer() {
   $('#career').querySelectorAll('[data-offer]').forEach(b=>b.addEventListener('click',()=>acceptCareerOffer(b.dataset.offer)));
 }
 
-function renderLifeTree() {
+
+function treeHtml(value){
+  return String(value??'').replace(/[&<>"']/g,ch=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  })[ch]);
+}
+
+let counterfactualBusy=false;
+
+function renderContinuation(result){
+  if(!result?.continuation?.length)return '';
+  const stages=result.continuation.map((stage,i)=>`
+    <li class="branch-life-step ${stage.kind==='ending'?'branch-life-ending':''}">
+      <span class="branch-life-track"></span>
+      <article class="branch-life-card">
+        <small>${stage.kind==='ending'?'SON':stage.kind==='limit'?'SİMÜLASYON SINIRI':(i+1)+'. KIRILMA'} • ${stage.age} yaş</small>
+        <strong>${treeHtml(stage.title)}</strong>
+        <p>${treeHtml(stage.label)}</p>
+        <span class="branch-life-confidence">${stage.count}/${stage.samples} örnekte • %${stage.probability}</span>
+        ${stage.alternatives?.length?`<details class="branch-life-others">
+          <summary>Bu aşamadaki diğer yollar</summary>
+          ${stage.alternatives.map(x=>`<div>${treeHtml(x.title)} — ${treeHtml(x.label)} <b>%${x.probability}</b></div>`).join('')}
+        </details>`:''}
+      </article>
+    </li>`).join('');
+  return `
+    <div class="branch-life-intro">◇ ${result.requestedSamples} örnek / aşama • Her adım bir önceki baskın yolun temsilî durumundan ilerler.</div>
+    <ol class="branch-life-timeline">${stages}</ol>
+    ${result.terminal?'<p class="branch-life-foot">Bu alternatif hayatın yolu burada sona erdi.</p>':'<p class="branch-life-foot">Bu dalın devamı örnekleme sınırında kaldı.</p>'}
+  `;
+}
+
+function renderLifeTree(){
   const nodes=game.state.lifeTree?.nodes??[];
   const dead=!game.state.player.alive;
   const finale=dead?ensureLifeFinale(game.state):game.state.lifeTree?.finale;
@@ -592,49 +624,37 @@ function renderLifeTree() {
   }
 
   const branches=nodes.map((node,index)=>{
-    const analyzed=node.counterfactual?.alternatives??[];
     const alternatives=(node.alternatives??[]).map(a=>{
-      const metaStatus=discoveryStatus(discovery,node.eventId,a.id);
-      const persistedResult=discovery.simulatedChoices?.[choiceKey(node.eventId,a.id)]?.lastResult??null;
-      const result=analyzed.find(x=>x.choiceId===a.id)??persistedResult;
-      const distribution=result?.endingDistribution?.slice(0,3)??[];
-      const livedElsewhere=metaStatus==='lived';
-      const simulatedBefore=metaStatus==='simulated'&&!analyzed.find(x=>x.choiceId===a.id);
+      const persisted=discovery.simulatedChoices?.[choiceKey(node.eventId,a.id)]?.lastResult;
+      const local=node.counterfactual?.alternatives?.find(x=>x.choiceId===a.id);
+      const result=local?.continuation?.length?local:persisted?.continuation?.length?persisted:null;
+      const livedElsewhere=discoveryStatus(discovery,node.eventId,a.id)==='lived';
       return `
-      <div class="tree-alt-branch counterfactual-branch ${livedElsewhere?'meta-lived':''}">
-        <div class="tree-alt-line"></div>
-        <div class="tree-alt-choice">
-          <strong>${a.label}</strong>
-          ${livedElsewhere?'<span class="meta-path-badge lived">● Daha önce yaşandı</span>':simulatedBefore?'<span class="meta-path-badge simulated">◇ Daha önce simüle edildi</span>':''}
-          ${result?`
-            <div class="counterfactual-result">
-              <span>${result.completedSamples}/${result.requestedSamples} olası hayat</span>
-              <span>Ort. ölüm yaşı: ${result.averageAge}</span>
-              <span>Çocuk ihtimali: %${result.childrenProbability}</span>
-              <span>Güçlü kariyer: %${result.strongCareerProbability}</span>
-              <div class="counterfactual-endings">
-                ${distribution.map(e=>`<small><b>%${e.probability}</b> ${e.title}</small>`).join('')}
-              </div>
-            </div>
-          `:`
-            <button class="counterfactual-button" data-counterfactual-node="${index}" data-counterfactual-choice="${a.id}" ${dead?'':'disabled'}>
-              ${dead?(livedElsewhere?'12 yeni olası hayat simüle et':'12 olası hayatı simüle et'):'Ölümden sonra analiz edilir'}
-            </button>
-          `}
-        </div>
-        <div class="tree-unknown-node ${result?'resolved':livedElsewhere?'lived-meta':simulatedBefore?'simulated-meta':''}" title="${result?.mostLikelyEnding?.title??(livedElsewhere?'Bu yol başka bir yaşamda gerçekten yaşandı':simulatedBefore?'Bu yol daha önce simüle edildi':'Bu yol henüz yaşanmadı')}">${result?'◇':livedElsewhere?'●':simulatedBefore?'◇':'?'}</div>
-      </div>`;
+        <div class="genealogy-branch ${result?'opened':''}" data-branch-key="${index}-${treeHtml(a.id)}">
+          <div class="genealogy-bud ${result?'grown':livedElsewhere?'lived-elsewhere':''}">${result?'◇':livedElsewhere?'●':'?'}</div>
+          <div class="genealogy-alt-label">${treeHtml(a.label)}</div>
+          ${livedElsewhere?'<span class="meta-path-badge lived">● Başka bir yaşamda yaşandı</span>':''}
+          ${result?renderContinuation(result):`<button class="counterfactual-button" data-counterfactual-node="${index}" data-counterfactual-choice="${treeHtml(a.id)}" ${dead&&!counterfactualBusy?'':'disabled'}>
+            ${dead?'100 örnekle bu hayatı yaşat':'Ölümden sonra keşfedilir'}
+          </button>`}
+        </div>`;
     }).join('');
+
+    const left=index%2===0;
     return `
-      <div class="life-tree-stage">
-        <div class="tree-spine"></div>
-        <article class="tree-node lived-node">
-          <small>${node.age} yaş • Kritik karar ${index+1}</small>
-          <h3>${node.title}</h3>
-          <p class="chosen-path">● ${node.label}</p>
-        </article>
-        ${alternatives?`<div class="tree-alternatives"><div class="tree-alt-title">Diğer yollar</div>${alternatives}</div>`:''}
-      </div>`;
+      <section class="genealogy-stage life-tree-stage">
+        <div class="genealogy-fork ${left?'fork-left':'fork-right'}">
+          <div class="genealogy-side genealogy-left">${left?alternatives:''}</div>
+          <div class="genealogy-main">
+            <article class="tree-node lived-node">
+              <small>${node.age} yaş • Kritik karar ${index+1}</small>
+              <h3>${treeHtml(node.title)}</h3>
+              <p class="chosen-path">● ${treeHtml(node.label)}</p>
+            </article>
+          </div>
+          <div class="genealogy-side genealogy-right">${!left?alternatives:''}</div>
+        </div>
+      </section>`;
   }).join('');
 
   const endingGallery=`
@@ -643,17 +663,12 @@ function renderLifeTree() {
       ${ENDING_ARCHETYPES.map(ending=>{
         const found=discovery.endings?.[ending.id];
         const current=finale?.ending?.id===ending.id;
-        return found?`
-          <article class="ending-gallery-card discovered ${current?'current':''}">
-            <small>${current?'BU HAYATIN SONU':'KEŞFEDİLDİ'}</small>
-            <strong>${ending.title}</strong>
-            <span>${found.timesReached} kez ulaşıldı</span>
-          </article>`:`
-          <article class="ending-gallery-card locked">
-            <small>KEŞFEDİLMEDİ</small>
-            <strong>???</strong>
-            <span>Başka bir yaşam yolu</span>
-          </article>`;
+        return found?`<article class="ending-gallery-card discovered ${current?'current':''}">
+          <small>${current?'BU HAYATIN SONU':'KEŞFEDİLDİ'}</small>
+          <strong>${treeHtml(ending.title)}</strong><span>${found.timesReached} kez ulaşıldı</span>
+        </article>`:`<article class="ending-gallery-card locked">
+          <small>KEŞFEDİLMEDİ</small><strong>???</strong><span>Başka bir yaşam yolu</span>
+        </article>`;
       }).join('')}
     </div>`;
 
@@ -661,32 +676,25 @@ function renderLifeTree() {
     <div class="tree-spine final-spine"></div>
     <article class="tree-ending-node">
       <small>ULAŞTIĞIN SON</small>
-      <h2>${finale.ending.title}</h2>
-      <p>${finale.ending.description}</p>
+      <h2>${treeHtml(finale.ending.title)}</h2>
+      <p>${treeHtml(finale.ending.description)}</p>
       <div class="ending-meta">
-        <span>${finale.lifespan.age} yaş</span>
-        <span>${finale.ending.cause}</span>
+        <span>${finale.lifespan.age} yaş</span><span>${treeHtml(finale.ending.cause)}</span>
         <span>${finale.majorDecisions} kritik karar</span>
       </div>
     </article>
-    <div class="ending-horizon">
-      <div class="ending-shadow"><b>?</b><span>Keşfedilmemiş son</span></div>
-      <div class="ending-shadow current"><b>●</b><span>${finale.ending.title}</span></div>
-      <div class="ending-shadow"><b>?</b><span>Keşfedilmemiş son</span></div>
-    </div>
     <div class="section-divider">Bu hayatın özeti</div>
     <article class="summary-card finale-recap">
-      ${finale.highlights.map(x=>`<p>• ${x.text}</p>`).join('')}
+      ${finale.highlights.map(x=>`<p>• ${treeHtml(x.text)}</p>`).join('')}
       <p class="muted">Net worth: ${money(finale.netWorth)} • Çocuk: ${finale.children} • Tamamlanan hedef: ${finale.completedGoals}</p>
-    </article>
-  `:'';
+    </article>`:'';
 
   const meta=discoveryStats(discovery);
   $('#lifeTree').innerHTML=`
     <div class="life-tree-intro">
       <span class="tree-legend lived">● Yaşadığın yol</span>
-      <span class="tree-legend unknown">? Yaşanmamış yol</span>
-      <span class="tree-legend simulated">◇ Simüle edilmiş olasılık</span>
+      <span class="tree-legend unknown">? Açılmamış dal</span>
+      <span class="tree-legend simulated">◇ Olası devam</span>
     </div>
     <article class="tree-meta-summary">
       <span>${meta.livesCompleted} tamamlanan hayat</span>
@@ -694,29 +702,56 @@ function renderLifeTree() {
       <span>${meta.simulatedChoices} simüle edilmiş yol</span>
       <span>${meta.endings} keşfedilmiş son</span>
     </article>
-    <div class="tree-root"><b>Doğum</b><small>${game.state.year-game.state.player.age}</small></div>
-    <div class="life-tree-map">${branches}${finaleMarkup}</div>
+    <div class="genealogy-scroll">
+      <div class="genealogy-tree">
+        <div class="tree-root"><b>Doğum</b><small>${game.state.year-game.state.player.age}</small></div>
+        <div class="genealogy-trunk">${branches}${finaleMarkup}</div>
+      </div>
+    </div>
     ${endingGallery}
-    ${memory?`<div class="section-divider">Hayat İzleri</div><article class="summary-card"><p>Dayanıklılık: <strong>${Math.round(memory.resilience??50)}/100</strong> • Yük: <strong>${Math.round(memory.scarLoad??0)}/100</strong></p>${memories.length?memories.map(x=>`<p><strong>${x.age}:</strong> ${x.label}</p>`).join(''):'<p class="muted">Henüz belirgin bir hayat izi yok.</p>'}</article>`:''}
+    ${memory?`<div class="section-divider">Hayat İzleri</div><article class="summary-card"><p>Dayanıklılık: <strong>${Math.round(memory.resilience??50)}/100</strong> • Yük: <strong>${Math.round(memory.scarLoad??0)}/100</strong></p>${memories.length?memories.map(x=>`<p><strong>${x.age}:</strong> ${treeHtml(x.label)}</p>`).join(''):'<p class="muted">Henüz belirgin bir hayat izi yok.</p>'}</article>`:''}
   `;
-  $('#lifeTree').querySelectorAll('[data-counterfactual-node]').forEach(button=>button.addEventListener('click',()=>{
-    const nodeIndex=Number(button.dataset.counterfactualNode);
+
+  $('#lifeTree').querySelectorAll('[data-counterfactual-node]').forEach(button=>button.addEventListener('click',async()=>{
+    if(counterfactualBusy)return;
+    const runGame=game;
+    const index=Number(button.dataset.counterfactualNode);
     const choiceId=button.dataset.counterfactualChoice;
-    button.disabled=true;
-    button.textContent='Simüle ediliyor…';
-    requestAnimationFrame(()=>setTimeout(()=>{
-      try{
-        const result=ensureCounterfactualChoice(game.state,game.seedText,nodeIndex,choiceId,{samples:12,maxAge:110});
-        discovery=recordSimulatedChoice(discovery,game.state.lifeTree.nodes[nodeIndex],result);
-        saveDiscovery(discovery);
-        showToast('12 alternatif yaşam hesaplandı ve Life Tree keşfine eklendi.');
-      }catch(error){
-        showToast('Olasılık analizi başarısız: '+error.message);
-      }
+    const node=game.state.lifeTree.nodes[index];
+    if(!node||!dead)return;
+    counterfactualBusy=true;
+    $('#lifeTree').querySelectorAll('[data-counterfactual-node]').forEach(b=>b.disabled=true);
+    button.textContent='100 örnek hazırlanıyor…';
+    try{
+      const result=await simulateContinuation(game.seedText,node,choiceId,{
+        samples:100,maxAge:130,onProgress:async progress=>{
+          if(game!==runGame)throw new Error('Yeni hayat başlatıldığı için analiz iptal edildi.');
+          button.textContent=progress.stage+'. aşama • '+progress.completed+'/100 • '+progress.age+' yaşından sonrası';
+          // Yield every two independent runs so the browser paints progress.
+          await sleep(0);
+        }
+      });
+      if(game!==runGame)return;
+      node.counterfactual??={alternatives:[]};
+      node.counterfactual.alternatives??=[];
+      node.counterfactual.alternatives=node.counterfactual.alternatives.filter(x=>x.choiceId!==choiceId);
+      node.counterfactual.alternatives.push(result);
+      discovery=recordSimulatedChoice(discovery,node,result);
+      try{saveDiscovery(discovery);}catch{showToast('Simülasyon bitti; tarayıcı keşif kaydı dolu olabilir.');}
       renderLifeTree();
-    },0));
+      showToast('Alternatif hayatın devamı açıldı.');
+    }catch(error){
+      if(game===runGame){
+        showToast('Alternatif hayat simüle edilemedi: '+error.message);
+        renderLifeTree();
+      }
+    }finally{
+      counterfactualBusy=false;
+      if(game===runGame)$('#lifeTree').querySelectorAll('[data-counterfactual-node]').forEach(b=>b.disabled=false);
+    }
   }));
 }
+
 function baseTimelineEntries() {
   const { player, parents, siblings, household } = game.state;
   const older = siblings.filter(s=>s.age>player.age).length;
