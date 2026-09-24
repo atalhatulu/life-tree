@@ -778,7 +778,6 @@ export const TURKEY_CITIES=Object.freeze(PROVINCES.map(([plate,id,name,region,sc
  return Object.freeze({
   id,name,plate,region,regionName:TURKEY_REGIONS[region],scale,
   population2025,populationYear:POPULATION_YEAR,
-  weight:populationBirthWeight(population2025),
   ...calibratedGameProfile(id,scale,population2025),
   ...(LEGACY_BALANCE[id]??{}),
   // Old birth weights were synthetic scale bands; population weights replace them.
