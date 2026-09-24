@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {Game} from '../src/core/game.js';
 import {RNG} from '../src/core/rng.js';
 import {earlyYearMoment} from '../src/life/early_year_moments.js';
+import {schoolAgeYearMoment} from '../src/life/school_age_year_moments.js';
 import {validateState} from '../src/simulation/invariants.js';
 
 // Group 1: ages 0-4. Diagnostic reports real presented events as well as
@@ -60,4 +61,67 @@ test('age-choice audit group 1: 80 newborn-to-preschool lives',()=>{
  console.log('AGE_CHOICE_GROUP_1_END');
  assert.equal(pediatricTreatmentBlocked,true,
   'review pediatric treatment eligibility when the age restriction is fixed');
+});
+
+test('age-choice audit group 2: 80 lives from ages 5-9 and affordable options',()=>{
+ const eventCounts={},activityCounts={},momentCounts={},examples=[];
+ let checkedYears=0,checkedMoments=0,schoolByAge9=0,zeroWalletYears=0,hobbyAutoChoices=0;
+ const prices={'snack':120,'book':280,'game-spend':450};
+ for(let i=0;i<80;i++){
+  const seed='age-choice-school-2026-'+String(i).padStart(3,'0');
+  const game=new Game(seed);
+  while(game.state.player.alive&&game.state.player.age<9){
+   const event=game.ageOneYear();
+   const age=game.state.player.age;
+   if(!game.state.player.alive)break;
+   if(age<5)continue;
+   checkedYears++;
+   const available=game.availableActivities();
+   for(const a of available)activityCounts[a.id]=(activityCounts[a.id]??0)+1;
+   assert.ok(available.every(a=>a.minAge<=age),seed+': activity before minAge');
+   assert.equal(available.some(a=>a.id==='work-hard'||a.id==='course'||a.id==='budget'||a.id==='date'),false);
+   if(age===9&&game.state.education?.enrolled)schoolByAge9++;
+   const moment=age<7?earlyYearMoment(age,new RNG(seed+':moment:'+age)):
+    schoolAgeYearMoment(game.state,new RNG(seed+':moment:'+age));
+   assert.ok(moment?.choices?.length>=2,seed+': no age-appropriate moment at '+age);
+   momentCounts[moment.title]=(momentCounts[moment.title]??0)+1;
+   checkedMoments++;
+   const wallet=game.state.childMoney?.wallet??0;
+   if(age>=7&&wallet<=0)zeroWalletYears++;
+   for(const choice of moment.choices){
+    assert.ok((prices[choice.id]??0)<=wallet,
+     seed+': unaffordable choice '+choice.id+' at '+age+', wallet='+wallet);
+    if(choice.id==='study')assert.ok(game.state.education?.enrolled,
+     seed+': homework while not enrolled');
+   }
+   if(event){
+    eventCounts[event.id]=(eventCounts[event.id]??0)+1;
+    const choices=game.eventChoices(event);
+    assert.ok(choices.every(x=>x.label&&x.id),seed+': malformed choice');
+    if(examples.length<10)examples.push({seed,age,event:event.id,choices:choices.map(x=>x.label)});
+    if(choices.length)game.makeChoice(event,choices[0].id);
+   }
+   if(available.some(a=>a.id==='hobby')&&Object.keys(game.state.player.interests).length>1){
+    hobbyAutoChoices++;
+   }
+   assert.deepEqual(validateState(game.state),[],seed+': invalid state at '+age);
+  }
+ }
+ const testState=new Game('school-moment-poverty-probe').state;
+ testState.player.age=8;
+ testState.education=null;
+ testState.childMoney={wallet:0,saved:0};
+ for(let i=0;i<30;i++){
+  const moment=schoolAgeYearMoment(testState,new RNG('poverty-'+i));
+  assert.equal(moment.title,'Hafta sonu');
+  assert.ok(moment.choices.every(c=>!['snack','book','game-spend','study'].includes(c.id)));
+ }
+ const summary={group:'5-9',lives:80,checkedYears,checkedMoments,schoolByAge9,
+  momentCounts,eventCounts,activityCounts,zeroWalletYears,hobbyAutoChoices,
+  exampleEvents:examples};
+ console.log('AGE_CHOICE_GROUP_2_START');
+ console.log(JSON.stringify(summary,null,2));
+ console.log('AGE_CHOICE_GROUP_2_END');
+ assert.ok(checkedYears>=300);
+ assert.ok(checkedMoments>=300);
 });
