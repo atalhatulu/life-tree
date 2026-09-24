@@ -125,7 +125,7 @@ test('age-choice audit group 4: 80 lives aged 14-17 with state-aware options',()
       flags.push({seed,age,kind:'bad-choice-label',event:event.id});
     }
    }
-   if(choiceList.length)game.makeChoice(event,choiceList[0].id);
+   if(choiceList.length)game.makeChoice(event,choiceList[(i+age)%choiceList.length].id);
    const errors=validateState(game.state);
    if(errors.length)flags.push({seed,age,kind:'invalid-state',errors});
   }
