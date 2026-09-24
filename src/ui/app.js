@@ -2,6 +2,7 @@ import { Game } from '../core/game.js';
 import { autoplay, humanLikeChoice, activityOrder, simulateToEnd } from '../simulation/autoplay.js';
 import {earlyYearMoment} from '../life/early_year_moments.js';
 import {schoolAgeYearMoment} from '../life/school_age_year_moments.js';
+import {teenYearMoment} from '../life/teen_year_moments.js';
 import { RNG } from '../core/rng.js';
 import {HOBBIES} from '../data/catalog.js';
 import { setLifestyle, lifestyleMonthlyCost } from '../lifestyle/lifestyle_system.js';
@@ -227,11 +228,7 @@ function makeYearMoment(){
   const rng=new RNG(game.seedText+':year-moment:'+s.year);
   if(age<7)return earlyYearMoment(age,rng);
   if(age<13)return schoolAgeYearMoment(s,rng);
-  if(age<18)return rng.pick([
-    {title:'Okul ve sosyal hayat',text:'Bu hafta neye ağırlık vereceksin?',choices:[{id:'friends',label:'Arkadaşlarla takıl'},{id:'study',label:'Derse ağırlık ver'},{id:'club',label:'Kulüp/hobiye katıl'}]},
-    {title:'Harçlık kararı',text:'Küçük ama senin olan bir paran var.',choices:[{id:'child-save',label:'Biriktir'},{id:'meal-small',label:'Arkadaşlarla bir şeyler ye'},{id:'clothes-small',label:'Kendine bir şey al'}]},
-    {title:'Kendine yatırım',text:'Boş vaktini nasıl kullanacaksın?',choices:[{id:'exercise',label:'Spor yap'},{id:'learn',label:'Yeni beceri öğren'},{id:'social',label:'Sosyalleş'}]}
-  ]);
+  if(age<18)return teenYearMoment(s,rng);
 
   const pool=[
     {title:'Hafta sonu planı',text:'Kendine biraz zaman ayıracaksın.',choices:[{id:'cinema',label:'Sinemaya git'},{id:'rest',label:'Evde dinlen'},{id:'social',label:'Birini ara'}]},
