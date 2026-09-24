@@ -1,3 +1,4 @@
+import {HOBBIES} from '../data/catalog.js';
 import {activityEfficiency,capacityBand} from '../health/physical_capacity.js';
 import {growTrait} from '../character/personality_dynamics.js';
 import {payDownDebt} from '../finance/personal_finance.js';
@@ -44,13 +45,16 @@ export function availableActivities(state){
 }
 
 export function performActivity(state,id,rng){
+ const hobbyName=id.startsWith('hobby:')?id.slice(6):null;
+ const activityId=hobbyName!=null?'hobby':id;
+ if(hobbyName!=null&&!HOBBIES.includes(hobbyName))throw new Error('Bilinmeyen hobi.');
  state.actions??={remaining:3,max:3};
  if(state.actions.remaining<=0)throw new Error('Bu yıl için aksiyon hakkın kalmadı.');
- const def=ACTIVITY_DEFS.find(a=>a.id===id);
+ const def=ACTIVITY_DEFS.find(a=>a.id===activityId);
  if(!def||state.player.age<def.minAge||(def.condition&&!def.condition(state)))throw new Error('Bu aktivite şu anda kullanılamıyor.');
- if(activityMemory(state,id).lastAge===state.player.age)throw new Error('Bu aktiviteyi bu yıl zaten yaptın.');
+ if(activityMemory(state,activityId).lastAge===state.player.age)throw new Error('Bu aktiviteyi bu yıl zaten yaptın.');
  let result='';
- const repeat=repeatEfficiency(state,id);
+ const repeat=repeatEfficiency(state,activityId);
 
  if(id==='study'){
   if(state.higherEducation?.enrolled){
@@ -96,10 +100,17 @@ export function performActivity(state,id,rng){
    result=f.name+' ile vakit geçirdin.';
   } else result='İnsanlarla vakit geçirip daha sosyal olmaya çalıştın.';
  }
- if(id==='hobby'){
-  const interests=Object.entries(state.player.interests).sort((a,b)=>b[1]-a[1]);
-  if(!interests.length){state.player.personality.curiosity=growTrait(state.player.personality.curiosity,2);result='Yeni uğraşlar keşfetmeye çalıştın.';}
-  else {const [name]=interests[0];state.player.interests[name]=clamp(state.player.interests[name]+rng.int(3,6));result=name+' hobinle ilgilendin.';}
+ if(activityId==='hobby'){
+  const interests=Object.entries(state.player.interests??{}).sort((a,b)=>b[1]-a[1]);
+  const name=hobbyName??interests[0]?.[0]??null;
+  if(name){
+   state.player.interests??={};
+   state.player.interests[name]=clamp((state.player.interests[name]??0)+rng.int(3,6));
+   result=name+' hobinle ilgilendin.';
+  }else{
+   state.player.personality.curiosity=growTrait(state.player.personality.curiosity,2);
+   result='Yeni uğraşlar keşfetmeye çalıştın.';
+  }
  }
  if(id==='work-hard'){
   const efficiency=activityEfficiency(state);
@@ -145,8 +156,8 @@ export function performActivity(state,id,rng){
   }else result='Bütçeni gözden geçirip finansal planını güncelledin.';
  }
 
- recordUse(state,id);
- applyMentalHealthActivity(state,id);
+ recordUse(state,activityId);
+ applyMentalHealthActivity(state,activityId);
  state.actions.remaining-=1;
  return result;
 }
