@@ -1,5 +1,6 @@
 import { Game } from '../core/game.js';
 import { autoplay, humanLikeChoice, activityOrder, simulateToEnd } from '../simulation/autoplay.js';
+import {earlyYearMoment} from '../life/early_year_moments.js';
 import { RNG } from '../core/rng.js';
 import { setLifestyle, lifestyleMonthlyCost } from '../lifestyle/lifestyle_system.js';
 import { affordableCarOptions, affordableHomeOptions, buyCar, buyHome, sellCar, sellHome, moveHousing } from '../assets/asset_system.js';
@@ -194,6 +195,7 @@ const LEISURE={
  shopping:{label:'Alışveriş yap',costs:[500,1500,4000]}
 };
 function applyLeisure(kind,companionId,tier){
+  if(game.state.player.age<5){activityMessage='Bu yaşta serbest zaman etkinliklerini ailen düzenliyor.';return;}
   if(game.state.actions.remaining<=0){activityMessage='Bu yıl aksiyon hakkın kalmadı.';return;}
   const def=LEISURE[kind], cost=def.costs[tier];
   if(!spendCash(cost)){activityMessage='Bu seçim için yeterli nakdin yok.';return;}
@@ -221,10 +223,7 @@ function makeYearMoment(){
   if(!game.state.player.alive)return null;
   const s=game.state, age=s.player.age;
   const rng=new RNG(game.seedText+':year-moment:'+s.year);
-  if(age<7)return rng.pick([
-    {title:'Küçük bir keşif',text:'Bugün seni ne çekiyor?',choices:[{id:'play',label:'Oyun kur'},{id:'family',label:'Ailenle vakit geçir'},{id:'learn',label:'Yeni bir şey öğren'}]},
-    {title:'Evde bir gün',text:'Kendi kendine oyalanıyorsun.',choices:[{id:'draw',label:'Resim yap'},{id:'help-home',label:'Ev işine yardım et'},{id:'rest',label:'Dinlen'}]}
-  ]);
+  if(age<7)return earlyYearMoment(age,rng);
   if(age<13)return rng.pick([
     {title:'Okuldan sonra',text:'Günün geri kalanını nasıl geçireceksin?',choices:[{id:'friends',label:'Arkadaşlarla oyna'},{id:'study',label:'Ödevlerini bitir'},{id:'game-spend',label:'Oyuna/oyuncağa harca'}]},
     {title:'Harçlık kararı',text:'Cebinde biraz harçlık var.',choices:[{id:'child-save',label:'Biriktir'},{id:'snack',label:'Atıştırmalık al'},{id:'book',label:'Kitap/dergi al'}]},
@@ -407,7 +406,7 @@ function renderActivities() {
   const interests=Object.entries(game.state.player.interests).sort((a,b)=>b[1]-a[1])
     .map(([name,score])=>`<div class="meter-row"><span>${name}</span><div class="mini-bar"><i style="width:${score}%"></i></div><b>${score}</b></div>`).join('');
   const actions=game.availableActivities();
-  const leisureButtons=Object.entries(LEISURE).map(([id,x])=>`<button class="activity-button leisure-button" data-leisure="${id}">${x.label}</button>`).join('');
+  const leisureButtons=game.state.player.age<5?'<p class="muted">Bu yaşta etkinlikleri ailen düzenliyor.</p>':Object.entries(LEISURE).map(([id,x])=>`<button class="activity-button leisure-button" data-leisure="${id}">${x.label}</button>`).join('');
   let picker='';
   if(leisurePicker){
     const def=LEISURE[leisurePicker];
