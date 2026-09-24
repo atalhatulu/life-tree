@@ -123,12 +123,20 @@ export const adultEvents=[
  {
   id:'gap-year-direction',title:'Bir Sonraki Adım',minAge:19,maxAge:35,once:false,majorDecision:true,priority:115,
   condition:s=>s.nextPath==='gap'&&s.player.age>=(s.nextGapDecisionAge??19)&&!s.pendingUniversityApplications&&!s.pendingJobOffers&&!s.higherEducation?.enrolled&&!s.career?.employed,
-  choices:[
-   {id:'retry-university',label:'Üniversiteyi tekrar dene',result:'Bir sonraki başvuru dönemi için üniversiteye hazırlanmayı seçtin.',effect:(s,rng)=>{s.nextPath='university';s.pendingUniversityApplications=generateUniversityApplications(s,rng.fork('retry-university'));}},
-   {id:'seek-work',label:'İş aramaya başla',result:'Çalışma hayatına yönelmeye karar verdin.',effect:(s,rng)=>{s.nextPath='work';s.pendingJobOffers=generateJobOffers(s,rng.fork('gap-job-search'));}},
-   {id:'continue-gap',label:'İki yıl daha bekle',condition:s=>s.player.age<33,
+  choices:s=>[
+   {id:'retry-university',
+    label:(s.gapYears??0)>=3?'Aradan geçen yıllardan sonra üniversiteye hazırlan':'Üniversiteyi tekrar dene',
+    result:'Bir sonraki başvuru dönemi için üniversiteye hazırlanmayı seçtin.',
+    effect:(next,rng)=>{next.nextPath='university';next.pendingUniversityApplications=generateUniversityApplications(next,rng.fork('retry-university'));}},
+   {id:'seek-work',
+    label:(s.gapYears??0)>=3?'Eğitim planını bırakıp iş aramaya başla':'İş aramaya başla',
+    result:'Çalışma hayatına yönelmeye karar verdin.',
+    effect:(next,rng)=>{next.nextPath='work';next.pendingJobOffers=generateJobOffers(next,rng.fork('gap-job-search'));}},
+   {id:'continue-gap',
+    label:(s.gapYears??0)>=5?'Bir iki yıl daha karar vermeden devam et':(s.gapYears??0)>=2?'Hazırlığı iki yıl daha ertele':'İki yıl daha bekle',
+    condition:next=>next.player.age<33,
     result:'Yeni bir eğitim veya iş kararı almadan önce iki yıl kendine zaman tanıdın.',
-    effect:s=>{s.nextPath='gap';s.nextGapDecisionAge=s.player.age+2;}}
+    effect:next=>{next.nextPath='gap';next.nextGapDecisionAge=next.player.age+2;}}
   ]
  },
  {
