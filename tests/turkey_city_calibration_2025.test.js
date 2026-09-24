@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {RNG} from '../src/core/rng.js';
 import {Game} from '../src/core/game.js';
 import {PROVINCE_POPULATION_2025,NATIONAL_POPULATION_2025,POPULATION_YEAR} from '../src/data/countries/turkey/population_2025.js';
+import {SEGE_RANK_2025,SEGE_YEAR} from '../src/data/countries/turkey/sege_2025.js';
 import {TURKEY_CITIES,cityById,populationBirthWeight,migrationAttractionWeight,pickBirthCity} from '../src/data/countries/turkey/cities.js';
 import {UNIVERSITIES} from '../src/data/countries/turkey/education.js';
 import {generateUniversityApplications} from '../src/education/university_system.js';
@@ -77,4 +78,26 @@ test('calibrated university and migration destinations remain deterministic',()=
  const cityA=chooseJobOfferCity(jobGame.state,new RNG('migration-weight'));
  const cityB=chooseJobOfferCity(jobGame.state,new RNG('migration-weight'));
  assert.equal(cityA.id,cityB.id);
+});
+
+test('official 2025 SEGE ordering covers 81 provinces without becoming a wage index',()=>{
+ assert.equal(SEGE_YEAR,2025);
+ assert.equal(Object.keys(SEGE_RANK_2025).length,81);
+ assert.deepEqual(
+  [...Object.values(SEGE_RANK_2025)].sort((a,b)=>a-b),
+  Array.from({length:81},(_,i)=>i+1)
+ );
+ assert.equal(SEGE_RANK_2025.istanbul,1);
+ assert.equal(SEGE_RANK_2025.kocaeli,4);
+ assert.equal(SEGE_RANK_2025.eskisehir,7);
+ assert.equal(SEGE_RANK_2025.gaziantep,30);
+ assert.equal(SEGE_RANK_2025.agri,81);
+ for(const city of TURKEY_CITIES){
+  assert.equal(city.segeRank2025,SEGE_RANK_2025[city.id]);
+  assert.equal(city.segeYear,2025);
+ }
+ // Legacy wages are unchanged: a composite development index is not a salary.
+ assert.equal(cityById('istanbul').wage,1.18);
+ assert.equal(cityById('gaziantep').wage,.95);
+ assert.equal(cityById('eskisehir').wage,.91);
 });
