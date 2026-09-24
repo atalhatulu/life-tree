@@ -26,11 +26,18 @@ export function continuationTree(result,rootIndex,rootChoiceId,path=[]){
   const stage=result.continuation[index];
   if(!stage)return [];
   if(stage.kind!=='decision')return [terminal(stage)];
-  const next=step(index+1);
+  const followPath=[...path,{stage:index,choiceId:stage.choiceId,follow:true}];
+  const next=stage.selectedResult?.continuation?.length?
+   continuationTree(stage.selectedResult,rootIndex,rootChoiceId,followPath):
+   step(index+1);
   const children=[
    choice(stage.label,stage.age,{
     status:'simulated',probability:stage.probability,count:stage.count,
-    samples:stage.samples,detail:stage.label,children:next
+    samples:stage.samples,detail:stage.label,
+    children:next.length?next:result.terminal?[]:[choice('Bu hayatı sürdür',stage.age,{
+     status:'pending',detail:'Bu dalın sonraki kararlarını üret.',
+     action:{type:'continue',rootIndex,rootChoiceId,path:followPath}
+    })]
    })
   ];
   for(const fork of stage.forks??[]){
@@ -83,7 +90,9 @@ function nodeMarkup(node,depth,context){
   ?` data-counterfactual-node="${node.action.rootIndex}" data-counterfactual-choice="${safe(node.action.choiceId)}"`
   :node.action?.type==='fork'
    ?` data-sim-fork data-root-node="${node.action.rootIndex}" data-root-choice="${safe(node.action.rootChoiceId)}" data-fork-path="${encoded(node.action.path)}"`
-   :'';
+   :node.action?.type==='continue'
+    ?` data-sim-continue data-root-node="${node.action.rootIndex}" data-root-choice="${safe(node.action.rootChoiceId)}" data-fork-path="${encoded(node.action.path)}"`
+    :'';
  const selected=canExpand?' data-tree-expand="1"':'';
  const label=depth===0?'BAŞLANGIÇ':node.age!=null?node.age+' yaş':'';
  const detail={title:node.label,age:node.age,kind:node.kind,status:node.status??null,
