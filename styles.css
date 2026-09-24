@@ -2026,3 +2026,179 @@ body{
 .branch-life-fork-main>.branch-life-timeline{
   padding-top:5px;
 }
+
+
+/* Calm Life Tree UI: the map first, supporting information on demand. */
+#treeScreen{
+ padding:12px 10px 22px;
+ background:#f7f9fc;
+}
+#treeScreen>.section-head{margin:0 3px 9px;}
+#treeScreen>.section-head h2{font-size:15px;letter-spacing:-.025em;}
+#lifeTree .life-tree-intro{
+ display:flex;
+ flex-wrap:wrap;
+ gap:5px;
+ margin:0 2px 7px;
+}
+#lifeTree .tree-legend{
+ padding:5px 7px;
+ font-size:9px;
+ font-weight:700;
+ border-radius:999px;
+}
+#lifeTree .tree-overview,
+#lifeTree .tree-extras{
+ margin:8px 2px;
+ border:1px solid #e3e9f2;
+ background:#fff;
+ border-radius:11px;
+ padding:0 10px;
+ color:#6b7c94;
+}
+#lifeTree .tree-overview summary,
+#lifeTree .tree-extras>summary{
+ list-style:none;
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:10px;
+ padding:11px 0;
+ cursor:pointer;
+ font-weight:750;
+ font-size:10px;
+ color:#607188;
+}
+#lifeTree .tree-overview summary::-webkit-details-marker,
+#lifeTree .tree-extras>summary::-webkit-details-marker,
+#lifeTree .genealogy-reveal>summary::-webkit-details-marker,
+#lifeTree .branch-life-reveal>summary::-webkit-details-marker{display:none;}
+#lifeTree details>summary span{font-size:12px;transition:transform .15s;}
+#lifeTree details[open]>summary span{transform:rotate(180deg);}
+#lifeTree .tree-overview p{
+ border-top:1px solid #edf1f5;
+ margin:0;
+ padding:10px 0;
+ font-size:9px;
+ line-height:1.6;
+}
+#lifeTree .genealogy-navigation{
+ position:sticky;
+ top:0;
+ z-index:12;
+ grid-template-columns:1fr 1fr 1fr;
+ gap:5px;
+ margin:8px 2px;
+ padding:6px;
+ border-radius:12px;
+ box-shadow:0 3px 12px rgba(42,63,90,.04);
+}
+#lifeTree .genealogy-controls-hint{
+ font-size:9px;
+ color:#8794a6;
+ font-weight:650;
+ padding:3px 0;
+}
+#lifeTree .genealogy-zoom-button{min-height:33px;border-radius:8px;font-size:15px;}
+#lifeTree .genealogy-zoom-reset{font-size:10px;}
+#lifeTree .genealogy-scroll{
+ padding:6px 0 16px;
+ border:1px solid #edf1f5;
+ border-radius:12px;
+ background:linear-gradient(#fff,#fcfdff);
+}
+#lifeTree .genealogy-stage{padding:12px 0 14px;}
+#lifeTree .genealogy-tree .tree-root{box-shadow:none;}
+#lifeTree .genealogy-branch{
+ padding:9px;
+ border-radius:11px;
+ background:#fbfcff;
+ box-shadow:none;
+}
+#lifeTree .genealogy-alt-label{font-size:10px;font-weight:750;}
+#lifeTree .genealogy-bud{width:22px;height:22px;font-size:11px;}
+#lifeTree .genealogy-main .tree-node{
+ border-radius:12px;
+ box-shadow:0 3px 12px rgba(39,79,52,.05);
+}
+#lifeTree .genealogy-main .tree-node h3{font-size:11px;line-height:1.4;}
+#lifeTree .genealogy-reveal,
+#lifeTree .branch-life-reveal{
+ min-width:0;
+ margin-top:7px;
+ border:1px solid #dfe7f5;
+ border-radius:9px;
+ background:#f3f7fd;
+}
+#lifeTree .genealogy-reveal>summary,
+#lifeTree .branch-life-reveal>summary{
+ list-style:none;
+ cursor:pointer;
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ gap:8px;
+ padding:9px;
+ font-size:9px;
+ font-weight:800;
+ line-height:1.35;
+ color:#526d9e;
+}
+#lifeTree .genealogy-reveal[open],
+#lifeTree .branch-life-reveal[open]{background:#fff;}
+#lifeTree .genealogy-reveal>.branch-life-intro,
+#lifeTree .branch-life-reveal>.branch-life-intro{margin:3px 7px 0;}
+#lifeTree .genealogy-reveal>.branch-life-timeline,
+#lifeTree .branch-life-reveal>.branch-life-timeline{padding:9px 7px 4px 19px;}
+#lifeTree .branch-life-intro{font-weight:600;font-size:8px;background:#f3f6fa;}
+#lifeTree .branch-life-step{padding-bottom:10px;}
+#lifeTree .branch-life-card{
+ padding:7px;
+ gap:3px;
+ border:1px solid #e4e9f2;
+ border-radius:9px;
+ box-shadow:none;
+}
+#lifeTree .branch-life-card strong{font-size:10px;}
+#lifeTree .branch-life-card small{font-size:8px;}
+#lifeTree .branch-life-confidence{font-size:8px;color:#6b81a5;}
+#lifeTree .branch-life-others{padding:0;border-top:1px solid #edf1f6;}
+#lifeTree .branch-life-others summary{
+ display:block;
+ padding:7px 0 2px;
+ font-size:8px;
+ font-weight:700;
+ color:#7d90ad;
+}
+#lifeTree .branch-life-others p{padding:6px 0;}
+#lifeTree .branch-life-other-title{font-size:8px;font-weight:800;color:#7b8aa0;padding-top:5px;}
+#lifeTree .branch-life-forks{margin-top:6px;padding-left:8px;gap:6px;}
+#lifeTree .branch-life-forks-label{font-weight:700;font-size:8px;}
+#lifeTree .branch-life-fork-main{
+ gap:3px;
+ padding:7px;
+ border-radius:9px;
+ background:#fbfcff;
+}
+#lifeTree .branch-life-fork-main>strong{font-size:9px;}
+#lifeTree .branch-life-fork-main>small{font-size:8px;}
+#lifeTree .counterfactual-button{
+ min-height:33px;
+ margin-top:6px;
+ border-radius:8px;
+ background:#eff5ff;
+ border-color:#d9e5f7;
+ color:#52709e;
+ font-size:9px;
+}
+#lifeTree .counterfactual-button:hover{background:#e7effc;}
+#lifeTree .tree-extras>.ending-gallery,
+#lifeTree .tree-extras>.summary-card{margin:2px 0 12px;}
+#lifeTree .tree-extras .section-divider{display:none;}
+/* Keep the primary play screen quiet without hiding playable actions. */
+.topbar{padding:13px 16px 9px;}
+.topbar h1{font-size:20px;}
+.subtitle{font-size:11px;}
+.identity-meta{gap:5px;}
+.quick-strip{gap:5px;}
+.bottom-nav .nav-item{min-width:0;}
