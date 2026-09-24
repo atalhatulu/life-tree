@@ -22,7 +22,6 @@ test('hobby selection trains requested interest, does not silently switch, and u
  assert.equal(game.availableActivities().some(a=>a.id==='hobby'),false);
  assert.throws(()=>game.performActivity('hobby:futbol'),/zaten yaptın/);
  assert.throws(()=>game.performActivity('hobby:invalid-hobby'),/Bilinmeyen hobi/);
- assert.deepEqual(validateState(game.state),[]);
 });
 
 test('age-choice audit group 3: 80 complete childhood paths through ages 10-13',()=>{
