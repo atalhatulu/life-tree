@@ -2345,3 +2345,33 @@ body{
 @media (min-width:1000px){
  #lifeTree .life-map-viewport{max-height:calc(100vh - 265px);}
 }
+
+
+/* Life Tree uses the desktop canvas rather than the 430px phone viewport. */
+body:has(#treeScreen.active) .app-shell{
+ padding:1.5vh 1.5vw;
+ gap:0;
+}
+body:has(#treeScreen.active) .phone-frame{
+ width:min(97vw,1800px);
+ max-width:none;
+ height:97vh;
+ aspect-ratio:auto;
+ border-radius:16px;
+ grid-template-rows:auto minmax(0,1fr) auto;
+}
+body:has(#treeScreen.active) .stats,
+body:has(#treeScreen.active) .quick-strip,
+body:has(#treeScreen.active) .age-zone,
+body:has(#treeScreen.active) .dev-panel{display:none;}
+#treeScreen.active{display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+#treeScreen.active>.section-head{flex:none;}
+#treeScreen.active>#lifeTree{min-height:0;flex:1 1 auto;}
+#treeScreen.active .life-map-viewport{max-height:none;min-height:180px;}
+@media(max-width:560px){
+ body:has(#treeScreen.active) .app-shell{padding:0;}
+ body:has(#treeScreen.active) .phone-frame{
+  width:100vw;height:100dvh;border-radius:0;
+ }
+ #treeScreen.active .life-map-viewport{padding:8px;}
+}
