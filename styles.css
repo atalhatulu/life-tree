@@ -1899,3 +1899,57 @@ body{
 @media(prefers-reduced-motion:reduce){
   .genealogy-scroll{scroll-behavior:auto;}
 }
+
+
+/* Tree viewport: right-button pan + cursor-anchored wheel zoom */
+.genealogy-navigation{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:7px;
+  padding:9px;
+}
+.genealogy-controls-hint{
+  grid-column:1/-1;
+  font-size:9px;
+  line-height:1.45;
+  font-weight:850;
+  text-align:center;
+  color:#61758f;
+}
+.genealogy-zoom-button{
+  min-width:0;
+  min-height:40px;
+  padding:6px;
+  border:1px solid #c7d6e9;
+  border-radius:10px;
+  background:#edf3fb;
+  color:#486587;
+  cursor:pointer;
+  font-size:17px;
+  font-weight:900;
+  touch-action:manipulation;
+}
+.genealogy-zoom-reset{
+  font-size:12px;
+  background:#eaf5ed;
+  border-color:#c1dcc9;
+  color:#39784c;
+}
+.genealogy-zoom-button:disabled{
+  opacity:.4;
+  cursor:default;
+}
+.genealogy-zoom-button:focus-visible,
+.genealogy-scroll:focus-visible{
+  outline:2px solid #6485c0;
+  outline-offset:2px;
+}
+.genealogy-scroll{
+  overscroll-behavior-x:contain;
+  scroll-behavior:auto;
+  cursor:default;
+}
+.genealogy-scroll.is-panning,
+.genealogy-scroll.is-panning *{
+  cursor:grabbing!important;
+  user-select:none!important;
+}
