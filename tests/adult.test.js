@@ -120,3 +120,23 @@ test('choosing another gap gives a real two-year respite',()=>{
  const next=g.ageOneYear();
  assert.notEqual(next?.id,'gap-year-direction');
 });
+
+test('repeated military deferrals grow apart instead of resurfacing yearly',()=>{
+ const g=new Game('military-deferral-spacing');
+ g.state.player.age=23;
+ g.state.year=2049;
+ g.state.higherEducation=null;
+ g.state.militaryService={eligible:true,status:'pending',deferredUntilAge:null};
+ const event=g.events.events.find(e=>e.id==='military-service-decision');
+ const first=g.events.choicesFor(g.state,event).find(c=>c.id==='defer-service');
+ assert.ok(first);
+ first.effect(g.state);
+ assert.equal(g.state.nextMilitaryDecisionAge,25);
+ assert.equal(g.state.militaryService.deferralCount,1);
+ g.state.player.age=25;g.state.year=2051;
+ const second=g.events.choicesFor(g.state,event).find(c=>c.id==='defer-service');
+ assert.match(second.label,/yeniden/i);
+ second.effect(g.state);
+ assert.equal(g.state.nextMilitaryDecisionAge,28);
+ assert.equal(g.state.militaryService.deferralCount,2);
+});
