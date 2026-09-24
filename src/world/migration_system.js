@@ -1,4 +1,4 @@
-import {TURKEY_CITIES,cityById} from '../data/countries/turkey/cities.js';
+import {TURKEY_CITIES,cityById,migrationAttractionWeight} from '../data/countries/turkey/cities.js';
 import {ensurePersonalFinance} from '../finance/personal_finance.js';
 import {archiveCareer} from '../career/career_profile.js';
 import {economy} from './world_state.js';
@@ -27,7 +27,7 @@ export function chooseJobOfferCity(state,rng){
   const realWage=city.wage/Math.max(.72,city.cost);
   const hometownBonus=city.id===state.origin?.cityId?1+(attachment-50)/120:1;
   const largeHouseholdPenalty=children>0&&city.housing>1.12?.72:1;
-  return {value:city,weight:Math.max(.12,city.weight*city.jobs*realWage*hometownBonus*largeHouseholdPenalty)};
+  return {value:city,weight:Math.max(.12,migrationAttractionWeight(city)*city.jobs*realWage*hometownBonus*largeHouseholdPenalty)};
  }));
 }
 
@@ -169,7 +169,7 @@ export function generatePartnerMoveOpportunity(state,rng){
  const candidates=TURKEY_CITIES.filter(city=>city.id!==current.id);
  const city=rng.weighted(candidates.map(value=>({
   value,
-  weight:Math.max(.2,value.weight*value.jobs*value.wage/Math.max(.75,value.cost))
+  weight:Math.max(.2,migrationAttractionWeight(value)*value.jobs*value.wage/Math.max(.75,value.cost))
  })));
 
  const currentIncome=partner.monthlyIncome??30000;
