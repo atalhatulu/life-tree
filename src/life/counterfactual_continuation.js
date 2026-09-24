@@ -281,18 +281,25 @@ export async function expandSelectedContinuation(seedText,parentResult,stageInde
  * kept as visible, independently expandable choice nodes.
  */
 export async function growFirstGeneration(seedText,result,{
- samples=100,maxStages=3,onProgress=null
+ samples=100,maxStages=3,decisionLevels=2,maxBranches=8,onProgress=null
 }={}){
- const index=result?.continuation?.findIndex(stage=>stage.kind==='decision'&&stage.forks?.length)??-1;
- if(index<0)return result;
- const stage=result.continuation[index];
- for(let i=0;i<stage.forks.length;i++){
-  const fork=stage.forks[i];
-  if(fork.result)continue;
-  await expandContinuationFork(seedText,result,index,fork.choiceId,{
-   samples,maxStages,onProgress:onProgress?async progress=>
-    onProgress({...progress,branch:i+1,branchTotal:stage.forks.length}):null
-  });
+ const decisions=(result?.continuation??[])
+  .map((stage,index)=>({stage,index}))
+  .filter(({stage})=>stage.kind==='decision'&&stage.forks?.length)
+  .slice(0,decisionLevels);
+ let completedBranches=0;
+ for(const {stage,index} of decisions){
+  for(let i=0;i<stage.forks.length&&completedBranches<maxBranches;i++){
+   const fork=stage.forks[i];
+   if(fork.result)continue;
+   const branchNumber=completedBranches+1;
+   await expandContinuationFork(seedText,result,index,fork.choiceId,{
+    samples,maxStages,onProgress:onProgress?async progress=>
+     onProgress({...progress,branch:branchNumber,branchTotal:Math.min(maxBranches,
+      decisions.reduce((sum,item)=>sum+item.stage.forks.length,0))}):null
+   });
+   completedBranches++;
+  }
  }
  return result;
 }
