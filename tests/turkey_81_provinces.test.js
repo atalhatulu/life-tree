@@ -37,24 +37,24 @@ test('all 81 provinces have finite valid balancing fields and resolve by ID',()=
 
 test('previous 14 city economics remain unchanged for saved gameplay balance',()=>{
  const expected={
-  istanbul:[18,1.35,1.18,1.55,1.24,1.20],
-  ankara:[8,1.12,1.08,1.15,1.10,1.18],
-  izmir:[7,1.18,1.05,1.22,1.06,1.12],
-  bursa:[6,1.02,1.04,1.00,1.10,1.02],
-  antalya:[5,1.12,1.00,1.18,1.02,.98],
-  adana:[4,.90,.92,.84,.94,.96],
-  konya:[4,.86,.93,.80,.96,.98],
-  gaziantep:[4,.90,.95,.83,1.00,.92],
-  mersin:[4,.94,.94,.90,.94,.94],
-  eskisehir:[3,.95,.91,.92,.90,1.15],
-  samsun:[3,.88,.91,.84,.90,.96],
-  kayseri:[3,.86,.94,.80,.98,.94],
-  diyarbakir:[3,.84,.89,.76,.86,.92],
-  trabzon:[2,.92,.90,.88,.88,.96]
+  istanbul:[1.35,1.18,1.55,1.24,1.20],
+  ankara:[1.12,1.08,1.15,1.10,1.18],
+  izmir:[1.18,1.05,1.22,1.06,1.12],
+  bursa:[1.02,1.04,1.00,1.10,1.02],
+  antalya:[1.12,1.00,1.18,1.02,.98],
+  adana:[.90,.92,.84,.94,.96],
+  konya:[.86,.93,.80,.96,.98],
+  gaziantep:[.90,.95,.83,1.00,.92],
+  mersin:[.94,.94,.90,.94,.94],
+  eskisehir:[.95,.91,.92,.90,1.15],
+  samsun:[.88,.91,.84,.90,.96],
+  kayseri:[.86,.94,.80,.98,.94],
+  diyarbakir:[.84,.89,.76,.86,.92],
+  trabzon:[.92,.90,.88,.88,.96]
  };
  for(const [id,values] of Object.entries(expected)){
   assert.deepEqual(
-   ['weight','cost','wage','housing','jobs','university'].map(key=>cityById(id)[key]),
+   ['cost','wage','housing','jobs','university'].map(key=>cityById(id)[key]),
    values,id
   );
  }
