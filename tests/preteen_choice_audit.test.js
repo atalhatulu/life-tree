@@ -78,3 +78,17 @@ test('age-choice audit group 3: 80 complete childhood paths through ages 10-13',
  assert.equal(checked,320);
  assert.deepEqual(flags,[]);
 });
+
+test('family hobby event names the interest the choice actually develops',()=>{
+ const game=new Game('family-hobby-label-2026');
+ game.state.player.age=5;
+ game.state.actions.remaining=3;
+ game.state.player.interests={resim:24,futbol:62};
+ const event=game.events.events.find(e=>e.id==='first-family-hobby');
+ const join=game.eventChoices(event).find(c=>c.id==='join');
+ assert.match(join.label,/resim/);
+ const before=game.state.player.interests.resim;
+ const result=game.makeChoice(event,'join');
+ assert.match(result,/resim/);
+ assert.ok(game.state.player.interests.resim>before);
+});
