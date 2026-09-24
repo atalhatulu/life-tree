@@ -52,6 +52,9 @@ function advanceToNextDecision(base,seed,maxAge){
    ?game.state.lifeTree.nodes.at(-1):null;
   if(game.state.player.alive)activities(game,policyRng);
   if(milestone&&game.state.player.alive){
+   // Retain only the representative PRE-choice checkpoint; other samples are discarded.
+   const checkpoint=milestone.snapshot;
+   const choices=checkpoint?.availableChoices??[];
    compactLife(game);
    return {
     key:'decision:'+milestone.eventId+':'+milestone.choiceId,
@@ -61,6 +64,7 @@ function advanceToNextDecision(base,seed,maxAge){
     choiceId:milestone.choiceId,
     title:milestone.title,
     label:milestone.label,
+    decision:{checkpoint,choices},
     game
    };
   }
@@ -103,6 +107,14 @@ function chooseOutcome(samples){
  const ages=winner.examples.map(s=>s.age).sort((a,b)=>a-b);
  const median=ages[Math.floor(ages.length/2)];
  const representative=winner.examples.find(s=>s.age===median)??winner.examples[0];
+ const checkpoint=representative.decision?.checkpoint??null;
+ if(checkpoint?.state?.lifeTree)checkpoint.state.lifeTree.nodes=[];
+ const forks=winner.kind==='decision'&&checkpoint?
+  (representative.decision?.choices??[]).filter(choice=>choice.id!==representative.choiceId)
+   .map(choice=>{
+    const count=samples.filter(s=>s.eventId===representative.eventId&&s.choiceId===choice.id).length;
+    return {choiceId:choice.id,label:choice.label,count,probability:percentage(count,samples.length),result:null};
+   }):[];
  return {
   representative,
   alternatives:sorted.slice(1,4).map(s=>({
@@ -120,6 +132,9 @@ function chooseOutcome(samples){
    alternatives:sorted.slice(1,4).map(s=>({
     title:s.title,label:s.label,count:s.count,probability:percentage(s.count,samples.length)
    })),
+   ...(winner.kind==='decision'?{
+    eventId:representative.eventId,choiceId:representative.choiceId,checkpoint,forks
+   }:{}),
    ...(winner.kind==='ending'?{endingId:representative.endingId,cause:representative.cause}:{})
   }
  };
@@ -171,7 +186,7 @@ export async function simulateContinuation(seedText,node,alternativeId,{
  if(!origin.state.player.alive){
   const finale=ensureLifeFinale(origin.state);
   return {
-   version:2,choiceId:alternativeId,label:alternative.label,requestedSamples:samples,
+   version:3,choiceId:alternativeId,label:alternative.label,requestedSamples:samples,
    originKey:continuationOriginKey(seedText,node),
    completedSamples:samples,completedSampleRuns:samples,startAge:node.age,
    continuation:[{
@@ -206,7 +221,7 @@ export async function simulateContinuation(seedText,node,alternativeId,{
  }
  const finalStage=continuation.at(-1)??null;
  return {
-  version:2,choiceId:alternativeId,label:alternative.label,requestedSamples:samples,
+  version:3,choiceId:alternativeId,label:alternative.label,requestedSamples:samples,
   originKey:continuationOriginKey(seedText,node),
   completedSamples:samples,completedSampleRuns,
   startAge:node.age,continuation,
@@ -215,4 +230,24 @@ export async function simulateContinuation(seedText,node,alternativeId,{
    id:finalStage.endingId,title:finalStage.title,age:finalStage.age,cause:finalStage.cause
   }:null
  };
+}
+
+/**
+ * Opens any unchosen option of a simulated critical decision. Each child
+ * continuation owns its independent descendants; siblings remain intact.
+ */
+export async function expandContinuationFork(seedText,parentResult,stageIndex,choiceId,options={}){
+ const stage=parentResult?.continuation?.[stageIndex];
+ if(stage?.kind!=='decision'||!stage.checkpoint)throw new Error('Bu düğüm için dallanma kaydı yok.');
+ const fork=stage.forks?.find(item=>item.choiceId===choiceId);
+ if(!fork)throw new Error('Bu kararın alternatif yolu bulunamadı.');
+ if(fork.result?.version===3)return fork.result;
+ const node={
+  eventId:stage.eventId,age:stage.age,title:stage.title,
+  choiceId:stage.choiceId,alternatives:[{id:choiceId,label:fork.label}],
+  snapshot:stage.checkpoint
+ };
+ const result=await simulateContinuation(seedText,node,choiceId,options);
+ fork.result=result;
+ return result;
 }
