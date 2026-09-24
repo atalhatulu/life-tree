@@ -603,7 +603,7 @@ function renderContinuation(result,nodeIndex,rootChoiceId,path=[]){
             <strong>${treeHtml(fork.label)}</strong>
             <small>${fork.count}/${stage.samples} örnekte seçildi • %${fork.probability}</small>
             ${opened
-              ?renderContinuation(fork.result,nodeIndex,rootChoiceId,nextPath)
+              ?`<details class="branch-life-reveal" data-tree-details="${encodeURIComponent(JSON.stringify([nodeIndex,rootChoiceId,nextPath]))}"><summary>Bu hayatı incele <span>↓</span></summary>${renderContinuation(fork.result,nodeIndex,rootChoiceId,nextPath)}</details>`
               :`<button class="counterfactual-button" data-sim-fork
                 data-root-node="${nodeIndex}" data-root-choice="${treeHtml(rootChoiceId)}"
                 data-fork-path="${encodeURIComponent(JSON.stringify(nextPath))}">
@@ -618,21 +618,21 @@ function renderContinuation(result,nodeIndex,rootChoiceId,path=[]){
         <article class="branch-life-card">
           <small>${stage.kind==='ending'?'SON':stage.kind==='limit'?'SİMÜLASYON SINIRI':(i+1)+'. KIRILMA'} • ${stage.age} yaş</small>
           <strong>${treeHtml(stage.title)}</strong>
-          <p>${treeHtml(stage.label)}</p>
           <span class="branch-life-confidence">${stage.count}/${stage.samples} örnekte • %${stage.probability}</span>
-          ${stage.alternatives?.length?`<details class="branch-life-others">
-            <summary>Bu aşamadaki diğer sonuçlar</summary>
-            ${stage.alternatives.map(x=>`<div>${treeHtml(x.title)} — ${treeHtml(x.label)} <b>%${x.probability}</b></div>`).join('')}
-          </details>`:''}
+          <details class="branch-life-others">
+            <summary>Kararın ayrıntıları</summary>
+            <p>${treeHtml(stage.label)}</p>
+            ${stage.alternatives?.length?`<div class="branch-life-other-title">Diğer sonuçlar</div>${stage.alternatives.map(x=>`<div>${treeHtml(x.title)} <b>%${x.probability}</b></div>`).join('')}`:''}
+          </details>
         </article>
         ${forks?`<div class="branch-life-forks">
-          <span class="branch-life-forks-label">Bu kararda seçilmeyen yollar</span>
+          <span class="branch-life-forks-label">Diğer seçimler</span>
           ${forks}
         </div>`:''}
       </li>`;
   }).join('');
   return `
-    <div class="branch-life-intro">◇ ${result.requestedSamples} örnek / aşama • Oranlar simülasyon politikasının o aşamada seçtiği yolları gösterir.</div>
+    <div class="branch-life-intro">${result.requestedSamples} örnek / aşama · En sık seçilen yol</div>
     <ol class="branch-life-timeline">${stages}</ol>
     ${result.terminal?'<p class="branch-life-foot">Bu olası hayat burada sona erdi.</p>':'<p class="branch-life-foot">Bu dalın devamı örnekleme sınırında kaldı.</p>'}
   `;
@@ -663,8 +663,8 @@ function renderLifeTree(){
           <div class="genealogy-bud ${result?'grown':livedElsewhere?'lived-elsewhere':''}">${result?'◇':livedElsewhere?'●':'?'}</div>
           <div class="genealogy-alt-label">${treeHtml(a.label)}</div>
           ${livedElsewhere?'<span class="meta-path-badge lived">● Başka bir yaşamda yaşandı</span>':''}
-          ${result?renderContinuation(result,index,a.id):`<button class="counterfactual-button" data-counterfactual-node="${index}" data-counterfactual-choice="${treeHtml(a.id)}" ${dead&&!counterfactualBusy?'':'disabled'}>
-            ${dead?'100 örnekle bu hayatı yaşat':'Ölümden sonra keşfedilir'}
+          ${result?`<details class="genealogy-reveal" data-tree-details="${encodeURIComponent(JSON.stringify([index,a.id]))}"><summary>◇ Olası hayatı incele <span>↓</span></summary>${renderContinuation(result,index,a.id)}</details>`:`<button class="counterfactual-button" data-counterfactual-node="${index}" data-counterfactual-choice="${treeHtml(a.id)}" ${dead&&!counterfactualBusy?'':'disabled'}>
+            ${dead?'Bu yolu keşfet':'Ölümden sonra açılır'}
           </button>`}
         </div>`;
     }).join('');
@@ -720,20 +720,19 @@ function renderLifeTree(){
 
   const meta=discoveryStats(discovery);
   const previousScroll=$('#lifeTree').querySelector('.genealogy-scroll')?.scrollLeft;
+  const expandedDetails=[...$('#lifeTree').querySelectorAll('details[open][data-tree-details]')].map(item=>item.dataset.treeDetails);
   $('#lifeTree').innerHTML=`
     <div class="life-tree-intro">
-      <span class="tree-legend lived">● Yaşadığın yol</span>
-      <span class="tree-legend unknown">? Açılmamış dal</span>
-      <span class="tree-legend simulated">◇ Olası devam</span>
+      <span class="tree-legend lived">● Yaşadığın</span>
+      <span class="tree-legend unknown">? Keşfedilmemiş</span>
+      <span class="tree-legend simulated">◇ Olası</span>
     </div>
-    <article class="tree-meta-summary">
-      <span>${meta.livesCompleted} tamamlanan hayat</span>
-      <span>${meta.livedChoices} yaşanmış kritik yol</span>
-      <span>${meta.simulatedChoices} simüle edilmiş yol</span>
-      <span>${meta.endings} keşfedilmiş son</span>
-    </article>
+    <details class="tree-overview">
+      <summary>${meta.livesCompleted} hayat · ${meta.simulatedChoices} olası yol · ${meta.endings} son keşfedildi <span>↓</span></summary>
+      <p>${meta.livedChoices} kritik seçim yaşandı. Keşfedilmemiş dalları ölümden sonra açabilirsin.</p>
+    </details>
     <div class="genealogy-navigation" role="group" aria-label="Hayat ağacı yakınlaştırma">
-      <span class="genealogy-controls-hint">Sağ tık + sürükle: gezin • Tekerlek: yakınlaştır</span>
+      <span class="genealogy-controls-hint">Sağ tıkla taşı · Tekerlekle yakınlaş</span>
       <button type="button" class="genealogy-zoom-button" data-tree-zoom="out" aria-label="Hayat ağacını uzaklaştır">−</button>
       <button type="button" class="genealogy-zoom-button genealogy-zoom-reset" data-tree-zoom="reset" aria-label="Hayat ağacını yüzde yüz ölçeğe getir">100%</button>
       <button type="button" class="genealogy-zoom-button" data-tree-zoom="in" aria-label="Hayat ağacını yakınlaştır">+</button>
@@ -744,10 +743,13 @@ function renderLifeTree(){
         <div class="genealogy-trunk">${branches}${finaleMarkup}</div>
       </div>
     </div>
-    ${endingGallery}
-    ${memory?`<div class="section-divider">Hayat İzleri</div><article class="summary-card"><p>Dayanıklılık: <strong>${Math.round(memory.resilience??50)}/100</strong> • Yük: <strong>${Math.round(memory.scarLoad??0)}/100</strong></p>${memories.length?memories.map(x=>`<p><strong>${x.age}:</strong> ${treeHtml(x.label)}</p>`).join(''):'<p class="muted">Henüz belirgin bir hayat izi yok.</p>'}</article>`:''}
+    <details class="tree-extras"><summary>Keşfedilen sonlar <span>↓</span></summary>${endingGallery}</details>
+    ${memory?`<details class="tree-extras"><summary>Hayat izleri <span>↓</span></summary><article class="summary-card"><p>Dayanıklılık: <strong>${Math.round(memory.resilience??50)}/100</strong> • Yük: <strong>${Math.round(memory.scarLoad??0)}/100</strong></p>${memories.length?memories.map(x=>`<p><strong>${x.age}:</strong> ${treeHtml(x.label)}</p>`).join(''):'<p class="muted">Henüz belirgin bir hayat izi yok.</p>'}</article></details>`:''}
   `;
 
+  $('#lifeTree').querySelectorAll('[data-tree-details]').forEach(item=>{
+    if(expandedDetails.includes(item.dataset.treeDetails))item.open=true;
+  });
   const treeScroll=$('#lifeTree').querySelector('.genealogy-scroll');
   if(treeScroll){
     const canvas=treeScroll.querySelector('.genealogy-tree');
