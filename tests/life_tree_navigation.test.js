@@ -33,3 +33,18 @@ test('Life Tree renders recursive simulated forks with actionable paths',()=>{
  assert.ok(engine.includes('const forks=winner.kind'));
  assert.ok(engine.includes('fork.result=result'));
 });
+
+test('simplified Life Tree keeps recursive paths but hides verbose details until requested',()=>{
+ const app=fs.readFileSync(new URL('../src/ui/app.js',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../styles.css',import.meta.url),'utf8');
+ assert.ok(app.includes('class="genealogy-reveal" data-tree-details='));
+ assert.ok(app.includes('class="branch-life-reveal" data-tree-details='));
+ assert.ok(app.includes('expandedDetails.includes(item.dataset.treeDetails)'));
+ assert.ok(app.includes('class="tree-extras"'));
+ assert.ok(app.includes('class="tree-overview"'));
+ assert.ok(app.includes('Kararın ayrıntıları'));
+ assert.ok(app.includes('data-sim-fork'));
+ assert.ok(app.includes('data-counterfactual-node'));
+ assert.ok(css.includes('#lifeTree .genealogy-reveal>summary'));
+ assert.ok(css.includes('#lifeTree .tree-extras>summary'));
+});
