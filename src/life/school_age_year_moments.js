@@ -7,7 +7,7 @@ export function schoolAgeYearMoment(state,rng){
  const pool=[
   {title:'Hafta sonu',text:'Ailen sana seçim bıraktı.',choices:[
    {id:'family',label:'Ailece dışarı çık'},
-   {id:'learn',label:'Bir hobiyle uğraş'},
+   {id:'learn',label:'Yeni bir şey öğren'},
    {id:'rest',label:'Evde kal'}
   ]}
  ];
