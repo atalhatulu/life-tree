@@ -36,10 +36,15 @@ function interestFit(state,program){
  return values.length?Math.max(...values):0;
 }
 
-function campusFor(rng){
+function campusFor(rng,homeCityId=null){
+ // Birth-city weights represent resident population, not university admission.
+ // Each listed campus receives its own bounded attractiveness; studying in
+ // one's current city is a modest preference, never a requirement.
  const campus=rng.weighted(UNIVERSITIES.map(value=>{
   const city=cityById(value.cityId);
-  return {value,weight:Math.max(.5,city.university*city.weight)};
+  const citySize=Math.max(.65,Math.min(3,Math.sqrt(city.population2025/400000)));
+  const localBonus=city.id===homeCityId?1.35:1;
+  return {value,weight:Math.max(.45,city.university*citySize*localBonus)};
  }));
  const city=cityById(campus.cityId);
  return {universityId:campus.id,universityName:campus.name,cityId:city.id,cityName:city.name};
@@ -51,7 +56,7 @@ export function generateUniversityApplications(state,rng,count=3){
  const yks=planning.yksScore;
  const scored=UNIVERSITY_PROGRAMS.map(program=>{
   const fit=interestFit(state,program);
-  const campus=campusFor(rng.fork('campus-'+program.id));
+  const campus=campusFor(rng.fork('campus-'+program.id),state.location?.cityId??state.origin?.cityId);
   const city=cityById(campus.cityId);
   const chance=clamp(Math.round(
    readiness*.42+
