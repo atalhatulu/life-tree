@@ -140,3 +140,23 @@ test('repeated military deferrals grow apart instead of resurfacing yearly',()=>
  assert.equal(g.state.nextMilitaryDecisionAge,28);
  assert.equal(g.state.militaryService.deferralCount,2);
 });
+
+test('gap-year options acknowledge elapsed time instead of repeating the initial choice text',()=>{
+ const g=new Game('gap-context-options');
+ const event=g.events.events.find(e=>e.id==='gap-year-direction');
+ g.state.player.age=21;
+ g.state.nextPath='gap';
+ g.state.gapYears=1;
+ const initial=g.events.choicesFor(g.state,event);
+ assert.equal(initial.find(c=>c.id==='retry-university').label,'Üniversiteyi tekrar dene');
+ assert.equal(initial.find(c=>c.id==='continue-gap').label,'İki yıl daha bekle');
+ g.state.gapYears=3;
+ const later=g.events.choicesFor(g.state,event);
+ assert.match(later.find(c=>c.id==='retry-university').label,/Aradan geçen yıllardan sonra/);
+ assert.match(later.find(c=>c.id==='seek-work').label,/Eğitim planını bırakıp/);
+ assert.match(later.find(c=>c.id==='continue-gap').label,/Hazırlığı iki yıl daha ertele/);
+ g.state.gapYears=6;
+ assert.match(g.events.choicesFor(g.state,event).find(c=>c.id==='continue-gap').label,/Bir iki yıl daha/);
+ g.state.player.age=33;
+ assert.equal(g.events.choicesFor(g.state,event).some(c=>c.id==='continue-gap'),false);
+});
