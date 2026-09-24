@@ -266,7 +266,7 @@ const GIVEN_NAME_GROUPS={
    "Bahadır",
    "Barlas",
    "Batı",
-   "Batuhan",
+   
    "Bayram",
    "Bülent",
    "Cihan",
