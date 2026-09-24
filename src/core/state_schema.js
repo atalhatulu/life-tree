@@ -13,6 +13,11 @@ export function ensureStateSchema(state){
  state.lifeTree.branches??=[];
  state.lifeTree.nextBranchId??=1;
  state.lifeTree.finale??=null;
+ state.primaryStats=object(state.primaryStats);
+ state.primaryStats.health??=state.player?.health?.current??70;
+ state.primaryStats.intelligence??=50;
+ state.primaryStats.appearance??=state.player?.appearance?.attractiveness??50;
+ state.primaryStats.happiness??=50;
  state.social=object(state.social);
  state.social.friends??=[];
  state.social.romance??=null;
