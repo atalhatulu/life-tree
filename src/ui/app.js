@@ -704,8 +704,13 @@ function renderLifeTree(){
       <span>${meta.simulatedChoices} simüle edilmiş yol</span>
       <span>${meta.endings} keşfedilmiş son</span>
     </article>
-    <p class="genealogy-pan-hint">↔ Ağacı sağa veya sola kaydırarak alternatif hayat dallarını keşfet.</p>
-    <div class="genealogy-scroll">
+    <div class="genealogy-navigation" role="group" aria-label="Hayat ağacı yatay gezinme">
+      <button type="button" class="genealogy-nav-button" data-tree-pan="left" aria-label="Sol alternatif dallara git">← SOL</button>
+      <button type="button" class="genealogy-nav-button genealogy-nav-center" data-tree-pan="center" aria-label="Gerçek hayat yolunu ortala">◎ ORTALA</button>
+      <button type="button" class="genealogy-nav-button" data-tree-pan="right" aria-label="Sağ alternatif dallara git">SAĞ →</button>
+      <span class="genealogy-pan-status" aria-live="polite">Gerçek yaşam yolu</span>
+    </div>
+    <div class="genealogy-scroll" tabindex="0" role="region" aria-label="Yatay kaydırılabilir hayat ağacı">
       <div class="genealogy-tree">
         <div class="tree-root"><b>Doğum</b><small>${game.state.year-game.state.player.age}</small></div>
         <div class="genealogy-trunk">${branches}${finaleMarkup}</div>
@@ -716,7 +721,31 @@ function renderLifeTree(){
   `;
 
   const treeScroll=$('#lifeTree').querySelector('.genealogy-scroll');
-  if(treeScroll)treeScroll.scrollLeft=previousScroll??Math.max(0,(treeScroll.scrollWidth-treeScroll.clientWidth)/2);
+  if(treeScroll){
+    const centerPosition=()=>Math.max(0,(treeScroll.scrollWidth-treeScroll.clientWidth)/2);
+    const panButtons=[...$('#lifeTree').querySelectorAll('[data-tree-pan]')];
+    const panStatus=$('#lifeTree').querySelector('.genealogy-pan-status');
+    const updatePanStatus=()=>{
+      const maximum=Math.max(0,treeScroll.scrollWidth-treeScroll.clientWidth);
+      const current=treeScroll.scrollLeft;
+      const center=centerPosition();
+      const tolerance=9;
+      for(const button of panButtons){
+        const side=button.dataset.treePan;
+        button.disabled=side==='left'?current<=tolerance:side==='right'?current>=maximum-tolerance:Math.abs(current-center)<=tolerance;
+      }
+      panStatus.textContent=current<center-tolerance?'Sol alternatifler':current>center+tolerance?'Sağ alternatifler':'Gerçek yaşam yolu';
+    };
+    treeScroll.scrollLeft=previousScroll??centerPosition();
+    treeScroll.addEventListener('scroll',updatePanStatus,{passive:true});
+    for(const button of panButtons)button.addEventListener('click',()=>{
+      const side=button.dataset.treePan;
+      const distance=Math.max(165,Math.round(treeScroll.clientWidth*.8));
+      const destination=side==='center'?centerPosition():treeScroll.scrollLeft+(side==='left'?-distance:distance);
+      treeScroll.scrollTo({left:destination,behavior:'smooth'});
+    });
+    updatePanStatus();
+  }
   $('#lifeTree').querySelectorAll('[data-counterfactual-node]').forEach(button=>button.addEventListener('click',async()=>{
     if(counterfactualBusy)return;
     const runGame=game;
