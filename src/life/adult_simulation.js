@@ -49,7 +49,7 @@ export function processAdultYear(state,rng){
  if(state.nextPath==='university'&&!state.higherEducation&&!state.pendingUniversityApplications){
   state.pendingUniversityApplications=generateUniversityApplications(state,rng.fork('university-apps-'+age));
  }
- if(state.nextPath==='work'&&!state.career?.employed&&!state.pendingJobOffers){
+ if(state.nextPath==='work'&&age>=(state.nextJobSearchAge??19)&&!state.career?.employed&&!state.pendingJobOffers){
   state.pendingJobOffers=generateJobOffers(state,rng.fork('job-offers-'+age),3,{mode:(state.careerProfile?.totalExperience??0)>0?'reemployment':'entry'});
  }
  if(state.nextPath==='gap'&&!state.pendingUniversityApplications&&!state.pendingJobOffers){
