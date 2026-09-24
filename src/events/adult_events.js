@@ -34,7 +34,7 @@ export const adultEvents=[
    },
    {
     id:'defer-service',
-    label:'Şimdilik ertele',
+    label:(s.militaryService?.deferralCount??0)>0?'Askerlik kararını yeniden ertele':'Şimdilik ertele',
     condition:next=>next.player.age<35,
     result:'Askerlik kararını bir süre erteledin.',
     effect:next=>deferMilitaryService(next,next.higherEducation?.enrolled?3:2)
@@ -89,9 +89,11 @@ export const adultEvents=[
    result:next=>next.higherEducation?.programId===program.id?program.universityName+' '+program.title+' bölümüne '+program.cityName+' şehrinde kabul edildin.':program.universityName+' başvurun kabul edilmedi.',
    effect:(next,rng)=>applyUniversityProgram(next,rng,program.id)
   })),
-   {id:'skip-applications',label:'Bu yıl başvurma, diğer yolları değerlendir',
-    result:'Başvurularını bu yıl yapmamaya karar verdin; gelecek yıl yeni bir yön belirleyebilirsin.',
-    effect:next=>{next.pendingUniversityApplications=null;next.nextPath='gap';next.nextGapDecisionAge=next.player.age+1;}}
+   {id:'skip-applications',label:s.player.age>=35?'Bu yıl başvurma, iş aramaya yönel':'Bu yıl başvurma, diğer yolları değerlendir',
+    result:next=>next.player.age>=35?'Başvuruları erteleyip iş aramaya yöneldin.':'Başvurularını bu yıl yapmamaya karar verdin; gelecek yıl yeni bir yön belirleyebilirsin.',
+    effect:next=>{next.pendingUniversityApplications=null;
+     if(next.player.age>=35){next.nextPath='work';next.nextJobSearchAge=next.player.age+1;}
+     else{next.nextPath='gap';next.nextGapDecisionAge=next.player.age+1;}}}
   ]
  },
  {
@@ -124,7 +126,9 @@ export const adultEvents=[
   choices:[
    {id:'retry-university',label:'Üniversiteyi tekrar dene',result:'Bir sonraki başvuru dönemi için üniversiteye hazırlanmayı seçtin.',effect:(s,rng)=>{s.nextPath='university';s.pendingUniversityApplications=generateUniversityApplications(s,rng.fork('retry-university'));}},
    {id:'seek-work',label:'İş aramaya başla',result:'Çalışma hayatına yönelmeye karar verdin.',effect:(s,rng)=>{s.nextPath='work';s.pendingJobOffers=generateJobOffers(s,rng.fork('gap-job-search'));}},
-   {id:'continue-gap',label:'Bir süre daha bekle',result:'Yeni bir eğitim veya iş kararı almadan önce kendine zaman tanıdın.',effect:s=>{s.nextPath='gap';s.nextGapDecisionAge=s.player.age+2;}}
+   {id:'continue-gap',label:'İki yıl daha bekle',condition:s=>s.player.age<33,
+    result:'Yeni bir eğitim veya iş kararı almadan önce iki yıl kendine zaman tanıdın.',
+    effect:s=>{s.nextPath='gap';s.nextGapDecisionAge=s.player.age+2;}}
   ]
  },
  {
