@@ -7,6 +7,7 @@ import { generateJobOffers } from '../career/job_market.js';
 import { switchJob } from '../career/career_system.js';
 import { ensureLifeFinale, ENDING_ARCHETYPES } from '../life/ending_system.js';
 import { simulateContinuation,expandContinuationFork,continuationOriginKey } from '../life/counterfactual_continuation.js';
+import {livedLifeTree,renderFamilyTree} from './life_tree_view.js';
 import {loadDiscovery,saveDiscovery,recordCompletedLife,recordSimulatedChoice,discoveryStatus,discoveryStats,choiceKey} from '../life/discovery_system.js';
 import {refreshPrimaryStats} from '../life/primary_stats.js';
 
@@ -639,188 +640,122 @@ function renderContinuation(result,nodeIndex,rootChoiceId,path=[]){
 }
 
 
+
 function renderLifeTree(){
   const nodes=game.state.lifeTree?.nodes??[];
   const dead=!game.state.player.alive;
   const finale=dead?ensureLifeFinale(game.state):game.state.lifeTree?.finale;
-  const memory=game.state.lifeMemory;
-  const memories=(memory?.memories??[]).slice(-5).reverse();
-
   if(!nodes.length&&!finale){
     $('#lifeTree').innerHTML='<div class="empty-state">Henüz hayatının yönünü değiştiren büyük bir karar vermedin.</div>';
     return;
   }
-
-  const branches=nodes.map((node,index)=>{
-    const alternatives=(node.alternatives??[]).map(a=>{
-      const persisted=discovery.simulatedChoices?.[choiceKey(node.eventId,a.id)]?.lastResult;
-      const local=node.counterfactual?.alternatives?.find(x=>x.choiceId===a.id);
-      const originKey=continuationOriginKey(game.seedText,node);
-      const result=local?.version===3&&local.continuation?.length?local:((persisted?.version===3&&persisted.originKey===originKey)&&persisted.continuation?.length)?persisted:null;
-      const livedElsewhere=discoveryStatus(discovery,node.eventId,a.id)==='lived';
-      return `
-        <div class="genealogy-branch ${result?'opened':''}" data-branch-key="${index}-${treeHtml(a.id)}">
-          <div class="genealogy-bud ${result?'grown':livedElsewhere?'lived-elsewhere':''}">${result?'◇':livedElsewhere?'●':'?'}</div>
-          <div class="genealogy-alt-label">${treeHtml(a.label)}</div>
-          ${livedElsewhere?'<span class="meta-path-badge lived">● Başka bir yaşamda yaşandı</span>':''}
-          ${result?`<details class="genealogy-reveal" data-tree-details="${encodeURIComponent(JSON.stringify([index,a.id]))}"><summary>◇ Olası hayatı incele <span>↓</span></summary>${renderContinuation(result,index,a.id)}</details>`:`<button class="counterfactual-button" data-counterfactual-node="${index}" data-counterfactual-choice="${treeHtml(a.id)}" ${dead&&!counterfactualBusy?'':'disabled'}>
-            ${dead?'Bu yolu keşfet':'Ölümden sonra açılır'}
-          </button>`}
-        </div>`;
-    }).join('');
-
-    const left=index%2===0;
-    return `
-      <section class="genealogy-stage life-tree-stage">
-        <div class="genealogy-fork ${left?'fork-left':'fork-right'}">
-          <div class="genealogy-side genealogy-left">${left?alternatives:''}</div>
-          <div class="genealogy-main">
-            <article class="tree-node lived-node">
-              <small>${node.age} yaş • Kritik karar ${index+1}</small>
-              <h3>${treeHtml(node.title)}</h3>
-              <p class="chosen-path">● ${treeHtml(node.label)}</p>
-            </article>
-          </div>
-          <div class="genealogy-side genealogy-right">${!left?alternatives:''}</div>
-        </div>
-      </section>`;
-  }).join('');
-
-  const endingGallery=`
-    <div class="section-divider">Keşfedilen Sonlar</div>
-    <div class="ending-gallery">
-      ${ENDING_ARCHETYPES.map(ending=>{
-        const found=discovery.endings?.[ending.id];
-        const current=finale?.ending?.id===ending.id;
-        return found?`<article class="ending-gallery-card discovered ${current?'current':''}">
-          <small>${current?'BU HAYATIN SONU':'KEŞFEDİLDİ'}</small>
-          <strong>${treeHtml(ending.title)}</strong><span>${found.timesReached} kez ulaşıldı</span>
-        </article>`:`<article class="ending-gallery-card locked">
-          <small>KEŞFEDİLMEDİ</small><strong>???</strong><span>Başka bir yaşam yolu</span>
-        </article>`;
-      }).join('')}
-    </div>`;
-
-  const finaleMarkup=finale?`
-    <div class="tree-spine final-spine"></div>
-    <article class="tree-ending-node">
-      <small>ULAŞTIĞIN SON</small>
-      <h2>${treeHtml(finale.ending.title)}</h2>
-      <p>${treeHtml(finale.ending.description)}</p>
-      <div class="ending-meta">
-        <span>${finale.lifespan.age} yaş</span><span>${treeHtml(finale.ending.cause)}</span>
-        <span>${finale.majorDecisions} kritik karar</span>
-      </div>
-    </article>
-    <div class="section-divider">Bu hayatın özeti</div>
-    <article class="summary-card finale-recap">
-      ${finale.highlights.map(x=>`<p>• ${treeHtml(x.text)}</p>`).join('')}
-      <p class="muted">Net worth: ${money(finale.netWorth)} • Çocuk: ${finale.children} • Tamamlanan hedef: ${finale.completedGoals}</p>
-    </article>`:'';
-
-  const meta=discoveryStats(discovery);
-  const previousScroll=$('#lifeTree').querySelector('.genealogy-scroll')?.scrollLeft;
-  const expandedDetails=[...$('#lifeTree').querySelectorAll('details[open][data-tree-details]')].map(item=>item.dataset.treeDetails);
+  const previousScroll=$('#lifeTree').querySelector('.genealogy-scroll');
+  const position=previousScroll?{x:previousScroll.scrollLeft,y:previousScroll.scrollTop}:null;
+  const previousInfo=$('#lifeTree').querySelector('.life-tree-inspector')?.dataset.selected??null;
+  const getResult=(node,index,alt)=>{
+    const local=node.counterfactual?.alternatives?.find(item=>item.choiceId===alt.id);
+    const saved=discovery.simulatedChoices?.[choiceKey(node.eventId,alt.id)]?.lastResult;
+    return local?.version===3?local:
+      saved?.version===3&&saved.originKey===continuationOriginKey(game.seedText,node)?saved:null;
+  };
+  const tree=livedLifeTree(nodes,finale,getResult);
+  const graph=renderFamilyTree(tree,{dead});
   $('#lifeTree').innerHTML=`
-    <div class="life-tree-intro">
-      <span class="tree-legend lived">● Yaşadığın</span>
-      <span class="tree-legend unknown">? Keşfedilmemiş</span>
-      <span class="tree-legend simulated">◇ Olası</span>
-    </div>
-    <details class="tree-overview">
-      <summary>${meta.livesCompleted} hayat · ${meta.simulatedChoices} olası yol · ${meta.endings} son keşfedildi <span>↓</span></summary>
-      <p>${meta.livedChoices} kritik seçim yaşandı. Keşfedilmemiş dalları ölümden sonra açabilirsin.</p>
-    </details>
-    <div class="genealogy-navigation" role="group" aria-label="Hayat ağacı yakınlaştırma">
-      <span class="genealogy-controls-hint">Sağ tıkla taşı · Tekerlekle yakınlaş</span>
-      <button type="button" class="genealogy-zoom-button" data-tree-zoom="out" aria-label="Hayat ağacını uzaklaştır">−</button>
-      <button type="button" class="genealogy-zoom-button genealogy-zoom-reset" data-tree-zoom="reset" aria-label="Hayat ağacını yüzde yüz ölçeğe getir">100%</button>
-      <button type="button" class="genealogy-zoom-button" data-tree-zoom="in" aria-label="Hayat ağacını yakınlaştır">+</button>
-    </div>
-    <div class="genealogy-scroll" tabindex="0" role="region" aria-label="Sağ fare tuşuyla sürüklenebilir ve tekerlekle yakınlaştırılabilir hayat ağacı">
-      <div class="genealogy-tree">
-        <div class="tree-root"><b>Doğum</b><small>${game.state.year-game.state.player.age}</small></div>
-        <div class="genealogy-trunk">${branches}${finaleMarkup}</div>
+    <div class="life-map-toolbar">
+      <div class="life-map-legend"><span>● Yaşanan</span><span>◇ Olası</span><span>? Açılmamış</span></div>
+      <div class="genealogy-navigation" role="group" aria-label="Ağaç yakınlaştırma">
+        <span class="genealogy-controls-hint">Sağ tıkla taşı · Tekerlekle yakınlaş</span>
+        <button type="button" class="genealogy-zoom-button" data-tree-zoom="out" aria-label="Uzaklaştır">−</button>
+        <button type="button" class="genealogy-zoom-button genealogy-zoom-reset" data-tree-zoom="reset" aria-label="Ölçeği sıfırla">100%</button>
+        <button type="button" class="genealogy-zoom-button" data-tree-zoom="in" aria-label="Yakınlaştır">+</button>
       </div>
     </div>
-    <details class="tree-extras"><summary>Keşfedilen sonlar <span>↓</span></summary>${endingGallery}</details>
-    ${memory?`<details class="tree-extras"><summary>Hayat izleri <span>↓</span></summary><article class="summary-card"><p>Dayanıklılık: <strong>${Math.round(memory.resilience??50)}/100</strong> • Yük: <strong>${Math.round(memory.scarLoad??0)}/100</strong></p>${memories.length?memories.map(x=>`<p><strong>${x.age}:</strong> ${treeHtml(x.label)}</p>`).join(''):'<p class="muted">Henüz belirgin bir hayat izi yok.</p>'}</article></details>`:''}
+    <div class="genealogy-scroll life-map-viewport" tabindex="0" role="region" aria-label="Dallanabilen hayat ağacı">
+      <div class="genealogy-tree life-map-canvas">${graph.markup}</div>
+    </div>
+    <aside class="life-tree-inspector" aria-live="polite">
+      <span class="life-inspector-hint">Bir karar veya ihtimal düğümüne tıkla; ayrıntı burada görünsün.</span>
+    </aside>
   `;
-
-  $('#lifeTree').querySelectorAll('[data-tree-details]').forEach(item=>{
-    if(expandedDetails.includes(item.dataset.treeDetails))item.open=true;
-  });
   const treeScroll=$('#lifeTree').querySelector('.genealogy-scroll');
-  if(treeScroll){
-    const canvas=treeScroll.querySelector('.genealogy-tree');
-    const panel=$('#treeScreen');
-    const zoomButtons=[...$('#lifeTree').querySelectorAll('[data-tree-zoom]')];
-    const zoomLabel=$('#lifeTree').querySelector('[data-tree-zoom="reset"]');
-    const minimum=.55,maximum=1.8;
-    const clampZoom=value=>Math.max(minimum,Math.min(maximum,Math.round(value*100)/100));
-    const centerPosition=()=>Math.max(0,(treeScroll.scrollWidth-treeScroll.clientWidth)/2);
-    const updateZoomButtons=()=>{
-      zoomLabel.textContent=Math.round(lifeTreeZoom*100)+'%';
-      zoomButtons.find(x=>x.dataset.treeZoom==='out').disabled=lifeTreeZoom<=minimum;
-      zoomButtons.find(x=>x.dataset.treeZoom==='in').disabled=lifeTreeZoom>=maximum;
-    };
-    const changeZoom=(requested,clientX)=>{
-      const next=clampZoom(requested);
-      if(next===lifeTreeZoom)return;
-      const rect=treeScroll.getBoundingClientRect();
-      const pointerX=clientX??rect.left+rect.width/2;
-      const offsetX=pointerX-rect.left;
-      const contentX=(treeScroll.scrollLeft+offsetX)/lifeTreeZoom;
-      lifeTreeZoom=next;
-      canvas.style.zoom=String(next);
-      treeScroll.scrollLeft=contentX*next-offsetX;
-      updateZoomButtons();
-    };
-    canvas.style.zoom=String(lifeTreeZoom);
-    treeScroll.scrollLeft=previousScroll??centerPosition();
+  const canvas=treeScroll.querySelector('.genealogy-tree');
+  const panel=$('#treeScreen');
+  const inspect=$('#lifeTree').querySelector('.life-tree-inspector');
+  const zoomButtons=[...$('#lifeTree').querySelectorAll('[data-tree-zoom]')];
+  const zoomLabel=$('#lifeTree').querySelector('[data-tree-zoom="reset"]');
+  const minimum=.4,maximum=2;
+  const clampZoom=value=>Math.max(minimum,Math.min(maximum,Math.round(value*100)/100));
+  const centerPosition=()=>Math.max(0,(treeScroll.scrollWidth-treeScroll.clientWidth)/2);
+  const updateZoomButtons=()=>{
+    zoomLabel.textContent=Math.round(lifeTreeZoom*100)+'%';
+    zoomButtons.find(x=>x.dataset.treeZoom==='out').disabled=lifeTreeZoom<=minimum;
+    zoomButtons.find(x=>x.dataset.treeZoom==='in').disabled=lifeTreeZoom>=maximum;
+  };
+  const changeZoom=(requested,clientX)=>{
+    const next=clampZoom(requested);
+    if(next===lifeTreeZoom)return;
+    const rect=treeScroll.getBoundingClientRect();
+    const offsetX=(clientX??rect.left+rect.width/2)-rect.left;
+    const contentX=(treeScroll.scrollLeft+offsetX)/lifeTreeZoom;
+    lifeTreeZoom=next;
+    canvas.style.zoom=String(next);
+    treeScroll.scrollLeft=contentX*next-offsetX;
     updateZoomButtons();
-
-    // Only the tree handles wheel zoom. Outside it, ordinary vertical scrolling remains.
-    treeScroll.addEventListener('wheel',event=>{
-      if(event.ctrlKey)return; // Preserve the browser's own Ctrl+wheel page zoom.
-      event.preventDefault();
-      const delta=event.deltaY!==0?event.deltaY:event.deltaX;
-      if(!delta)return;
-      changeZoom(lifeTreeZoom*(delta>0?.9:1.1),event.clientX);
-    },{passive:false});
-
-    let dragging=null;
-    const stopDrag=()=>{
-      if(!dragging)return;
-      dragging=null;
-      treeScroll.classList.remove('is-panning');
-      window.removeEventListener('mousemove',moveDrag);
-      window.removeEventListener('mouseup',stopDrag);
-      window.removeEventListener('blur',stopDrag);
-    };
-    const moveDrag=event=>{
-      if(!dragging)return;
-      if(!(event.buttons&2)){stopDrag();return;}
-      event.preventDefault();
-      treeScroll.scrollLeft=dragging.left+dragging.x-event.clientX;
-      panel.scrollTop=dragging.top+dragging.y-event.clientY;
-    };
-    treeScroll.addEventListener('contextmenu',event=>event.preventDefault());
-    treeScroll.addEventListener('mousedown',event=>{
-      if(event.button!==2)return;
-      event.preventDefault();
-      dragging={x:event.clientX,y:event.clientY,left:treeScroll.scrollLeft,top:panel.scrollTop};
-      treeScroll.classList.add('is-panning');
-      window.addEventListener('mousemove',moveDrag);
-      window.addEventListener('mouseup',stopDrag);
-      window.addEventListener('blur',stopDrag);
-    });
-    for(const button of zoomButtons)button.addEventListener('click',()=>{
-      const action=button.dataset.treeZoom;
-      changeZoom(action==='reset'?1:lifeTreeZoom*(action==='in'?1.2:1/1.2));
-    });
-  }
-
+  };
+  canvas.style.zoom=String(lifeTreeZoom);
+  treeScroll.scrollLeft=position?.x??centerPosition();
+  treeScroll.scrollTop=position?.y??0;
+  updateZoomButtons();
+  treeScroll.addEventListener('wheel',event=>{
+    if(event.ctrlKey)return;
+    event.preventDefault();
+    const delta=event.deltaY!==0?event.deltaY:event.deltaX;
+    if(delta)changeZoom(lifeTreeZoom*(delta>0?.9:1.1),event.clientX);
+  },{passive:false});
+  let dragging=null;
+  const stopDrag=()=>{
+    if(!dragging)return;
+    dragging=null;
+    treeScroll.classList.remove('is-panning');
+    window.removeEventListener('mousemove',moveDrag);
+    window.removeEventListener('mouseup',stopDrag);
+    window.removeEventListener('blur',stopDrag);
+  };
+  const moveDrag=event=>{
+    if(!dragging)return;
+    if(!(event.buttons&2)){stopDrag();return;}
+    event.preventDefault();
+    treeScroll.scrollLeft=dragging.left+dragging.x-event.clientX;
+    treeScroll.scrollTop=dragging.top+dragging.y-event.clientY;
+  };
+  treeScroll.addEventListener('contextmenu',event=>event.preventDefault());
+  treeScroll.addEventListener('mousedown',event=>{
+    if(event.button!==2)return;
+    event.preventDefault();
+    dragging={x:event.clientX,y:event.clientY,left:treeScroll.scrollLeft,top:treeScroll.scrollTop};
+    treeScroll.classList.add('is-panning');
+    window.addEventListener('mousemove',moveDrag);
+    window.addEventListener('mouseup',stopDrag);
+    window.addEventListener('blur',stopDrag);
+  });
+  zoomButtons.forEach(button=>button.addEventListener('click',()=>{
+    const action=button.dataset.treeZoom;
+    changeZoom(action==='reset'?1:lifeTreeZoom*(action==='in'?1.2:1/1.2));
+  }));
+  $('#lifeTree').querySelectorAll('[data-tree-node]').forEach(button=>button.addEventListener('click',()=>{
+    const entry=graph.details[button.dataset.treeNode];
+    if(!entry)return;
+    inspect.dataset.selected=button.dataset.treeNode;
+    inspect.innerHTML=`
+      <small>${entry.age==null?'BAŞLANGIÇ':entry.age+' YAŞ'}</small>
+      <strong>${treeHtml(entry.title)}</strong>
+      <p>${treeHtml(entry.detail)}</p>
+      ${entry.probability!=null?`<span>${entry.count??'?'}/${entry.samples??100} örnekte · %${entry.probability}</span>`:''}
+      ${entry.canExpand?'<span class="life-inspector-hint">Bu düğüme tıklayarak dalı büyütebilirsin.</span>':''}
+    `;
+    $('#lifeTree').querySelectorAll('.life-graph-node.is-selected').forEach(item=>item.classList.remove('is-selected'));
+    button.classList.add('is-selected');
+  }));
   $('#lifeTree').querySelectorAll('[data-sim-fork]').forEach(button=>button.addEventListener('click',async()=>{
     if(counterfactualBusy||!dead)return;
     const runGame=game;
