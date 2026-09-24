@@ -78,8 +78,10 @@ export function completeMilitaryService(state,mode){
 export function deferMilitaryService(state,years=1){
  const m=refreshMilitaryEligibility(state);
  if(!m.eligible||m.status==='completed')return m;
+ m.deferralCount=(m.deferralCount??0)+1;
+ const extraYears=Math.min(2,Math.max(0,m.deferralCount-1));
  m.status='deferred';
- m.deferredUntilAge=state.player.age+Math.max(1,years);
+ m.deferredUntilAge=state.player.age+Math.max(1,years)+extraYears;
  state.nextMilitaryDecisionAge=m.deferredUntilAge;
  return m;
 }
