@@ -8,6 +8,7 @@ import { switchJob } from '../career/career_system.js';
 import { ensureLifeFinale, ENDING_ARCHETYPES } from '../life/ending_system.js';
 import { ensureCounterfactualChoice } from '../life/counterfactual_system.js';
 import {loadDiscovery,saveDiscovery,recordCompletedLife,recordSimulatedChoice,discoveryStatus,discoveryStats,choiceKey} from '../life/discovery_system.js';
+import {refreshPrimaryStats} from '../life/primary_stats.js';
 
 let game;
 let pendingEvent = null;
@@ -27,9 +28,9 @@ const sleep = (ms) => new Promise(resolve=>setTimeout(resolve,ms));
 const $ = (selector) => document.querySelector(selector);
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, value));
 
-function getHealth(player) { return clamp(Math.round(player.health?.current ?? 70)); }
-function getStress() { return clamp(Math.round(game.state.healthProfile?.stress ?? 0)); }
-function getMental() { return clamp(Math.round(game.state.mentalHealth?.strain ?? 0)); }
+function primaryStats(){
+  return refreshPrimaryStats(game.state);
+}
 function money(value=0){ return '₺'+Math.round(value).toLocaleString('tr-TR'); }
 function netWorth(){
   const f=game.state.finance??{};
@@ -852,9 +853,11 @@ function render(){
   lastRenderedAge=player.age;
   if(ageChanged)requestAnimationFrame(pulseYear);
 
-  updateBar('health',getHealth(player));
-  updateBar('stress',getStress());
-  updateBar('mental',getMental());
+  const stats=primaryStats();
+  updateBar('health',stats.health);
+  updateBar('intelligence',stats.intelligence);
+  updateBar('appearance',stats.appearance);
+  updateBar('happiness',stats.happiness);
 
   $('#moneyQuick').textContent=money((finance?.cash??0)+(finance?.savings??0));
   $('#debtQuick').textContent=money(finance?.debt??0);
