@@ -28,6 +28,7 @@ import {processDiseaseProgressionYear} from '../health/disease_progression.js';
 import {availableLifeGoals,setLifeGoal} from '../life/life_goal_system.js';
 import {availableLifeActions,performLifeAction} from '../life/agency_system.js';
 import {ensureLifeFinale} from '../life/ending_system.js';
+import {refreshPrimaryStats} from '../life/primary_stats.js';
 
 export class Game{
  constructor(seed=String(Date.now())){
@@ -42,6 +43,7 @@ export class Game{
   this.state.actions={remaining:0,max:3};
   this.state.world=createWorldState(2026);
   ensureStateSchema(this.state);
+  refreshPrimaryStats(this.state);
   this.events=new EventEngine([...childhoodEvents,...adolescenceEvents,...adultEvents,...lateLifeEvents,...parentingEvents,...lateAgeEvents,...systemicStorylets,...npcInitiativeEvents]);
   this.activeEventId=null;
  }
@@ -50,6 +52,7 @@ export class Game{
   const payload=parseSave(payloadOrText);
   const game=new Game(payload.seedText);
   game.state=ensureStateSchema(structuredClone(payload.state));
+  refreshPrimaryStats(game.state);
   game.rng.seed=payload.rng.seed>>>0;
   game.rng.state=payload.rng.state>>>0;
   game.activeEventId=payload.activeEventId??null;
@@ -59,6 +62,7 @@ export class Game{
  static fromDecisionSnapshot(seedText,snapshot){
   const game=new Game(seedText);
   game.state=ensureStateSchema(restoreDecisionSnapshot(snapshot));
+  refreshPrimaryStats(game.state);
   const rng=snapshotRng(snapshot);
   if(rng){
    game.rng.seed=rng.seed;
@@ -97,6 +101,7 @@ export class Game{
    ...processAdultYear(this.state,yearRng.fork('adult'))
   ];
   this.state.history.push(...auto);
+  refreshPrimaryStats(this.state);
   if(!this.state.player.alive){
    ensureLifeFinale(this.state);
    this.activeEventId=null;
@@ -118,6 +123,7 @@ export class Game{
   const choiceRng=this.rng.fork('choice-'+this.state.year+'-'+event.id+'-'+choiceId);
   const resolved=this.events.resolve(this.state,event,choiceId,choiceRng);
   this.state=resolved.state;
+  refreshPrimaryStats(this.state);
   this.state.history.push({age:this.state.player.age,eventId:event.id,choiceId,result:resolved.result,kind:'choice'});
   if(resolved.decision){
    resolved.decision.snapshot=snapshot;
@@ -152,6 +158,7 @@ export class Game{
  performActivity(id){
   const used=this.state.actions.max-this.state.actions.remaining;
   const result=performActivity(this.state,id,this.rng.fork('activity-'+this.state.year+'-'+used+'-'+id));
+  refreshPrimaryStats(this.state);
   this.state.history.push({age:this.state.player.age,kind:'activity',activityId:id,result});
   return result;
  }
@@ -160,12 +167,14 @@ export class Game{
  availableLifeGoals(){return availableLifeGoals(this.state);}
  setLifeGoal(id){
   const goal=setLifeGoal(this.state,id);
+  refreshPrimaryStats(this.state);
   this.state.history.push({age:this.state.player.age,kind:'life-goal',text:'Uzun vadeli hedef seçtin: '+goal.label+'.'});
   return goal;
  }
  availableLifeActions(){return availableLifeActions(this.state);}
  performLifeAction(id){
   const result=performLifeAction(this.state,id);
+  refreshPrimaryStats(this.state);
   this.state.history.push({age:this.state.player.age,kind:'life-action',actionId:id,result});
   return result;
  }
