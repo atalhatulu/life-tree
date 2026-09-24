@@ -1,14 +1,14 @@
 /**
  * 81 provinces ordered by vehicle-registration plate code.
  *
- * Province identity/plate/region are geographic reference data. The weight,
- * wage, cost, housing, jobs and university multipliers are illustrative
- * GAME-BALANCE PARAMETERS, not official province-level population, birth,
- * wage, real-estate or educational-access statistics.
- * Existing 14 city coefficients are retained to preserve gameplay balance.
- * The remaining 67 start with coarse settlement-scale defaults pending
- * evidence-based calibration.
+ * Province identity/plate/region and population2025 are reference data.
+ * Birth weights are smoothed functions of 2025 RESIDENT POPULATION, not
+ * observed province-specific live births. Wage, rent, job and education
+ * multipliers remain bounded GAME-BALANCE PARAMETERS, not official rates.
+ * Existing 14 economic profiles remain unchanged for saved-game balance.
  */
+import {PROVINCE_POPULATION_2025,POPULATION_YEAR} from './population_2025.js';
+
 export const TURKEY_REGIONS=Object.freeze({
  "marmara": "Marmara",
  "ege": "Ege",
@@ -48,7 +48,46 @@ const SCALE_PROFILE={
   "university": 0.9
  }
 };
-const BIRTH_WEIGHT={"metro":6,"large":4,"mid":2,"small":1};
+// SEGE-2025 is contextual evidence, NOT a direct wage/rent index.
+// These explicit hub adjustments are game-design assumptions for the 67 new profiles.
+const HUB_TUNING=Object.freeze({
+ kocaeli:{jobs:.14,wage:.075,cost:.045,housing:.065,university:.03},
+ tekirdag:{jobs:.095,wage:.05,cost:.035,housing:.045},
+ sakarya:{jobs:.07,wage:.035,cost:.015,housing:.025},
+ manisa:{jobs:.085,wage:.04,cost:.02,housing:.03},
+ denizli:{jobs:.075,wage:.035,cost:.02,housing:.025},
+ yalova:{jobs:.04,wage:.025,cost:.055,housing:.095},
+ mugla:{jobs:.055,wage:.02,cost:.10,housing:.16,university:.035},
+ aydin:{jobs:.04,wage:.02,cost:.035,housing:.055},
+ canakkale:{jobs:.025,wage:.02,cost:.04,housing:.07},
+ edirne:{jobs:.025,wage:.02,cost:.025,housing:.04},
+ sanliurfa:{jobs:.015,wage:0,cost:0,housing:0},
+ van:{jobs:.025,wage:0,cost:0,housing:0},
+ erzurum:{jobs:.02,wage:0,cost:0,housing:0},
+ malatya:{jobs:.025,wage:0,cost:0,housing:0}
+});
+const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+const round=(v)=>Math.round(v*1000)/1000;
+export function populationBirthWeight(population){
+ // Exponent <1 keeps small provinces reachable while tracking resident share.
+ return round(Math.pow(population/100000,.9));
+}
+function calibratedGameProfile(id,scale,population){
+ const base=SCALE_PROFILE[scale];
+ const hub=HUB_TUNING[id]??{};
+ const populationAdjustment=clamp(Math.log10(population/350000)*.075,-.055,.11);
+ return {
+  cost:round(clamp(base.cost+populationAdjustment*.6+(hub.cost??0),.78,1.42)),
+  wage:round(clamp(base.wage+populationAdjustment*.35+(hub.wage??0),.82,1.18)),
+  housing:round(clamp(base.housing+populationAdjustment*.85+(hub.housing??0),.72,1.48)),
+  jobs:round(clamp(base.jobs+populationAdjustment*.65+(hub.jobs??0),.8,1.20)),
+  university:round(clamp(base.university+populationAdjustment*.35+(hub.university??0),.82,1.16))
+ };
+}
+export function migrationAttractionWeight(city){
+ // Job destinations are NOT drawn with birth weights; cap metro pull.
+ return clamp(Math.sqrt(city.population2025/350000),.65,4.5);
+}
 const PROVINCES=[
  [
   1,
@@ -733,12 +772,20 @@ const LEGACY_BALANCE={
  }
 };
 
-export const TURKEY_CITIES=Object.freeze(PROVINCES.map(([plate,id,name,region,scale])=>Object.freeze({
- id,name,plate,region,regionName:TURKEY_REGIONS[region],scale,
- weight:BIRTH_WEIGHT[scale],
- ...SCALE_PROFILE[scale],
- ...(LEGACY_BALANCE[id]??{})
-})));
+export const TURKEY_CITIES=Object.freeze(PROVINCES.map(([plate,id,name,region,scale])=>{
+ const population2025=PROVINCE_POPULATION_2025[id];
+ if(!Number.isSafeInteger(population2025)||population2025<=0)throw new Error('Missing 2025 province population: '+id);
+ return Object.freeze({
+  id,name,plate,region,regionName:TURKEY_REGIONS[region],scale,
+  population2025,populationYear:POPULATION_YEAR,
+  weight:populationBirthWeight(population2025),
+  ...calibratedGameProfile(id,scale,population2025),
+  ...(LEGACY_BALANCE[id]??{}),
+  // Old birth weights were synthetic scale bands; population weights replace them.
+  weight:populationBirthWeight(population2025),
+  calibration:LEGACY_BALANCE[id]?'legacy-economic-population-birth':'population-game-v2'
+ });
+}));
 
 const CITY_INDEX=new Map(TURKEY_CITIES.map(city=>[city.id,city]));
 const PLATE_INDEX=new Map(TURKEY_CITIES.map(city=>[city.plate,city]));
