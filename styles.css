@@ -2202,3 +2202,146 @@ body{
 .identity-meta{gap:5px;}
 .quick-strip{gap:5px;}
 .bottom-nav .nav-item{min-width:0;}
+
+
+/* Life Tree v4: true top-down genealogy, siblings share a parent connector. */
+#treeScreen{padding:10px 8px 16px;overflow:hidden;}
+#treeScreen>.section-head{padding:0 8px;}
+#lifeTree{display:flex;flex-direction:column;min-height:0;height:100%;gap:7px;}
+#lifeTree .life-map-toolbar{display:flex;flex-direction:column;gap:3px;flex:none;}
+#lifeTree .life-map-legend{display:flex;gap:5px;flex-wrap:wrap;padding:0 4px;}
+#lifeTree .life-map-legend span{font-size:9px;font-weight:750;border:1px solid #e0e7f0;background:#fff;color:#738197;border-radius:99px;padding:5px 8px;}
+#lifeTree .genealogy-navigation{margin:0;padding:5px;box-shadow:none;}
+#lifeTree .genealogy-controls-hint{font-size:9px;}
+#lifeTree .genealogy-zoom-button{min-height:31px;}
+#lifeTree .life-map-viewport{
+ flex:1 1 auto;
+ min-height:265px;
+ max-height:calc(100vh - 365px);
+ overflow:auto;
+ overscroll-behavior:contain;
+ border:1px solid #e1e8f0;
+ border-radius:12px;
+ background-color:#fbfcff;
+ background-image:radial-gradient(#e0e8f2 .8px,transparent .8px);
+ background-size:19px 19px;
+ padding:18px;
+ scrollbar-width:thin;
+}
+#lifeTree .life-map-canvas{
+ display:table;
+ width:max-content;
+ min-width:100%;
+ max-width:none;
+ padding:0 80px 80px;
+ box-sizing:border-box;
+}
+#lifeTree .life-family-tree{display:table;margin:auto;}
+#lifeTree .life-family-tree ul{
+ position:relative;
+ padding:30px 0 0;
+ display:flex;
+ justify-content:center;
+ align-items:flex-start;
+ width:max-content;
+ margin:auto;
+ list-style:none;
+}
+#lifeTree .life-family-tree>ul{padding-top:0;}
+#lifeTree .life-family-tree li{
+ position:relative;
+ list-style:none;
+ text-align:center;
+ padding:30px 8px 0;
+ margin:0;
+ min-width:132px;
+ flex:0 0 auto;
+}
+#lifeTree .life-family-tree>ul>li{padding-top:0;}
+#lifeTree .life-family-tree li::before,
+#lifeTree .life-family-tree li::after{
+ content:'';
+ position:absolute;
+ top:0;
+ width:50%;
+ height:30px;
+ border-top:2px solid #bfccda;
+}
+#lifeTree .life-family-tree li::before{right:50%;border-right:2px solid #bfccda;border-radius:0 11px 0 0;}
+#lifeTree .life-family-tree li::after{left:50%;border-left:2px solid #bfccda;border-radius:11px 0 0 0;}
+#lifeTree .life-family-tree li:only-child::before,
+#lifeTree .life-family-tree li:only-child::after,
+#lifeTree .life-family-tree>ul>li::before,
+#lifeTree .life-family-tree>ul>li::after{display:none;}
+#lifeTree .life-family-tree li:first-child::before,
+#lifeTree .life-family-tree li:last-child::after{border:0;}
+#lifeTree .life-family-tree li:first-child::after{border-radius:11px 0 0 0;}
+#lifeTree .life-family-tree li:last-child::before{border-radius:0 11px 0 0;}
+#lifeTree .life-family-tree li>ul::before{
+ content:'';
+ position:absolute;
+ top:0;
+ left:50%;
+ height:30px;
+ border-left:2px solid #bfccda;
+}
+#lifeTree .life-graph-node{
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+ position:relative;
+ gap:4px;
+ width:126px;
+ min-height:62px;
+ padding:10px 8px;
+ margin:0 auto;
+ border-radius:11px;
+ border:1px solid #d4dce7;
+ background:#fff;
+ color:#394e67;
+ font:inherit;
+ cursor:pointer;
+ white-space:normal;
+ overflow-wrap:anywhere;
+ box-shadow:0 3px 8px rgba(30,49,78,.05);
+ transition:border-color .12s,box-shadow .12s;
+}
+#lifeTree .life-graph-node:hover,
+#lifeTree .life-graph-node.is-selected{border-color:#7f9ac0;box-shadow:0 0 0 2px rgba(102,135,190,.13);}
+#lifeTree .life-graph-node:focus-visible{outline:2px solid #628fc7;outline-offset:3px;}
+#lifeTree .life-graph-node strong{font-size:10px;font-weight:800;line-height:1.35;}
+#lifeTree .life-graph-age{font-size:8px;letter-spacing:.035em;font-weight:850;opacity:.75;}
+#lifeTree .life-graph-percent{font-size:9px;font-style:normal;font-weight:900;color:#526e9f;}
+#lifeTree .life-graph-plus{position:absolute;top:4px;right:5px;font-size:12px;font-weight:900;color:#7594ba;}
+#lifeTree .life-graph-birth{background:#e9f3eb;border-color:#9fc9a9;color:#32613f;}
+#lifeTree .life-graph-decision{background:#f4f7fa;border-color:#c6d2e0;color:#526b89;}
+#lifeTree .life-graph-choice.lived{background:#e8f3eb;border-color:#94c5a0;color:#346e49;}
+#lifeTree .life-graph-choice.simulated{background:#ecf2fe;border-color:#a2bce8;color:#405e9a;}
+#lifeTree .life-graph-choice.pending{background:#fff;border:1px dashed #b5c2d3;color:#7a899b;}
+#lifeTree .life-graph-ending{background:#fbf3df;border-color:#d6be7c;color:#886927;}
+#lifeTree .life-graph-limit{background:#f4f5f8;border-color:#c9cfda;}
+#lifeTree .life-graph-node[disabled]{cursor:default;opacity:.65;}
+#lifeTree .life-tree-inspector{
+ flex:none;
+ min-height:82px;
+ max-height:155px;
+ overflow:auto;
+ padding:10px 12px;
+ border:1px solid #dce5ef;
+ border-radius:11px;
+ background:#fff;
+ display:flex;
+ flex-direction:column;
+ align-items:flex-start;
+ gap:4px;
+ color:#586b84;
+}
+#lifeTree .life-tree-inspector small{font-size:9px;color:#8695a9;font-weight:900;}
+#lifeTree .life-tree-inspector strong{font-size:12px;color:#354c67;}
+#lifeTree .life-tree-inspector p{margin:0;font-size:10px;line-height:1.5;}
+#lifeTree .life-tree-inspector>span{font-size:9px;font-weight:800;color:#5d7aa6;}
+#lifeTree .life-inspector-hint{font-size:10px;color:#8b98aa;font-weight:600;}
+@media (min-width:1000px){
+ #lifeTree .life-map-viewport{max-height:calc(100vh - 265px);}
+}
