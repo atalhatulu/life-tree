@@ -587,6 +587,7 @@ function treeHtml(value){
 }
 
 let counterfactualBusy=false;
+let lifeTreeZoom=1;
 
 function renderContinuation(result){
   if(!result?.continuation?.length)return '';
@@ -704,13 +705,13 @@ function renderLifeTree(){
       <span>${meta.simulatedChoices} simüle edilmiş yol</span>
       <span>${meta.endings} keşfedilmiş son</span>
     </article>
-    <div class="genealogy-navigation" role="group" aria-label="Hayat ağacı yatay gezinme">
-      <button type="button" class="genealogy-nav-button" data-tree-pan="left" aria-label="Sol alternatif dallara git">← SOL</button>
-      <button type="button" class="genealogy-nav-button genealogy-nav-center" data-tree-pan="center" aria-label="Gerçek hayat yolunu ortala">◎ ORTALA</button>
-      <button type="button" class="genealogy-nav-button" data-tree-pan="right" aria-label="Sağ alternatif dallara git">SAĞ →</button>
-      <span class="genealogy-pan-status" aria-live="polite">Gerçek yaşam yolu</span>
+    <div class="genealogy-navigation" role="group" aria-label="Hayat ağacı yakınlaştırma">
+      <span class="genealogy-controls-hint">Sağ tık + sürükle: gezin • Tekerlek: yakınlaştır</span>
+      <button type="button" class="genealogy-zoom-button" data-tree-zoom="out" aria-label="Hayat ağacını uzaklaştır">−</button>
+      <button type="button" class="genealogy-zoom-button genealogy-zoom-reset" data-tree-zoom="reset" aria-label="Hayat ağacını yüzde yüz ölçeğe getir">100%</button>
+      <button type="button" class="genealogy-zoom-button" data-tree-zoom="in" aria-label="Hayat ağacını yakınlaştır">+</button>
     </div>
-    <div class="genealogy-scroll" tabindex="0" role="region" aria-label="Yatay kaydırılabilir hayat ağacı">
+    <div class="genealogy-scroll" tabindex="0" role="region" aria-label="Sağ fare tuşuyla sürüklenebilir ve tekerlekle yakınlaştırılabilir hayat ağacı">
       <div class="genealogy-tree">
         <div class="tree-root"><b>Doğum</b><small>${game.state.year-game.state.player.age}</small></div>
         <div class="genealogy-trunk">${branches}${finaleMarkup}</div>
@@ -722,29 +723,73 @@ function renderLifeTree(){
 
   const treeScroll=$('#lifeTree').querySelector('.genealogy-scroll');
   if(treeScroll){
+    const canvas=treeScroll.querySelector('.genealogy-tree');
+    const panel=$('#treeScreen');
+    const zoomButtons=[...$('#lifeTree').querySelectorAll('[data-tree-zoom]')];
+    const zoomLabel=$('#lifeTree').querySelector('[data-tree-zoom="reset"]');
+    const minimum=.55,maximum=1.8;
+    const clampZoom=value=>Math.max(minimum,Math.min(maximum,Math.round(value*100)/100));
     const centerPosition=()=>Math.max(0,(treeScroll.scrollWidth-treeScroll.clientWidth)/2);
-    const panButtons=[...$('#lifeTree').querySelectorAll('[data-tree-pan]')];
-    const panStatus=$('#lifeTree').querySelector('.genealogy-pan-status');
-    const updatePanStatus=()=>{
-      const maximum=Math.max(0,treeScroll.scrollWidth-treeScroll.clientWidth);
-      const current=treeScroll.scrollLeft;
-      const center=centerPosition();
-      const tolerance=9;
-      for(const button of panButtons){
-        const side=button.dataset.treePan;
-        button.disabled=side==='left'?current<=tolerance:side==='right'?current>=maximum-tolerance:Math.abs(current-center)<=tolerance;
-      }
-      panStatus.textContent=current<center-tolerance?'Sol alternatifler':current>center+tolerance?'Sağ alternatifler':'Gerçek yaşam yolu';
+    const updateZoomButtons=()=>{
+      zoomLabel.textContent=Math.round(lifeTreeZoom*100)+'%';
+      zoomButtons.find(x=>x.dataset.treeZoom==='out').disabled=lifeTreeZoom<=minimum;
+      zoomButtons.find(x=>x.dataset.treeZoom==='in').disabled=lifeTreeZoom>=maximum;
     };
+    const changeZoom=(requested,clientX)=>{
+      const next=clampZoom(requested);
+      if(next===lifeTreeZoom)return;
+      const rect=treeScroll.getBoundingClientRect();
+      const pointerX=clientX??rect.left+rect.width/2;
+      const offsetX=pointerX-rect.left;
+      const contentX=(treeScroll.scrollLeft+offsetX)/lifeTreeZoom;
+      lifeTreeZoom=next;
+      canvas.style.zoom=String(next);
+      treeScroll.scrollLeft=contentX*next-offsetX;
+      updateZoomButtons();
+    };
+    canvas.style.zoom=String(lifeTreeZoom);
     treeScroll.scrollLeft=previousScroll??centerPosition();
-    treeScroll.addEventListener('scroll',updatePanStatus,{passive:true});
-    for(const button of panButtons)button.addEventListener('click',()=>{
-      const side=button.dataset.treePan;
-      const distance=Math.max(165,Math.round(treeScroll.clientWidth*.8));
-      const destination=side==='center'?centerPosition():treeScroll.scrollLeft+(side==='left'?-distance:distance);
-      treeScroll.scrollTo({left:destination,behavior:'smooth'});
+    updateZoomButtons();
+
+    // Only the tree handles wheel zoom. Outside it, ordinary vertical scrolling remains.
+    treeScroll.addEventListener('wheel',event=>{
+      if(event.ctrlKey)return; // Preserve the browser's own Ctrl+wheel page zoom.
+      event.preventDefault();
+      const delta=event.deltaY!==0?event.deltaY:event.deltaX;
+      if(!delta)return;
+      changeZoom(lifeTreeZoom*(delta>0?.9:1.1),event.clientX);
+    },{passive:false});
+
+    let dragging=null;
+    const stopDrag=()=>{
+      if(!dragging)return;
+      dragging=null;
+      treeScroll.classList.remove('is-panning');
+      window.removeEventListener('mousemove',moveDrag);
+      window.removeEventListener('mouseup',stopDrag);
+      window.removeEventListener('blur',stopDrag);
+    };
+    const moveDrag=event=>{
+      if(!dragging)return;
+      if(!(event.buttons&2)){stopDrag();return;}
+      event.preventDefault();
+      treeScroll.scrollLeft=dragging.left+dragging.x-event.clientX;
+      panel.scrollTop=dragging.top+dragging.y-event.clientY;
+    };
+    treeScroll.addEventListener('contextmenu',event=>event.preventDefault());
+    treeScroll.addEventListener('mousedown',event=>{
+      if(event.button!==2)return;
+      event.preventDefault();
+      dragging={x:event.clientX,y:event.clientY,left:treeScroll.scrollLeft,top:panel.scrollTop};
+      treeScroll.classList.add('is-panning');
+      window.addEventListener('mousemove',moveDrag);
+      window.addEventListener('mouseup',stopDrag);
+      window.addEventListener('blur',stopDrag);
     });
-    updatePanStatus();
+    for(const button of zoomButtons)button.addEventListener('click',()=>{
+      const action=button.dataset.treeZoom;
+      changeZoom(action==='reset'?1:lifeTreeZoom*(action==='in'?1.2:1/1.2));
+    });
   }
   $('#lifeTree').querySelectorAll('[data-counterfactual-node]').forEach(button=>button.addEventListener('click',async()=>{
     if(counterfactualBusy)return;
