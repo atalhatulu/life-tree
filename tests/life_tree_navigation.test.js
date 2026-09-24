@@ -20,3 +20,16 @@ test('Life Tree supports right mouse drag navigation and cursor-centered wheel z
  assert.ok(css.includes('.genealogy-scroll.is-panning'));
  assert.ok(css.includes('.genealogy-zoom-button{'));
 });
+
+test('Life Tree renders recursive simulated forks with actionable paths',()=>{
+ const app=fs.readFileSync(new URL('../src/ui/app.js',import.meta.url),'utf8');
+ const engine=fs.readFileSync(new URL('../src/life/counterfactual_continuation.js',import.meta.url),'utf8');
+ assert.ok(app.includes("function renderContinuation(result,nodeIndex,rootChoiceId,path=[])"));
+ assert.ok(app.includes('data-sim-fork'));
+ assert.ok(app.includes('data-fork-path='));
+ assert.ok(app.includes('expandContinuationFork(runGame.seedText,parent,last.stage,last.choiceId'));
+ assert.ok(app.includes('renderContinuation(fork.result,nodeIndex,rootChoiceId,nextPath)'));
+ assert.ok(engine.includes('const checkpoint=milestone.snapshot'));
+ assert.ok(engine.includes('const forks=winner.kind'));
+ assert.ok(engine.includes('fork.result=result'));
+});
