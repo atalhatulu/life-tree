@@ -7,7 +7,7 @@ const percentage=(count,total)=>total?Math.round(count/total*1000)/10:0;
 const MAX_AGE=130;
 
 function compactLife(game){
- game.state.history=[];
+ // Keep consequences and personal history across representative milestones.
  for(const node of game.state.lifeTree?.nodes??[]){
   delete node.snapshot;
   delete node.counterfactual;
@@ -157,6 +157,23 @@ export async function simulateContinuation(seedText,node,alternativeId,{
  const continuation=[];
  const rootSeed=seedText+':continuation:'+node.eventId+':'+node.age+':'+alternativeId;
  let completedSampleRuns=0;
+
+ if(!origin.state.player.alive){
+  const finale=ensureLifeFinale(origin.state);
+  return {
+   version:2,choiceId:alternativeId,label:alternative.label,requestedSamples:samples,
+   completedSamples:samples,completedSampleRuns:samples,startAge:node.age,
+   continuation:[{
+    kind:'ending',age:finale.lifespan.age,title:finale.ending.title,
+    label:finale.ending.description,count:samples,samples,probability:100,
+    alternatives:[],endingId:finale.ending.id,cause:finale.ending.cause
+   }],
+   terminal:true,ending:{
+    id:finale.ending.id,title:finale.ending.title,
+    age:finale.lifespan.age,cause:finale.ending.cause
+   }
+  };
+ }
 
  for(let stageIndex=0;stageIndex<maxStages&&representative.state.player.alive&&representative.state.player.age<maxAge;stageIndex++){
   const results=[];
