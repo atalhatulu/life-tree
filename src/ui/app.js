@@ -1,6 +1,7 @@
 import { Game } from '../core/game.js';
 import { autoplay, humanLikeChoice, activityOrder, simulateToEnd } from '../simulation/autoplay.js';
 import {earlyYearMoment} from '../life/early_year_moments.js';
+import {schoolAgeYearMoment} from '../life/school_age_year_moments.js';
 import { RNG } from '../core/rng.js';
 import { setLifestyle, lifestyleMonthlyCost } from '../lifestyle/lifestyle_system.js';
 import { affordableCarOptions, affordableHomeOptions, buyCar, buyHome, sellCar, sellHome, moveHousing } from '../assets/asset_system.js';
@@ -195,7 +196,7 @@ const LEISURE={
  shopping:{label:'Alışveriş yap',costs:[500,1500,4000]}
 };
 function applyLeisure(kind,companionId,tier){
-  if(game.state.player.age<5){activityMessage='Bu yaşta serbest zaman etkinliklerini ailen düzenliyor.';return;}
+  if(game.state.player.age<19){activityMessage='Bu etkinlikleri ailenle yapabilir veya harçlığınla ilgili seçenekleri kullanabilirsin.';return;}
   if(game.state.actions.remaining<=0){activityMessage='Bu yıl aksiyon hakkın kalmadı.';return;}
   const def=LEISURE[kind], cost=def.costs[tier];
   if(!spendCash(cost)){activityMessage='Bu seçim için yeterli nakdin yok.';return;}
@@ -224,11 +225,7 @@ function makeYearMoment(){
   const s=game.state, age=s.player.age;
   const rng=new RNG(game.seedText+':year-moment:'+s.year);
   if(age<7)return earlyYearMoment(age,rng);
-  if(age<13)return rng.pick([
-    {title:'Okuldan sonra',text:'Günün geri kalanını nasıl geçireceksin?',choices:[{id:'friends',label:'Arkadaşlarla oyna'},{id:'study',label:'Ödevlerini bitir'},{id:'game-spend',label:'Oyuna/oyuncağa harca'}]},
-    {title:'Harçlık kararı',text:'Cebinde biraz harçlık var.',choices:[{id:'child-save',label:'Biriktir'},{id:'snack',label:'Atıştırmalık al'},{id:'book',label:'Kitap/dergi al'}]},
-    {title:'Hafta sonu',text:'Ailen sana seçim bıraktı.',choices:[{id:'family',label:'Ailece dışarı çık'},{id:'learn',label:'Bir hobiyle uğraş'},{id:'rest',label:'Evde kal'}]}
-  ]);
+  if(age<13)return schoolAgeYearMoment(s,rng);
   if(age<18)return rng.pick([
     {title:'Okul ve sosyal hayat',text:'Bu hafta neye ağırlık vereceksin?',choices:[{id:'friends',label:'Arkadaşlarla takıl'},{id:'study',label:'Derse ağırlık ver'},{id:'club',label:'Kulüp/hobiye katıl'}]},
     {title:'Harçlık kararı',text:'Küçük ama senin olan bir paran var.',choices:[{id:'child-save',label:'Biriktir'},{id:'meal-small',label:'Arkadaşlarla bir şeyler ye'},{id:'clothes-small',label:'Kendine bir şey al'}]},
@@ -406,7 +403,7 @@ function renderActivities() {
   const interests=Object.entries(game.state.player.interests).sort((a,b)=>b[1]-a[1])
     .map(([name,score])=>`<div class="meter-row"><span>${name}</span><div class="mini-bar"><i style="width:${score}%"></i></div><b>${score}</b></div>`).join('');
   const actions=game.availableActivities();
-  const leisureButtons=game.state.player.age<5?'<p class="muted">Bu yaşta etkinlikleri ailen düzenliyor.</p>':Object.entries(LEISURE).map(([id,x])=>`<button class="activity-button leisure-button" data-leisure="${id}">${x.label}</button>`).join('');
+  const leisureButtons=game.state.player.age<19?'<p class="muted">Ücretli serbest zaman etkinlikleri yetişkinlikte açılır; çocuklukta aile ve harçlık kararlarını kullanabilirsin.</p>':Object.entries(LEISURE).map(([id,x])=>`<button class="activity-button leisure-button" data-leisure="${id}">${x.label}</button>`).join('');
   let picker='';
   if(leisurePicker){
     const def=LEISURE[leisurePicker];
