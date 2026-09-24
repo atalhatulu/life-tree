@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {Game} from '../src/core/game.js';
 import {RNG} from '../src/core/rng.js';
 import {humanLikeChoice} from '../src/simulation/autoplay.js';
-import {simulateContinuation,expandContinuationFork} from '../src/life/counterfactual_continuation.js';
+import {simulateContinuation,expandContinuationFork,expandSelectedContinuation,growFirstGeneration} from '../src/life/counterfactual_continuation.js';
 
 function firstMajorNode(seed){
  const game=new Game(seed);
@@ -110,4 +110,41 @@ test('simulated fork rejects invalid paths rather than restarting from a wrong s
   ()=>expandContinuationFork(game.seedText,root,index,'invalid-choice',{samples:3}),
   /alternatif yolu/
  );
+});
+
+test('breadth growth opens each unchosen sibling of the first critical decision',async()=>{
+ const {game,node}=firstMajorNode('breadth-growth-test');
+ const actual=JSON.stringify(game.state);
+ const root=await simulateContinuation(game.seedText,node,node.alternatives[0].id,{
+  samples:3,maxAge:70,maxStages:3
+ });
+ const first=root.continuation.find(stage=>stage.kind==='decision'&&stage.forks?.length);
+ assert.ok(first,'the fixture must produce a critical decision');
+ const before=first.forks.map(fork=>fork.choiceId);
+ await growFirstGeneration(game.seedText,root,{
+  samples:3,maxAge:70,maxStages:2,decisionLevels:1,maxBranches:8
+ });
+ assert.deepEqual(first.forks.map(fork=>fork.choiceId),before);
+ assert.ok(first.forks.every(fork=>fork.result?.version===3));
+ assert.ok(first.forks.every(fork=>fork.result.choiceId===fork.choiceId));
+ assert.equal(JSON.stringify(game.state),actual,'eager breadth must not alter the actual life');
+});
+
+test('a depth-limited chosen life can resume from the representative checkpoint',async()=>{
+ const {game,node}=firstMajorNode('chosen-resume-test');
+ const root=await simulateContinuation(game.seedText,node,node.alternatives[0].id,{
+  samples:3,maxAge:70,maxStages:1
+ });
+ const stage=root.continuation[0];
+ assert.equal(stage.kind,'decision');
+ assert.ok(stage.checkpoint?.state);
+ assert.ok(stage.resumeSeed);
+ const follow=await expandSelectedContinuation(game.seedText,root,0,{
+  samples:3,maxAge:70,maxStages:2
+ });
+ assert.equal(follow.version,3);
+ assert.equal(follow.choiceId,stage.choiceId);
+ assert.ok(follow.continuation.length>=1);
+ assert.equal(stage.selectedResult,follow);
+ assert.equal(await expandSelectedContinuation(game.seedText,root,0,{samples:9}),follow);
 });
