@@ -21,7 +21,8 @@ export class EventEngine{
 
  choicesFor(state,event){
   const raw=typeof event.choices==='function'?event.choices(state):event.choices;
-  return raw.filter(choice=>!choice.condition||choice.condition(state));
+  return raw.filter(choice=>!choice.condition||choice.condition(state))
+   .map(choice=>typeof choice.label==='function'?{...choice,label:choice.label(state)}:choice);
  }
 
  choose(state,rng){
