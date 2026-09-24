@@ -3,6 +3,7 @@ import { autoplay, humanLikeChoice, activityOrder, simulateToEnd } from '../simu
 import {earlyYearMoment} from '../life/early_year_moments.js';
 import {schoolAgeYearMoment} from '../life/school_age_year_moments.js';
 import { RNG } from '../core/rng.js';
+import {HOBBIES} from '../data/catalog.js';
 import { setLifestyle, lifestyleMonthlyCost } from '../lifestyle/lifestyle_system.js';
 import { affordableCarOptions, affordableHomeOptions, buyCar, buyHome, sellCar, sellHome, moveHousing } from '../assets/asset_system.js';
 import { generateJobOffers } from '../career/job_market.js';
@@ -403,6 +404,8 @@ function renderActivities() {
   const interests=Object.entries(game.state.player.interests).sort((a,b)=>b[1]-a[1])
     .map(([name,score])=>`<div class="meter-row"><span>${name}</span><div class="mini-bar"><i style="width:${score}%"></i></div><b>${score}</b></div>`).join('');
   const actions=game.availableActivities();
+  const hobbyAvailable=actions.some(a=>a.id==='hobby');
+  const hobbyOptions=HOBBIES.map(name=>'<option value="'+name+'">'+name+'</option>').join('');
   const leisureButtons=game.state.player.age<19?'<p class="muted">Ücretli serbest zaman etkinlikleri yetişkinlikte açılır; çocuklukta aile ve harçlık kararlarını kullanabilirsin.</p>':Object.entries(LEISURE).map(([id,x])=>`<button class="activity-button leisure-button" data-leisure="${id}">${x.label}</button>`).join('');
   let picker='';
   if(leisurePicker){
@@ -416,14 +419,20 @@ function renderActivities() {
     <article class="summary-card"><div class="card-row"><h3>Serbest zaman</h3><span class="relationship-pill">${game.state.actions.remaining}/${game.state.actions.max}</span></div>
       <div class="activity-grid">${leisureButtons}</div></article>
     <article class="summary-card"><h3>Diğer aktiviteler</h3><div class="activity-grid">
-      ${actions.map(x=>`<button class="activity-button" data-activity="${x.id}" ${game.state.actions.remaining<=0?'disabled':''}>${x.label}</button>`).join('')}
-    </div>${activityMessage?`<p class="activity-message">${activityMessage}</p>`:''}</article>
+      ${actions.filter(x=>x.id!=='hobby').map(x=>`<button class="activity-button" data-activity="${x.id}" ${game.state.actions.remaining<=0?'disabled':''}>${x.label}</button>`).join('')}
+    </div>${hobbyAvailable?'<label for="hobbyChoice">Hobini seç</label><select id="hobbyChoice">'+hobbyOptions+'</select><button class="activity-button" data-hobby-activity '+(game.state.actions.remaining<=0?'disabled':'')+'>Seçtiğim hobiyle ilgilen</button>':''}${activityMessage?`<p class="activity-message">${activityMessage}</p>`:''}</article>
     <article class="summary-card"><h3>İlgi Alanların</h3>${interests||'<p>Henüz belirgin bir ilgin oluşmadı.</p>'}</article>`;
 
   $('#activities').querySelectorAll('[data-leisure]').forEach(b=>b.addEventListener('click',()=>{leisurePicker=b.dataset.leisure;renderActivities();}));
   $('#activities').querySelectorAll('[data-activity]').forEach(button=>button.addEventListener('click',()=>{
     try{activityMessage=game.performActivity(button.dataset.activity);}catch(error){activityMessage=error.message;}render();
   }));
+  $('#activities').querySelector('[data-hobby-activity]')?.addEventListener('click',()=>{
+    const name=$('#hobbyChoice')?.value;
+    if(!name)return;
+    try{activityMessage=game.performActivity('hobby:'+name);}catch(error){activityMessage=error.message;}
+    render();
+  });
   $('#activities').querySelectorAll('[data-companion]').forEach(button=>button.addEventListener('click',()=>{
     const id=button.dataset.companion, def=LEISURE[leisurePicker];
     $('#budgetChoices').innerHTML=`<p>Bütçe</p><div class="choice-list">${def.costs.map((cost,i)=>`<button class="choice-button" data-budget="${i}">${['Ekonomik','Standart','Premium'][i]} • ${money(cost)}</button>`).join('')}</div>`;
