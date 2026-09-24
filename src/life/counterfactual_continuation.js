@@ -65,6 +65,7 @@ function advanceToNextDecision(base,seed,maxAge){
     title:milestone.title,
     label:milestone.label,
     decision:{checkpoint,choices},
+    sampleSeed:seed,
     game
    };
   }
@@ -133,7 +134,8 @@ function chooseOutcome(samples){
     title:s.title,label:s.label,count:s.count,probability:percentage(s.count,samples.length)
    })),
    ...(winner.kind==='decision'?{
-    eventId:representative.eventId,choiceId:representative.choiceId,checkpoint,forks
+    eventId:representative.eventId,choiceId:representative.choiceId,checkpoint,forks,
+    resumeSeed:representative.sampleSeed,selectedResult:null
    }:{}),
    ...(winner.kind==='ending'?{endingId:representative.endingId,cause:representative.cause}:{})
   }
@@ -150,9 +152,9 @@ export function continuationOriginKey(seedText,node){
  ]);
 }
 
-function startingLife(seedText,node,alternativeId){
+function startingLife(seedText,node,alternativeId,{allowSelected=false,activitySeed=null}={}){
  if(!node?.snapshot)throw new Error('Bu kararın alternatif snapshot verisi bulunamadı.');
- if(alternativeId===node.choiceId)throw new Error('Yaşanmış seçim alternatif olarak simüle edilemez.');
+ if(alternativeId===node.choiceId&&!allowSelected)throw new Error('Yaşanmış seçim alternatif olarak simüle edilemez.');
  const alternative=(node.alternatives??[]).find(a=>a.id===alternativeId)
   ??node.snapshot.availableChoices?.find(a=>a.id===alternativeId);
  if(!alternative)throw new Error('Alternatif karar bulunamadı: '+alternativeId);
@@ -160,6 +162,7 @@ function startingLife(seedText,node,alternativeId){
  const event=game.events.events.find(e=>e.id===node.eventId);
  if(!event)throw new Error('Karar olayı artık bulunmuyor: '+node.eventId);
  game.makeChoice(event,alternativeId);
+ if(activitySeed&&game.state.player.alive)activities(game,new RNG(activitySeed+':policy'));
  compactLife(game);
  return {game,alternative};
 }
@@ -173,11 +176,12 @@ function startingLife(seedText,node,alternativeId){
  * onProgress can yield control to the browser; no background work is started.
  */
 export async function simulateContinuation(seedText,node,alternativeId,{
- samples=100,maxAge=MAX_AGE,maxStages=130,onProgress=null
+ samples=100,maxAge=MAX_AGE,maxStages=130,onProgress=null,
+ allowSelected=false,activitySeed=null
 }={}){
  if(!Number.isInteger(samples)||samples<1||samples>100)throw new Error('Örnek sayısı 1–100 arasında olmalı.');
  if(!Number.isInteger(maxAge)||maxAge<1||maxAge>130)throw new Error('Geçersiz maksimum yaş.');
- const {game:origin,alternative}=startingLife(seedText,node,alternativeId);
+ const {game:origin,alternative}=startingLife(seedText,node,alternativeId,{allowSelected,activitySeed});
  let representative=origin;
  const continuation=[];
  const rootSeed=seedText+':continuation:'+node.eventId+':'+node.age+':'+alternativeId;
@@ -247,7 +251,48 @@ export async function expandContinuationFork(seedText,parentResult,stageIndex,ch
   choiceId:stage.choiceId,alternatives:[{id:choiceId,label:fork.label}],
   snapshot:stage.checkpoint
  };
- const result=await simulateContinuation(seedText,node,choiceId,options);
+ const result=await simulateContinuation(seedText,node,choiceId,{...options,activitySeed:stage.resumeSeed});
  fork.result=result;
+ return result;
+}
+
+/** Resume the chosen path of a deliberately depth-limited branch.
+ * Replays the representative's choice and its same-year activities from
+ * the recorded pre-choice checkpoint, rather than inventing a new life.
+ */
+export async function expandSelectedContinuation(seedText,parentResult,stageIndex,options={}){
+ const stage=parentResult?.continuation?.[stageIndex];
+ if(stage?.kind!=='decision'||!stage.checkpoint||!stage.resumeSeed)
+  throw new Error('Bu hayatın devam durumuna erişilemiyor.');
+ if(stage.selectedResult?.version===3)return stage.selectedResult;
+ const node={
+  eventId:stage.eventId,age:stage.age,title:stage.title,
+  choiceId:stage.choiceId,alternatives:[],snapshot:stage.checkpoint
+ };
+ const result=await simulateContinuation(seedText,node,stage.choiceId,{
+  ...options,allowSelected:true,activitySeed:stage.resumeSeed
+ });
+ stage.selectedResult=result;
+ return result;
+}
+
+/** Automatically grow all alternatives at the first critical decision.
+ * Only the first few levels are computed eagerly; further generations are
+ * kept as visible, independently expandable choice nodes.
+ */
+export async function growFirstGeneration(seedText,result,{
+ samples=100,maxStages=3,onProgress=null
+}={}){
+ const index=result?.continuation?.findIndex(stage=>stage.kind==='decision'&&stage.forks?.length)??-1;
+ if(index<0)return result;
+ const stage=result.continuation[index];
+ for(let i=0;i<stage.forks.length;i++){
+  const fork=stage.forks[i];
+  if(fork.result)continue;
+  await expandContinuationFork(seedText,result,index,fork.choiceId,{
+   samples,maxStages,onProgress:onProgress?async progress=>
+    onProgress({...progress,branch:i+1,branchTotal:stage.forks.length}):null
+  });
+ }
  return result;
 }
