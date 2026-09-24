@@ -6,7 +6,7 @@ import { affordableCarOptions, affordableHomeOptions, buyCar, buyHome, sellCar, 
 import { generateJobOffers } from '../career/job_market.js';
 import { switchJob } from '../career/career_system.js';
 import { ensureLifeFinale, ENDING_ARCHETYPES } from '../life/ending_system.js';
-import { simulateContinuation } from '../life/counterfactual_continuation.js';
+import { simulateContinuation,continuationOriginKey } from '../life/counterfactual_continuation.js';
 import {loadDiscovery,saveDiscovery,recordCompletedLife,recordSimulatedChoice,discoveryStatus,discoveryStats,choiceKey} from '../life/discovery_system.js';
 import {refreshPrimaryStats} from '../life/primary_stats.js';
 
@@ -627,7 +627,8 @@ function renderLifeTree(){
     const alternatives=(node.alternatives??[]).map(a=>{
       const persisted=discovery.simulatedChoices?.[choiceKey(node.eventId,a.id)]?.lastResult;
       const local=node.counterfactual?.alternatives?.find(x=>x.choiceId===a.id);
-      const result=local?.continuation?.length?local:persisted?.continuation?.length?persisted:null;
+      const originKey=continuationOriginKey(game.seedText,node);
+      const result=local?.continuation?.length?local:((persisted?.originKey===originKey)&&persisted.continuation?.length)?persisted:null;
       const livedElsewhere=discoveryStatus(discovery,node.eventId,a.id)==='lived';
       return `
         <div class="genealogy-branch ${result?'opened':''}" data-branch-key="${index}-${treeHtml(a.id)}">
