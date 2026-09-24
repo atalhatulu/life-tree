@@ -91,3 +91,50 @@ test('family hobby event names the interest the choice actually develops',()=>{
  assert.match(result,/resim/);
  assert.ok(game.state.player.interests.resim>before);
 });
+
+test('age-choice audit group 4: 80 lives aged 14-17 with state-aware options',()=>{
+ const events={},moments={},activities={},examples=[],flags=[];
+ let examined=0;
+ for(let i=0;i<80;i++){
+  const seed='age-choice-teen-2026-'+String(i).padStart(3,'0');
+  const game=new Game(seed);
+  while(game.state.player.alive&&game.state.player.age<17){
+   const event=game.ageOneYear(),age=game.state.player.age;
+   if(!game.state.player.alive)break;
+   const choiceList=event?game.eventChoices(event):[];
+   if(age>=14){
+    examined++;
+    const available=game.availableActivities();
+    for(const a of available)activities[a.id]=(activities[a.id]??0)+1;
+    for(const a of available)if(a.minAge>age)flags.push({seed,age,kind:'early-activity',id:a.id});
+    for(let variant=0;variant<3;variant++){
+     const moment=teenYearMoment(game.state,new RNG(seed+':moment:'+age+':'+variant));
+     moments[moment.title]=(moments[moment.title]??0)+1;
+     const wallet=game.state.childMoney?.wallet??0;
+     for(const option of moment.choices){
+      if((COSTS[option.id]??0)>wallet)
+       flags.push({seed,age,kind:'insufficient-wallet',id:option.id,wallet});
+      if(['study','club'].includes(option.id)&&!game.state.education?.enrolled)
+       flags.push({seed,age,kind:'school-option-without-school',id:option.id});
+     }
+    }
+    if(event){
+     events[event.id]=(events[event.id]??0)+1;
+     if(examples.length<8)examples.push({seed,age,event:event.id,choices:choiceList.map(x=>x.label)});
+     if(choiceList.some(x=>typeof x.label!=='string'||!x.label.trim()))
+      flags.push({seed,age,kind:'bad-choice-label',event:event.id});
+    }
+   }
+   if(choiceList.length)game.makeChoice(event,choiceList[0].id);
+   const errors=validateState(game.state);
+   if(errors.length)flags.push({seed,age,kind:'invalid-state',errors});
+  }
+ }
+ const report={group:'14-17',lives:80,examinedYears:examined,events,moments,activities,
+  flags:flags.slice(0,10),flagTotal:flags.length,examples};
+ console.log('AGE_CHOICE_GROUP_4_START');
+ console.log(JSON.stringify(report,null,2));
+ console.log('AGE_CHOICE_GROUP_4_END');
+ assert.equal(examined,320);
+ assert.deepEqual(flags,[]);
+});
