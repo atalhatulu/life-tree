@@ -125,6 +125,16 @@ function chooseOutcome(samples){
  };
 }
 
+export function continuationOriginKey(seedText,node){
+ const rng=node.snapshot?.rng??{};
+ const prior=node.snapshot?.priorNodes??[];
+ return JSON.stringify([
+  String(seedText),node.eventId,node.age,
+  rng.seed??null,rng.state??null,
+  prior.map(n=>[n.eventId,n.choiceId,n.age])
+ ]);
+}
+
 function startingLife(seedText,node,alternativeId){
  if(!node?.snapshot)throw new Error('Bu kararın alternatif snapshot verisi bulunamadı.');
  if(alternativeId===node.choiceId)throw new Error('Yaşanmış seçim alternatif olarak simüle edilemez.');
@@ -162,6 +172,7 @@ export async function simulateContinuation(seedText,node,alternativeId,{
   const finale=ensureLifeFinale(origin.state);
   return {
    version:2,choiceId:alternativeId,label:alternative.label,requestedSamples:samples,
+   originKey:continuationOriginKey(seedText,node),
    completedSamples:samples,completedSampleRuns:samples,startAge:node.age,
    continuation:[{
     kind:'ending',age:finale.lifespan.age,title:finale.ending.title,
@@ -196,6 +207,7 @@ export async function simulateContinuation(seedText,node,alternativeId,{
  const finalStage=continuation.at(-1)??null;
  return {
   version:2,choiceId:alternativeId,label:alternative.label,requestedSamples:samples,
+  originKey:continuationOriginKey(seedText,node),
   completedSamples:samples,completedSampleRuns,
   startAge:node.age,continuation,
   terminal:Boolean(finalStage&&finalStage.kind!=='decision'),
