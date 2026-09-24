@@ -6,7 +6,7 @@ import { affordableCarOptions, affordableHomeOptions, buyCar, buyHome, sellCar, 
 import { generateJobOffers } from '../career/job_market.js';
 import { switchJob } from '../career/career_system.js';
 import { ensureLifeFinale, ENDING_ARCHETYPES } from '../life/ending_system.js';
-import { simulateContinuation,expandContinuationFork,continuationOriginKey } from '../life/counterfactual_continuation.js';
+import { simulateContinuation,expandContinuationFork,expandSelectedContinuation,growFirstGeneration,continuationOriginKey } from '../life/counterfactual_continuation.js';
 import {livedLifeTree,renderFamilyTree} from './life_tree_view.js';
 import {loadDiscovery,saveDiscovery,recordCompletedLife,recordSimulatedChoice,discoveryStatus,discoveryStats,choiceKey} from '../life/discovery_system.js';
 import {refreshPrimaryStats} from '../life/primary_stats.js';
@@ -756,92 +756,98 @@ function renderLifeTree(){
     $('#lifeTree').querySelectorAll('.life-graph-node.is-selected').forEach(item=>item.classList.remove('is-selected'));
     button.classList.add('is-selected');
   }));
-  $('#lifeTree').querySelectorAll('[data-sim-fork]').forEach(button=>button.addEventListener('click',async()=>{
+
+  $('#lifeTree').querySelectorAll('[data-sim-fork],[data-sim-continue],[data-counterfactual-node]')
+   .forEach(button=>button.addEventListener('click',async()=>{
     if(counterfactualBusy||!dead)return;
     const runGame=game;
-    const nodeIndex=Number(button.dataset.rootNode);
-    const rootChoiceId=button.dataset.rootChoice;
-    const path=JSON.parse(decodeURIComponent(button.dataset.forkPath));
+    const rootMode=button.hasAttribute('data-counterfactual-node');
+    const nodeIndex=Number(rootMode?button.dataset.counterfactualNode:button.dataset.rootNode);
+    const rootChoiceId=rootMode?button.dataset.counterfactualChoice:button.dataset.rootChoice;
     const node=runGame.state.lifeTree.nodes[nodeIndex];
-    const local=node?.counterfactual?.alternatives?.find(item=>item.choiceId===rootChoiceId);
-    const saved=discovery.simulatedChoices?.[choiceKey(node?.eventId,rootChoiceId)]?.lastResult;
-    const root=local??(saved?.originKey===continuationOriginKey(runGame.seedText,node)?saved:null);
-    if(!root||!path.length)return;
+    if(!node?.snapshot)return;
+    let root=node.counterfactual?.alternatives?.find(item=>item.choiceId===rootChoiceId);
+    const saved=discovery.simulatedChoices?.[choiceKey(node.eventId,rootChoiceId)]?.lastResult;
+    if(!root&&saved?.version===3&&saved.originKey===continuationOriginKey(runGame.seedText,node))root=saved;
     let parent=root;
-    for(const step of path.slice(0,-1)){
-      parent=parent.continuation?.[step.stage]?.forks?.find(item=>item.choiceId===step.choiceId)?.result;
-      if(!parent)return;
+    let last=null;
+    const path=rootMode?[]:JSON.parse(decodeURIComponent(button.dataset.forkPath));
+    if(!rootMode){
+      if(!parent||!path.length)return;
+      for(const step of path.slice(0,-1)){
+        const stage=parent.continuation?.[step.stage];
+        parent=step.follow?stage?.selectedResult:stage?.forks?.find(item=>item.choiceId===step.choiceId)?.result;
+        if(!parent)return;
+      }
+      last=path.at(-1);
     }
-    const last=path.at(-1);
     counterfactualBusy=true;
-    $('#lifeTree').querySelectorAll('[data-sim-fork],[data-counterfactual-node]').forEach(item=>item.disabled=true);
-    button.textContent='100 örnek hazırlanıyor…';
+    const controls=$('#lifeTree').querySelectorAll('[data-sim-fork],[data-sim-continue],[data-counterfactual-node]');
+    controls.forEach(control=>control.disabled=true);
+    const inspector=$('#lifeTree').querySelector('.life-tree-inspector');
+    const progress=async update=>{
+      if(game!==runGame)throw new Error('Yeni hayat başlatıldı; önceki işlem durduruldu.');
+      const group=update.branch?' · dal '+update.branch+'/'+update.branchTotal:'';
+      if(inspector)inspector.innerHTML='<strong>Olasılıklar hesaplanıyor'+group+'</strong><p>'+
+        update.stage+'. aşama · '+update.completed+'/'+update.total+' örnek</p>';
+      await sleep(0);
+    };
     try{
-      const result=await expandContinuationFork(runGame.seedText,parent,last.stage,last.choiceId,{
-        samples:100,maxAge:130,onProgress:async progress=>{
-          if(game!==runGame)throw new Error('Yeni hayat başlatıldığı için analiz iptal edildi.');
-          button.textContent=progress.stage+'. aşama • '+progress.completed+'/100';
-          await sleep(0);
-        }
-      });
+      let result;
+      if(rootMode){
+        result=await simulateContinuation(runGame.seedText,node,rootChoiceId,{
+          samples:100,maxAge:130,onProgress:progress
+        });
+        node.counterfactual??={alternatives:[]};
+        node.counterfactual.alternatives??=[];
+        node.counterfactual.alternatives=node.counterfactual.alternatives.filter(item=>item.choiceId!==rootChoiceId);
+        node.counterfactual.alternatives.push(result);
+        root=result;
+      }else if(button.hasAttribute('data-sim-continue')){
+        result=await expandSelectedContinuation(runGame.seedText,parent,last.stage,{
+          samples:100,maxAge:130,maxStages:130,onProgress:progress
+        });
+      }else{
+        result=await expandContinuationFork(runGame.seedText,parent,last.stage,last.choiceId,{
+          samples:100,maxAge:130,maxStages:4,onProgress:progress
+        });
+      }
       if(game!==runGame)return;
-      node.counterfactual??={alternatives:[]};
-      node.counterfactual.alternatives??=[];
-      if(!local){
+      if(!rootMode&&!node.counterfactual?.alternatives?.some(item=>item===root)){
+        node.counterfactual??={alternatives:[]};
+        node.counterfactual.alternatives??=[];
         node.counterfactual.alternatives=node.counterfactual.alternatives.filter(item=>item.choiceId!==rootChoiceId);
         node.counterfactual.alternatives.push(root);
       }
-      // The entire nested result is owned by the root branch and preserved on rerender.
-      if(result?.continuation?.length)showToast('Yeni olasılık dalı büyüdü.');
-      renderLifeTree();
-    }catch(error){
-      if(game===runGame){
-        showToast('Yeni dal açılamadı: '+error.message);
-        renderLifeTree();
-      }
-    }finally{
-      counterfactualBusy=false;
-      if(game===runGame)$('#lifeTree').querySelectorAll('[data-sim-fork],[data-counterfactual-node]').forEach(item=>item.disabled=false);
-    }
-  }));
-  $('#lifeTree').querySelectorAll('[data-counterfactual-node]').forEach(button=>button.addEventListener('click',async()=>{
-    if(counterfactualBusy)return;
-    const runGame=game;
-    const index=Number(button.dataset.counterfactualNode);
-    const choiceId=button.dataset.counterfactualChoice;
-    const node=game.state.lifeTree.nodes[index];
-    if(!node||!dead)return;
-    counterfactualBusy=true;
-    $('#lifeTree').querySelectorAll('[data-counterfactual-node]').forEach(b=>b.disabled=true);
-    button.textContent='100 örnek hazırlanıyor…';
-    try{
-      const result=await simulateContinuation(game.seedText,node,choiceId,{
-        samples:100,maxAge:130,onProgress:async progress=>{
-          if(game!==runGame)throw new Error('Yeni hayat başlatıldığı için analiz iptal edildi.');
-          button.textContent=progress.stage+'. aşama • '+progress.completed+'/100 • '+progress.age+' yaşından sonrası';
-          // Yield every two independent runs so the browser paints progress.
-          await sleep(0);
-        }
+      // Grow siblings automatically; later generations stay visible as choices
+      // instead of expanding an exponential number of full lives at once.
+      await growFirstGeneration(runGame.seedText,result,{
+        samples:100,maxStages:3,onProgress:progress
       });
       if(game!==runGame)return;
-      node.counterfactual??={alternatives:[]};
-      node.counterfactual.alternatives??=[];
-      node.counterfactual.alternatives=node.counterfactual.alternatives.filter(x=>x.choiceId!==choiceId);
-      node.counterfactual.alternatives.push(result);
-      discovery=recordSimulatedChoice(discovery,node,result);
-      try{saveDiscovery(discovery);}catch{showToast('Simülasyon bitti; tarayıcı keşif kaydı dolu olabilir.');}
+      if(rootMode){
+        discovery=recordSimulatedChoice(discovery,node,result);
+      }else{
+        discovery=recordSimulatedChoice(discovery,node,root);
+      }
+      try{saveDiscovery(discovery);}catch{
+        showToast('Ağaç açık; kalıcı keşif alanı dolmuş olabilir.');
+      }
       renderLifeTree();
-      showToast('Alternatif hayatın devamı açıldı.');
+      showToast('Yeni olasılık dalları oluştu.');
     }catch(error){
       if(game===runGame){
-        showToast('Alternatif hayat simüle edilemedi: '+error.message);
         renderLifeTree();
+        showToast('Dallar üretilemedi: '+error.message);
       }
     }finally{
       counterfactualBusy=false;
-      if(game===runGame)$('#lifeTree').querySelectorAll('[data-counterfactual-node]').forEach(b=>b.disabled=false);
+      if(game===runGame)$('#lifeTree')
+        .querySelectorAll('[data-sim-fork],[data-sim-continue],[data-counterfactual-node]')
+        .forEach(control=>control.disabled=false);
     }
-  }));
+   }));
+
 }
 
 function baseTimelineEntries() {
