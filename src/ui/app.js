@@ -690,6 +690,7 @@ function renderLifeTree(){
     </article>`:'';
 
   const meta=discoveryStats(discovery);
+  const previousScroll=$('#lifeTree').querySelector('.genealogy-scroll')?.scrollLeft;
   $('#lifeTree').innerHTML=`
     <div class="life-tree-intro">
       <span class="tree-legend lived">● Yaşadığın yol</span>
@@ -702,6 +703,7 @@ function renderLifeTree(){
       <span>${meta.simulatedChoices} simüle edilmiş yol</span>
       <span>${meta.endings} keşfedilmiş son</span>
     </article>
+    <p class="genealogy-pan-hint">↔ Ağacı sağa veya sola kaydırarak alternatif hayat dallarını keşfet.</p>
     <div class="genealogy-scroll">
       <div class="genealogy-tree">
         <div class="tree-root"><b>Doğum</b><small>${game.state.year-game.state.player.age}</small></div>
@@ -712,6 +714,8 @@ function renderLifeTree(){
     ${memory?`<div class="section-divider">Hayat İzleri</div><article class="summary-card"><p>Dayanıklılık: <strong>${Math.round(memory.resilience??50)}/100</strong> • Yük: <strong>${Math.round(memory.scarLoad??0)}/100</strong></p>${memories.length?memories.map(x=>`<p><strong>${x.age}:</strong> ${treeHtml(x.label)}</p>`).join(''):'<p class="muted">Henüz belirgin bir hayat izi yok.</p>'}</article>`:''}
   `;
 
+  const treeScroll=$('#lifeTree').querySelector('.genealogy-scroll');
+  if(treeScroll)treeScroll.scrollLeft=previousScroll??Math.max(0,(treeScroll.scrollWidth-treeScroll.clientWidth)/2);
   $('#lifeTree').querySelectorAll('[data-counterfactual-node]').forEach(button=>button.addEventListener('click',async()=>{
     if(counterfactualBusy)return;
     const runGame=game;
@@ -855,7 +859,7 @@ function renderEvent() {
       card.querySelector('[data-open-life-tree]')?.addEventListener('click',()=>switchScreen('treeScreen'));
       card.querySelector('[data-open-alternatives]')?.addEventListener('click',()=>{
         switchScreen('treeScreen');
-        requestAnimationFrame(()=>document.querySelector('.tree-alternatives')?.scrollIntoView({behavior:'smooth',block:'center'}));
+        requestAnimationFrame(()=>document.querySelector('.genealogy-branch')?.scrollIntoView({behavior:'smooth',block:'center',inline:'nearest'}));
       });
     }else card.innerHTML='';
     $('#ageUp').disabled=dead;
