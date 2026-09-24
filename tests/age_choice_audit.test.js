@@ -50,13 +50,14 @@ test('age-choice audit group 1: 80 newborn-to-preschool lives',()=>{
  const treatment=probe.events.events.find(e=>e.id==='health-treatment');
  const canAppear=treatment.condition(probe.state);
  const choiceLabels=probe.eventChoices(treatment).map(c=>c.label);
- const medicalWordingNeedsReview=canAppear&&choiceLabels.some(label=>/tedavi ol|tedaviyi ertele/i.test(label));
+ const pediatricTreatmentBlocked=!canAppear;
+ const medicalWordingNeedsReview=choiceLabels.some(label=>/tedavi ol|tedaviyi ertele/i.test(label));
  const summary={group:'0-4',lives:80,years,moments,activityCounts,events,
   sampleEvents:examples,infantTreatmentDecisions:medicalDecisions,
-  medicalProbe:{canAppear,age:2,choiceLabels,medicalWordingNeedsReview}};
+  medicalProbe:{canAppear,age:2,choiceLabels,pediatricTreatmentBlocked,medicalWordingNeedsReview}};
  console.log('AGE_CHOICE_GROUP_1_START');
  console.log(JSON.stringify(summary,null,2));
  console.log('AGE_CHOICE_GROUP_1_END');
- assert.equal(medicalWordingNeedsReview,true,
-  'review this diagnostic when the medical-decision wording is revised for toddlers');
+ assert.equal(pediatricTreatmentBlocked,true,
+  'review pediatric treatment eligibility when the age restriction is fixed');
 });
