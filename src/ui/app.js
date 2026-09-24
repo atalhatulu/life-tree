@@ -6,7 +6,7 @@ import { affordableCarOptions, affordableHomeOptions, buyCar, buyHome, sellCar, 
 import { generateJobOffers } from '../career/job_market.js';
 import { switchJob } from '../career/career_system.js';
 import { ensureLifeFinale, ENDING_ARCHETYPES } from '../life/ending_system.js';
-import { simulateContinuation,continuationOriginKey } from '../life/counterfactual_continuation.js';
+import { simulateContinuation,expandContinuationFork,continuationOriginKey } from '../life/counterfactual_continuation.js';
 import {loadDiscovery,saveDiscovery,recordCompletedLife,recordSimulatedChoice,discoveryStatus,discoveryStats,choiceKey} from '../life/discovery_system.js';
 import {refreshPrimaryStats} from '../life/primary_stats.js';
 
@@ -589,28 +589,55 @@ function treeHtml(value){
 let counterfactualBusy=false;
 let lifeTreeZoom=1;
 
-function renderContinuation(result){
+
+function renderContinuation(result,nodeIndex,rootChoiceId,path=[]){
   if(!result?.continuation?.length)return '';
-  const stages=result.continuation.map((stage,i)=>`
-    <li class="branch-life-step ${stage.kind==='ending'?'branch-life-ending':''}">
-      <span class="branch-life-track"></span>
-      <article class="branch-life-card">
-        <small>${stage.kind==='ending'?'SON':stage.kind==='limit'?'SİMÜLASYON SINIRI':(i+1)+'. KIRILMA'} • ${stage.age} yaş</small>
-        <strong>${treeHtml(stage.title)}</strong>
-        <p>${treeHtml(stage.label)}</p>
-        <span class="branch-life-confidence">${stage.count}/${stage.samples} örnekte • %${stage.probability}</span>
-        ${stage.alternatives?.length?`<details class="branch-life-others">
-          <summary>Bu aşamadaki diğer yollar</summary>
-          ${stage.alternatives.map(x=>`<div>${treeHtml(x.title)} — ${treeHtml(x.label)} <b>%${x.probability}</b></div>`).join('')}
-        </details>`:''}
-      </article>
-    </li>`).join('');
+  const stages=result.continuation.map((stage,i)=>{
+    const forks=(stage.forks??[]).map(fork=>{
+      const nextPath=[...path,{stage:i,choiceId:fork.choiceId}];
+      const opened=Boolean(fork.result?.continuation?.length);
+      return `
+        <div class="branch-life-fork ${opened?'expanded':'unexplored'}">
+          <span class="branch-life-fork-connector">${opened?'◇':'?'}</span>
+          <div class="branch-life-fork-main">
+            <strong>${treeHtml(fork.label)}</strong>
+            <small>${fork.count}/${stage.samples} örnekte seçildi • %${fork.probability}</small>
+            ${opened
+              ?renderContinuation(fork.result,nodeIndex,rootChoiceId,nextPath)
+              :`<button class="counterfactual-button" data-sim-fork
+                data-root-node="${nodeIndex}" data-root-choice="${treeHtml(rootChoiceId)}"
+                data-fork-path="${encodeURIComponent(JSON.stringify(nextPath))}">
+                Bu ihtimalden yeni hayat aç (100 örnek)
+              </button>`}
+          </div>
+        </div>`;
+    }).join('');
+    return `
+      <li class="branch-life-step ${stage.kind==='ending'?'branch-life-ending':''}">
+        <span class="branch-life-track"></span>
+        <article class="branch-life-card">
+          <small>${stage.kind==='ending'?'SON':stage.kind==='limit'?'SİMÜLASYON SINIRI':(i+1)+'. KIRILMA'} • ${stage.age} yaş</small>
+          <strong>${treeHtml(stage.title)}</strong>
+          <p>${treeHtml(stage.label)}</p>
+          <span class="branch-life-confidence">${stage.count}/${stage.samples} örnekte • %${stage.probability}</span>
+          ${stage.alternatives?.length?`<details class="branch-life-others">
+            <summary>Bu aşamadaki diğer sonuçlar</summary>
+            ${stage.alternatives.map(x=>`<div>${treeHtml(x.title)} — ${treeHtml(x.label)} <b>%${x.probability}</b></div>`).join('')}
+          </details>`:''}
+        </article>
+        ${forks?`<div class="branch-life-forks">
+          <span class="branch-life-forks-label">Bu kararda seçilmeyen yollar</span>
+          ${forks}
+        </div>`:''}
+      </li>`;
+  }).join('');
   return `
-    <div class="branch-life-intro">◇ ${result.requestedSamples} örnek / aşama • Her adım bir önceki baskın yolun temsilî durumundan ilerler.</div>
+    <div class="branch-life-intro">◇ ${result.requestedSamples} örnek / aşama • Oranlar simülasyon politikasının o aşamada seçtiği yolları gösterir.</div>
     <ol class="branch-life-timeline">${stages}</ol>
-    ${result.terminal?'<p class="branch-life-foot">Bu alternatif hayatın yolu burada sona erdi.</p>':'<p class="branch-life-foot">Bu dalın devamı örnekleme sınırında kaldı.</p>'}
+    ${result.terminal?'<p class="branch-life-foot">Bu olası hayat burada sona erdi.</p>':'<p class="branch-life-foot">Bu dalın devamı örnekleme sınırında kaldı.</p>'}
   `;
 }
+
 
 function renderLifeTree(){
   const nodes=game.state.lifeTree?.nodes??[];
@@ -636,7 +663,7 @@ function renderLifeTree(){
           <div class="genealogy-bud ${result?'grown':livedElsewhere?'lived-elsewhere':''}">${result?'◇':livedElsewhere?'●':'?'}</div>
           <div class="genealogy-alt-label">${treeHtml(a.label)}</div>
           ${livedElsewhere?'<span class="meta-path-badge lived">● Başka bir yaşamda yaşandı</span>':''}
-          ${result?renderContinuation(result):`<button class="counterfactual-button" data-counterfactual-node="${index}" data-counterfactual-choice="${treeHtml(a.id)}" ${dead&&!counterfactualBusy?'':'disabled'}>
+          ${result?renderContinuation(result,index,a.id):`<button class="counterfactual-button" data-counterfactual-node="${index}" data-counterfactual-choice="${treeHtml(a.id)}" ${dead&&!counterfactualBusy?'':'disabled'}>
             ${dead?'100 örnekle bu hayatı yaşat':'Ölümden sonra keşfedilir'}
           </button>`}
         </div>`;
@@ -791,6 +818,55 @@ function renderLifeTree(){
       changeZoom(action==='reset'?1:lifeTreeZoom*(action==='in'?1.2:1/1.2));
     });
   }
+
+  $('#lifeTree').querySelectorAll('[data-sim-fork]').forEach(button=>button.addEventListener('click',async()=>{
+    if(counterfactualBusy||!dead)return;
+    const runGame=game;
+    const nodeIndex=Number(button.dataset.rootNode);
+    const rootChoiceId=button.dataset.rootChoice;
+    const path=JSON.parse(decodeURIComponent(button.dataset.forkPath));
+    const node=runGame.state.lifeTree.nodes[nodeIndex];
+    const local=node?.counterfactual?.alternatives?.find(item=>item.choiceId===rootChoiceId);
+    const saved=discovery.simulatedChoices?.[choiceKey(node?.eventId,rootChoiceId)]?.lastResult;
+    const root=local??(saved?.originKey===continuationOriginKey(runGame.seedText,node)?saved:null);
+    if(!root||!path.length)return;
+    let parent=root;
+    for(const step of path.slice(0,-1)){
+      parent=parent.continuation?.[step.stage]?.forks?.find(item=>item.choiceId===step.choiceId)?.result;
+      if(!parent)return;
+    }
+    const last=path.at(-1);
+    counterfactualBusy=true;
+    $('#lifeTree').querySelectorAll('[data-sim-fork],[data-counterfactual-node]').forEach(item=>item.disabled=true);
+    button.textContent='100 örnek hazırlanıyor…';
+    try{
+      const result=await expandContinuationFork(runGame.seedText,parent,last.stage,last.choiceId,{
+        samples:100,maxAge:130,onProgress:async progress=>{
+          if(game!==runGame)throw new Error('Yeni hayat başlatıldığı için analiz iptal edildi.');
+          button.textContent=progress.stage+'. aşama • '+progress.completed+'/100';
+          await sleep(0);
+        }
+      });
+      if(game!==runGame)return;
+      node.counterfactual??={alternatives:[]};
+      node.counterfactual.alternatives??=[];
+      if(!local){
+        node.counterfactual.alternatives=node.counterfactual.alternatives.filter(item=>item.choiceId!==rootChoiceId);
+        node.counterfactual.alternatives.push(root);
+      }
+      // The entire nested result is owned by the root branch and preserved on rerender.
+      if(result?.continuation?.length)showToast('Yeni olasılık dalı büyüdü.');
+      renderLifeTree();
+    }catch(error){
+      if(game===runGame){
+        showToast('Yeni dal açılamadı: '+error.message);
+        renderLifeTree();
+      }
+    }finally{
+      counterfactualBusy=false;
+      if(game===runGame)$('#lifeTree').querySelectorAll('[data-sim-fork],[data-counterfactual-node]').forEach(item=>item.disabled=false);
+    }
+  }));
   $('#lifeTree').querySelectorAll('[data-counterfactual-node]').forEach(button=>button.addEventListener('click',async()=>{
     if(counterfactualBusy)return;
     const runGame=game;
