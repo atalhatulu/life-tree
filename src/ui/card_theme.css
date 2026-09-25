@@ -1,0 +1,53 @@
+.header-actions{display:flex;align-items:center;gap:7px;flex-shrink:0}
+/* Optional Life Tree illustrated-card theme. Original styles remain untouched. */
+body.card-theme{--card-ink:#29332e;--card-green:#285b4d;--card-paper:#fff3df;background:#14232a;color:var(--card-ink)}
+body.card-theme .app-shell{background:radial-gradient(circle at 50% 0%,#38534a,#14232a 72%)}
+body.card-theme .phone-frame{background:#f6ead5;border-color:#9b8768;box-shadow:0 24px 65px #09171b88}
+body.card-theme .topbar{background:linear-gradient(145deg,#1a3038,#2b4b46)!important;color:#fff2db;border-bottom:1px solid #ad92664d}
+body.card-theme .topbar h1,body.card-theme .eyebrow{color:#fff1d5!important}
+body.card-theme .subtitle{color:#d6d4c5!important}
+body.card-theme .live-dot{background:#e7b969}
+body.card-theme .meta-chip{background:#ffffff18;color:#f5e7ca;border-color:#ffffff30}
+body.card-theme .stats{background:#223941;color:#f9eedb;border-bottom-color:#40524d}
+body.card-theme .stat span,body.card-theme .stat b{color:#f7e9d3}
+body.card-theme .bar{background:#10262b}
+body.card-theme .quick-strip{background:#253b3e;border-color:#3d554e}
+body.card-theme .quick-strip div{background:#2b4142}
+body.card-theme .quick-strip span{color:#b9c7bd}
+body.card-theme .quick-strip b{color:#fff0d6}
+body.card-theme .screen{background:radial-gradient(circle at 70% 0%,#fff5e6,#e9dcc4 78%)}
+body.card-theme .section-head h2{font-family:Georgia,serif;font-size:20px;color:#263d39}
+body.card-theme .section-head span{color:#89785f}
+body.card-theme .life-entry,body.card-theme .person-card,body.card-theme .summary-card,body.card-theme .event-card,body.card-theme .empty-state,body.card-theme .tree-node{background:#fff5e5;border:1px solid #d8bf97;box-shadow:0 5px 13px #6a513018;color:#34403a}
+body.card-theme .event-card{position:relative;padding:20px 16px;border:2px solid #b9915d;border-radius:20px;background:linear-gradient(155deg,#fff9ed,#f6e3c5);box-shadow:0 12px 24px #493d2926}
+body.card-theme .event-card:not(.hidden)::before{content:"✦  HAYATINDA BİR OLAY  ✦";display:block;text-align:center;font-size:10px;letter-spacing:.13em;color:#97713e;margin-bottom:13px;font-weight:800}
+body.card-theme .event-card h3{font:700 21px/1.2 Georgia,serif;color:#293d36;text-align:center}
+body.card-theme .event-card p{font-size:13px;line-height:1.6;color:#5e594e;text-align:center}
+body.card-theme .choice-button{background:#fffaf0;border:1px solid #cbb48e;color:#35443d;border-radius:12px;min-height:46px;font-weight:700}
+body.card-theme .choice-button:hover{background:#e3f0df;border-color:#648d71}
+body.card-theme .choice-button:focus-visible,body.card-theme button:focus-visible{outline:3px solid #e1a64e;outline-offset:2px}
+body.card-theme .activity-button,body.card-theme .person-action-grid button{background:#fff6e8;border:1px solid #d7bc91;color:#36433d;border-radius:13px;min-height:57px;box-shadow:0 3px 0 #cbb28a55}
+body.card-theme .activity-button:hover{background:#e7f0df}
+body.card-theme .age-zone{background:#20383d;border-color:#4d6058}
+body.card-theme .age-button{background:linear-gradient(145deg,#337a63,#245546);box-shadow:0 5px 12px #081e1b55;color:#fff6e7}
+body.card-theme .auto-button,body.card-theme .speed-select{background:#f6e8cf;border-color:#bba47e;color:#3a443b}
+body.card-theme .bottom-nav{background:#1a3039;border-top:1px solid #53614d;box-shadow:0 -6px 22px #1a292a26}
+body.card-theme .nav-item{color:#c2c7b9}
+body.card-theme .nav-item.active{color:#f5c77d;background:#ffffff0b}
+body.card-theme .nav-item span{font-size:19px}
+body.card-theme .relationship-pill{background:#e2ecdb;color:#35624b}
+body.card-theme .life-copy,body.card-theme .person-card p,body.card-theme .summary-card p{color:#615b50}
+body.card-theme #lifeTree .life-map-viewport{background-color:#f5ead6;background-image:radial-gradient(#d5bf99 .8px,transparent .8px);border-color:#c8af88}
+body.card-theme #lifeTree .life-graph-node{box-shadow:0 3px 10px #5b49251a}
+body.card-theme #lifeTree .life-tree-inspector{background:#fff3df;border-color:#c8af88}
+body.card-theme .icon-button{background:#ffffff17;border-color:#e7d3ac;color:#fff1d7}
+body.card-theme #themeToggle{font-size:17px}
+body.card-theme .dev-panel{background:#fff4df;border-color:#c8ad83}
+@media(max-width:560px){
+ body.card-theme .phone-frame{height:100dvh;width:100vw;border:0;border-radius:0}
+ body.card-theme .topbar{padding-top:max(13px,env(safe-area-inset-top))}
+ body.card-theme .bottom-nav{padding-bottom:env(safe-area-inset-bottom)}
+ body.card-theme .screen-panel{padding:15px 13px 22px}
+ body.card-theme .event-card{margin:4px 0 17px}
+}
+@media(prefers-reduced-motion:reduce){body.card-theme *,body.card-theme *::before,body.card-theme *::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
