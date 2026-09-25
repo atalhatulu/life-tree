@@ -2,6 +2,7 @@ import {createInterface} from 'node:readline/promises';
 import {stdin as input,stdout as output} from 'node:process';
 import {readFile,writeFile} from 'node:fs/promises';
 import {Game} from '../core/game.js';
+import {refreshPrimaryStats} from '../life/primary_stats.js';
 import {RNG} from '../core/rng.js';
 import {serializeGame} from '../core/save_system.js';
 import {assertValidState} from '../simulation/invariants.js';
@@ -58,7 +59,8 @@ function printHeader(game){
  line();
  console.log((s.player.name+' '+s.player.surname).toUpperCase());
  console.log(s.player.age+' yaş • '+s.year+' • '+chapter(s.player.age)+' • '+s.household.economicClass+' sınıf');
- console.log('Sağlık '+health(s)+'/100  |  Stres '+stress(s)+'/100  |  Mental '+mental(s)+'/100');
+ const stats=refreshPrimaryStats(s);
+ console.log('Sağlık '+Math.round(stats.health)+'/100  |  Zekâ '+Math.round(stats.intelligence)+'/100  |  Görünüm '+Math.round(stats.appearance)+'/100  |  Mutluluk '+Math.round(stats.happiness)+'/100');
  console.log('Para '+money((f.cash??0)+(f.savings??0))+'  |  Borç '+money(f.debt??0)+'  |  Net '+money(netWorth(s)));
  console.log('İş: '+(s.career?.title??s.player.job??'—')+'  |  Aile: '+(r?.status==='married'?'Evli':r?'İlişki':'Bekâr')+' • '+(s.children?.length??0)+' çocuk');
  console.log('Bu yıl kalan aksiyon: '+(s.actions?.remaining??0)+'/'+(s.actions?.max??3));
@@ -90,6 +92,7 @@ async function resolveEvent(game,event){
 }
 function makeYearMoment(game){
  const s=game.state,age=s.player.age,rng=new RNG(game.seedText+':text-year-moment:'+s.year);
+ if(age<3)return {title:'Aileyle bir gün',text:'Bakımını üstlenen kişilerle zaman geçiriyorsun.',choices:[['family','Ailenle vakit geçir'],['play','Oyuncaklarınla oyna'],['rest','Dinlen']]};
  if(age<7)return rng.pick([
   {title:'Küçük bir keşif',text:'Bugün seni ne çekiyor?',choices:[['play','Oyun kur'],['family','Ailenle vakit geçir'],['learn','Yeni bir şey öğren']]},
   {title:'Evde bir gün',text:'Kendi kendine oyalanıyorsun.',choices:[['draw','Resim yap'],['help-home','Ev işine yardım et'],['rest','Dinlen']]}
@@ -106,12 +109,12 @@ function makeYearMoment(game){
  ]);
  const pool=[
   {title:'Hafta sonu planı',text:'Kendine biraz zaman ayıracaksın.',choices:[['cinema','Sinemaya git'],['rest','Evde dinlen'],['social','Birini ara']]},
-  {title:'Küçük bir para kararı',text:'Bu ay elinde biraz serbest para kaldı.',choices:[['adult-save','Biriktir'],['shopping','Kendine bir şey al'],['meal','Dışarıda yemek ye']]},
-  {title:'Yoğun bir dönem',text:'Enerjini nereye vereceksin?',choices:[['work-focus','İşe yüklen'],['exercise','Spora dön'],['rest','Dinlen']]},
+  ...((s.finance?.cash??0)>=350?[{title:'Küçük bir para kararı',text:'Bu ay elinde biraz harcanabilir para var.',choices:[['adult-save','Biriktir'],['shopping','Kendine bir şey al'],['meal','Dışarıda yemek ye']]}]:[]),
+  {title:'Yoğun bir dönem',text:'Enerjini nereye vereceksin?',choices:[...(s.career?.employed?[['work-focus','İşe yüklen']]:[['learn','İş fırsatları için kendini geliştir']]),['exercise','Spora dön'],['rest','Dinlen']]},
   {title:'Sosyal çevre',text:'Bir süredir insanlarla görüşmedin.',choices:[['social','Birini ara'],['family','Aileyi ziyaret et'],['solo','Tek başına kal']]},
   {title:'Kendine yatırım',text:'Biraz zaman ve enerji ayırabilirsin.',choices:[['learn','Yeni beceri öğren'],['exercise','Sağlığına odaklan'],['shopping','Görünüşünü yenile']]}
  ];
- if(s.social?.romance)pool.push({title:'İlişkiye zaman ayır',text:'Partnerinle baş başa kalmak için fırsat var.',choices:[['partner-time','Birlikte vakit geçir'],['social','Uzun konuş'],['work-focus','Bu hafta işe odaklan']]});
+ if(s.social?.romance)pool.push({title:'İlişkiye zaman ayır',text:'Partnerinle baş başa kalmak için fırsat var.',choices:[['partner-time','Birlikte vakit geçir'],['social','Uzun konuş'],...(s.career?.employed?[['work-focus','Bu hafta işe odaklan']]:[['learn','Kendini geliştir']])]});
  if((s.children?.length??0)>0)pool.push({title:'Aile zamanı',text:'Evde senden ilgi bekleyenler var.',choices:[['child-time','Çocuklarla ilgilen'],['family','Ailece bir şey yap'],['rest','Biraz yalnız kal']]});
  return rng.pick(pool);
 }
@@ -143,6 +146,7 @@ async function leisure(game,kind){
  if(kind==='shopping')s.player.appearance.attractiveness=clamp((s.player.appearance.attractiveness??50)+tier.value.i);
  const text=d.label+' • '+x.label+' • '+money(cost)+' harcadın.';
  s.history.push({age:s.player.age,kind:'activity',activityId:'leisure:'+kind,text});
+ refreshPrimaryStats(s);
  console.log('→ '+text);
  return true;
 }
@@ -166,8 +170,12 @@ async function resolveYearMoment(game){
  if(choice==='adult-save'&&s.finance){const moved=Math.min(s.finance.cash??0,Math.max(500,Math.round((s.finance.monthlyIncome??0)*.08)));s.finance.cash-=moved;s.finance.savings=(s.finance.savings??0)+moved;text=money(moved)+' birikime ayırdın.';}
  if(choice==='partner-time'&&s.social?.romance){const r=s.social.romance;r.relationship=clamp((r.relationship??60)+5);r.relationshipTension=clamp((r.relationshipTension??10)-4);r.lastQualityTimeAge=s.player.age;text='Partnerinle kaliteli zaman geçirdin.';}
  if(choice==='child-time'&&(s.children?.length??0)){for(const c of s.children){c.relationship=clamp((c.relationship??70)+3);if(c.parenting)c.parenting.involvement=clamp((c.parenting.involvement??55)+3);}text='Çocuklarına özellikle zaman ayırdın.';}
- if(['cinema','meal','shopping'].includes(choice)){await leisure(game,choice);text='Aktivite yaptın.';}
+ if(['cinema','meal','shopping'].includes(choice)){
+  const completed=await leisure(game,choice);
+  text=completed?'Planladığın aktiviteyi gerçekleştirdin.':'Aktivite tamamlanmadı; harcama veya etkinlik gerçekleşmedi.';
+ }
  if(!text)text='Bu yıl küçük ama sana ait bir seçim yaptın.';
+ refreshPrimaryStats(s);
  s.history.push({age:s.player.age,kind:'year-moment',choiceId:choice,text});
  console.log('→ '+text);
  await ask('\nDevam etmek için Enter...');
