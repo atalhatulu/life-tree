@@ -105,7 +105,10 @@ function nodeMarkup(node,depth,context){
   ${canExpand?'<span class="life-graph-plus" aria-hidden="true">＋</span>':''}
  </button>`;
  if(!node.children?.length)return `<li>${button}</li>`;
- return `<li>${button}<ul>${node.children.map(child=>nodeMarkup(child,depth+1,context)).join('')}</ul></li>`;
+ // Keep the lived spine visible; expand simulated continuations on demand.
+ const collapsible=node.kind==='choice'&&node.status==='simulated';
+ const toggle=collapsible?`<button type="button" class="life-branch-toggle" data-tree-branch-toggle aria-expanded="false" aria-label="${safe(node.label)} dalının devamını göster">＋ Dalı aç</button>`:'';
+ return `<li${collapsible?' class="life-branch-collapsed"':''}>${button}${toggle}<ul>${node.children.map(child=>nodeMarkup(child,depth+1,context)).join('')}</ul></li>`;
 }
 
 export function renderFamilyTree(root,{dead=false}={}){
