@@ -1,4 +1,4 @@
-name: Life Tree npm tests
+name: Life Tree 1000-life audit
 
 on:
   push:
@@ -13,15 +13,17 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Run all tests
+      - name: Run all unit tests
         run: npm test
-      - name: Smoke test CLI
+      - name: Simulate 1000 lives to age 100
+        run: npm run simulate -- --lives 1000 --to-age 100 --policy random
+      - name: Smoke test CLI syntax
         run: |
           node --check src/cli/play.js
           node --check src/cli/text_mode.js
