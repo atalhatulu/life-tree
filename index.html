@@ -4,10 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Life Tree</title>
-  <link rel="stylesheet" href="./styles.css?v=20260925-tree-layout-2" />
-  <link rel="stylesheet" href="./src/ui/card_theme.css?v=20260925-tree-layout-2" />
+  <link rel="stylesheet" href="./styles.css?v=20260925-clean-ui-1" />
   <link rel="stylesheet" href="./src/ui/life_album.css?v=20260925-tree-layout-2" />
-  <link rel="stylesheet" href="./src/ui/reference_ui.css?v=20260925-tree-layout-2" />
   <style>
     /* Critical viewport invariant: the tree never switches to desktop width. */
     body:has(#treeScreen.active) .app-shell{display:flex!important;justify-content:center!important;align-items:center!important;max-width:100vw!important;min-width:0!important;padding:12px!important}
@@ -22,9 +20,6 @@
 <body>
   <main class="app-shell">
     <section class="phone-frame" aria-label="Life Tree oyun ekranı">
-      <div class="ref-status" aria-hidden="true"><span>9:41</span><span>▴ ▰ ▰</span></div>
-      <section class="ref-hero" aria-label="Life Tree ana ekranı"><div class="ref-landscape"><div class="ref-sun"></div><div class="ref-mountains"></div><div class="ref-city"></div><div class="ref-hero-title"><span>❧</span><h2>Life Tree</h2><p>Her yaşam bir hikâye.<br>Her seçim yeni bir dal.</p></div><div class="ref-silhouette" aria-hidden="true">♟</div></div><div class="ref-profile"><div class="ref-avatar">✦</div><div><strong id="refName">Yeni hayat</strong><p id="refMeta">Yeni bir hikâye</p></div></div></section>
-      <div class="ref-screen-head"><h2 id="refScreenTitle">Hayat</h2><p id="refScreenDescription">Her seçim yeni bir dal.</p></div>
       <header class="topbar">
         <div class="identity-block">
           <div class="brand-row"><p class="eyebrow">LIFE TREE</p><span class="live-dot"></span></div>
@@ -35,7 +30,7 @@
             <span id="goalQuick" class="meta-chip goal-chip">Hedef yok</span>
           </div>
         </div>
-        <div class="header-actions"><button id="themeToggle" class="icon-button" type="button" aria-label="Kart görünümüne geç" aria-pressed="false" title="Kart görünümüne geç">✦</button><button id="newLife" class="icon-button" aria-label="Yeni hayat">↻</button></div>
+        <div class="header-actions"><button id="newLife" class="icon-button" aria-label="Yeni hayat">↻</button></div>
       </header>
 
       <section class="stats" aria-label="Ana özellikler">
@@ -55,7 +50,7 @@
       <section id="screen" class="screen">
         <div id="lifeScreen" class="screen-panel active">
           <div id="eventCard" class="event-card hidden"></div>
-          <div class="ref-home-actions"><button type="button" data-ref-screen="activitiesScreen">Eylemler →</button><button type="button" data-ref-screen="careerScreen">Kariyer →</button><button type="button" data-ref-screen="albumScreen">Günlük →</button></div>
+
           <div class="section-head"><h2>Hayat Akışı</h2><span id="seed"></span></div>
           <div id="timeline" class="timeline"></div>
         </div>
@@ -67,7 +62,7 @@
 
         <div id="activitiesScreen" class="screen-panel">
           <div class="section-head"><h2>Aktiviteler</h2></div>
-          <div class="ref-action-filter" role="group" aria-label="Eylem kategorileri"><button type="button" data-ref-filter="all" class="selected">Tümü</button><button type="button" data-ref-filter="career">Kariyer</button><button type="button" data-ref-filter="social">Sosyal</button><button type="button" data-ref-filter="personal">Kişisel</button></div><div id="activities"></div>
+          <div id="activities"></div>
         </div>
 
         <div id="assetsScreen" class="screen-panel">
@@ -82,7 +77,7 @@
 
         <div id="treeScreen" class="screen-panel">
           <div class="section-head"><h2>Life Tree</h2></div>
-          <div class="ref-tree-heading"><span>✧ HAYAT AĞACI</span><p>Geçmişini gör, yeni ihtimalleri keşfet.</p></div><div id="lifeTree"></div>
+          <div id="lifeTree"></div>
         </div>
         <div id="albumScreen" class="screen-panel">
           <div class="section-head"><h2>Hayat Albümü</h2></div>
@@ -93,8 +88,8 @@
       <section class="age-zone">
         <div class="age-actions">
           <button id="ageUp" class="age-button">+1 YAŞ</button>
-          <button id="autoLife" class="auto-button">▶ AUTO LIFE</button>
-          <button id="simulateEnd" class="auto-button simulate-end-button">⏩ SONA SİMÜLE ET</button>
+          <button id="autoLife" class="auto-button">▶ Otomatik</button>
+          <button id="simulateEnd" class="auto-button simulate-end-button">Sona ilerle</button>
           <select id="autoSpeed" class="speed-select" aria-label="Auto Life hızı">
             <option value="700">Normal</option>
             <option value="420" selected>Hızlı</option>
@@ -108,10 +103,11 @@
         <button class="nav-item" data-screen="relationshipsScreen"><span>♡</span><small>İlişkiler</small></button>
         <button class="nav-item" data-screen="activitiesScreen"><span>＋</span><small>Yap</small></button>
         <button class="nav-item" data-screen="assetsScreen"><span>⌂</span><small>Varlıklar</small></button>
-        <button class="nav-item" data-screen="careerScreen"><span>▣</span><small>Kariyer</small></button>
+        
         <button class="nav-item" data-screen="treeScreen"><span>⑂</span><small>İzler</small></button>
-        <button class="nav-item" data-screen="albumScreen"><span>▤</span><small>Albüm</small></button>
+        
       </nav>
+      <dialog id="afterlifeDialog" class="afterlife-dialog" aria-labelledby="afterlifeTitle"><div class="afterlife-dialog-head"><h2 id="afterlifeTitle">Başka bir hayat</h2><button type="button" id="afterlifeClose" class="icon-button" aria-label="Pencereyi kapat">✕</button></div><div id="afterlifeContent"></div></dialog>
     </section>
 
     <aside class="dev-panel">
@@ -120,9 +116,6 @@
       <p>Life Tree playable prototype • manuel kararlar + Auto Life.</p>
     </aside>
   </main>
-
-  <script type="module" src="./src/ui/card_theme.js"></script>
   <script type="module" src="./src/ui/app.js"></script>
-  <script type="module" src="./src/ui/reference_ui.js"></script>
 </body>
 </html>
