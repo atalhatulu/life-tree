@@ -12,7 +12,6 @@ import { generateJobOffers } from '../career/job_market.js';
 import { switchJob } from '../career/career_system.js';
 import { ensureLifeFinale, ENDING_ARCHETYPES } from '../life/ending_system.js';
 import { simulateContinuation,expandContinuationFork,expandSelectedContinuation,growFirstGeneration,continuationOriginKey } from '../life/counterfactual_continuation.js';
-import {livedLifeTree,renderFamilyTree} from './life_tree_view.js';
 import {loadDiscovery,saveDiscovery,recordCompletedLife,recordSimulatedChoice,discoveryStatus,discoveryStats,choiceKey} from '../life/discovery_system.js';
 import {refreshPrimaryStats} from '../life/primary_stats.js';
 
@@ -593,7 +592,6 @@ function treeHtml(value){
 }
 
 let counterfactualBusy=false;
-let lifeTreeZoom=1;
 
 
 function renderContinuation(result,nodeIndex,rootChoiceId,path=[]){
@@ -853,11 +851,11 @@ function renderEvent() {
       const d=game.state.death??{};
       const finale=ensureLifeFinale(game.state);
       card.classList.add('death-card');
-      card.innerHTML=`${eventIllustration({title:'Hayatın sonu'})}<small class="death-kicker">BİR HAYAT TAMAMLANDI</small><h3>${finale.ending.title}</h3><p>${finale.ending.description}</p><p><strong>${game.state.player.age} yaş</strong> • ${d.cause??'Bilinmeyen neden'}</p><div class="death-stats"><span>${finale.majorDecisions} kritik karar</span><span>${finale.children} çocuk</span><span>${money(finale.netWorth)}</span></div><div class="finale-actions"><button class="choice-button finale-tree-button" data-open-life-tree>HAYAT AĞACINI GÖR →</button><button class="choice-button finale-alt-button" data-open-alternatives>ALTERNATİF HAYATLARI İNCELE ◇</button></div>`;
+      card.innerHTML=`<small class="death-kicker">BİR HAYAT TAMAMLANDI</small><h3>${finale.ending.title}</h3><p>${finale.ending.description}</p><p><strong>${game.state.player.age} yaş</strong> • ${d.cause??'Bilinmeyen neden'}</p><div class="death-stats"><span>${finale.majorDecisions} kritik karar</span><span>${finale.children} çocuk</span><span>${money(finale.netWorth)}</span></div><div class="finale-actions"><button class="choice-button finale-tree-button" data-open-life-tree>HAYAT AĞACINI GÖR →</button><button class="choice-button finale-alt-button" data-open-alternatives>ALTERNATİF HAYATLARI İNCELE ◇</button></div>`;
       card.querySelector('[data-open-life-tree]')?.addEventListener('click',()=>switchScreen('treeScreen'));
       card.querySelector('[data-open-alternatives]')?.addEventListener('click',()=>{
         switchScreen('treeScreen');
-        requestAnimationFrame(()=>document.querySelector('.genealogy-branch')?.scrollIntoView({behavior:'smooth',block:'center',inline:'nearest'}));
+        requestAnimationFrame(()=>document.querySelector('.life-trail-decision')?.scrollIntoView({behavior:'smooth',block:'start'}));
       });
     }else card.innerHTML='';
     $('#ageUp').disabled=dead;
@@ -1049,7 +1047,7 @@ function toggleAutoLife(){
   if(autoLifeRunning){
     autoLifeRunning=false;autoLifeToken++;
     $('#autoLife').classList.remove('running');
-    $('#autoLife').textContent='▶ AUTO LIFE';
+    $('#autoLife').textContent='▶ Otomatik';
     setAutoStatus('Duraklatıldı');
     return;
   }
@@ -1149,7 +1147,7 @@ function newLife(seed=$('#seedInput').value.trim()||String(Date.now())){
   game=new Game(seed);pendingEvent=null;yearMoment=null;leisurePicker=null;personActionTarget=null;activityMessage='';autoLifeRng=null;lastRenderedAge=null;recordedCompletedSeed=null;
   $('#autoLife')?.classList.remove('running');
   if($('#autoLife'))$('#autoLife').textContent='▶ AUTO LIFE';
-  if($('#simulateEnd')){$('#simulateEnd').disabled=false;$('#simulateEnd').textContent='⏩ SONA SİMÜLE ET';}
+  if($('#simulateEnd')){$('#simulateEnd').disabled=false;$('#simulateEnd').textContent='Sona ilerle';}
   switchScreen('lifeScreen');render();
 }
 
