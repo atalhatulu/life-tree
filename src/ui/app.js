@@ -650,219 +650,76 @@ function renderLifeTree(){
   const nodes=game.state.lifeTree?.nodes??[];
   const dead=!game.state.player.alive;
   const finale=dead?ensureLifeFinale(game.state):game.state.lifeTree?.finale;
-  if(!nodes.length&&!finale){
-    $('#lifeTree').innerHTML='<div class="empty-state">Henüz hayatının yönünü değiştiren büyük bir karar vermedin.</div>';
-    return;
-  }
-  const previousScroll=$('#lifeTree').querySelector('.genealogy-scroll');
-  const position=previousScroll?{x:previousScroll.scrollLeft,y:previousScroll.scrollTop}:null;
-  const previousInfo=$('#lifeTree').querySelector('.life-tree-inspector')?.dataset.selected??null;
-  const getResult=(node,index,alt)=>{
+  const root=$('#lifeTree');
+  const oldScroll=root.querySelector('.life-trail-scroll')?.scrollTop??0;
+  const openIds=new Set([...root.querySelectorAll('details[data-life-alternative][open]')].map(el=>el.dataset.lifeAlternative));
+  const esc=value=>treeHtml(String(value??''));
+  const getResult=(node,alt)=>{
     const local=node.counterfactual?.alternatives?.find(item=>item.choiceId===alt.id);
     const saved=discovery.simulatedChoices?.[choiceKey(node.eventId,alt.id)]?.lastResult;
-    return local?.version===3?local:
-      saved?.version===3&&saved.originKey===continuationOriginKey(game.seedText,node)?saved:null;
+    return local?.version===3?local:saved?.version===3&&saved.originKey===continuationOriginKey(game.seedText,node)?saved:null;
   };
-  const tree=livedLifeTree(nodes,finale,getResult);
-  const graph=renderFamilyTree(tree,{dead});
-  $('#lifeTree').innerHTML=`
-    <div class="life-map-toolbar">
-      <div class="life-map-legend"><span>● Yaşanan</span><span>◇ Olası</span><span>? Açılmamış</span></div><p class="lt-tree-guide">Karar düğümüne dokunarak ayrıntısını gör. Hayat tamamlandığında alternatif dalları keşfedebilirsin.</p>
-      <div class="genealogy-navigation" role="group" aria-label="Ağaç yakınlaştırma">
-        <span class="genealogy-controls-hint">Sağ tıkla taşı · Tekerlekle yakınlaş</span>
-        <button type="button" class="genealogy-zoom-button" data-tree-zoom="out" aria-label="Uzaklaştır">−</button>
-        <button type="button" class="genealogy-zoom-button genealogy-zoom-reset" data-tree-zoom="reset" aria-label="Ölçeği sıfırla">100%</button>
-        <button type="button" class="genealogy-zoom-button" data-tree-zoom="in" aria-label="Yakınlaştır">+</button>
-      </div>
-    </div>
-    <div class="genealogy-scroll life-map-viewport" tabindex="0" role="region" aria-label="Dallanabilen hayat ağacı">
-      <div class="genealogy-tree life-map-canvas">${graph.markup}</div>
-    </div>
-    <aside class="life-tree-inspector" aria-live="polite">
-      <span class="life-inspector-hint">Bir karar veya ihtimal düğümüne tıkla; ayrıntı burada görünsün.</span>
-    </aside>
-  `;
-  const treeScroll=$('#lifeTree').querySelector('.genealogy-scroll');
-  const canvas=treeScroll.querySelector('.genealogy-tree');
-  const panel=$('#treeScreen');
-  const inspect=$('#lifeTree').querySelector('.life-tree-inspector');
-  const zoomButtons=[...$('#lifeTree').querySelectorAll('[data-tree-zoom]')];
-  const zoomLabel=$('#lifeTree').querySelector('[data-tree-zoom="reset"]');
-  const minimum=.4,maximum=2;
-  const clampZoom=value=>Math.max(minimum,Math.min(maximum,Math.round(value*100)/100));
-  const centerPosition=()=>Math.max(0,(treeScroll.scrollWidth-treeScroll.clientWidth)/2);
-  const updateZoomButtons=()=>{
-    zoomLabel.textContent=Math.round(lifeTreeZoom*100)+'%';
-    zoomButtons.find(x=>x.dataset.treeZoom==='out').disabled=lifeTreeZoom<=minimum;
-    zoomButtons.find(x=>x.dataset.treeZoom==='in').disabled=lifeTreeZoom>=maximum;
+  const alternative=(node,index,alt)=>{
+    const id=index+':'+alt.id;
+    const result=getResult(node,alt);
+    const stages=result?.continuation??[];
+    const ending=stages.find(stage=>stage.kind==='ending')??null;
+    const last=stages.at(-1);
+    const status=result?(ending?'Ölüme kadar simüle edildi':result.terminal?'Simülasyon tamamlandı':'Yaşam sınırına ulaşıldı'):'Henüz simüle edilmedi';
+    return `<details class="life-alternative" data-life-alternative="${esc(id)}" ${openIds.has(id)?'open':''}>
+      <summary><span class="life-alt-label">◇ ${esc(alt.label)}</span><span class="life-alt-status">${esc(status)} ▾</span></summary>
+      <div class="life-alt-body">
+      ${result?`<div class="life-alt-outcome"><strong>${esc(ending?.title??result.ending?.title??last?.title??'Alternatif hayat')}</strong><span>${esc(ending?.age??result.ending?.age??last?.age??node.age)} yaş · ${esc(ending?.label??last?.label??'')}</span></div>
+      <ol class="life-alt-timeline">${stages.map(stage=>`<li><small>${esc(stage.age)} yaş</small><span><strong>${esc(stage.title)}</strong>${stage.label?' · '+esc(stage.label):''}</span></li>`).join('')}</ol>${!ending?'<p class="life-alt-note">Bu örnekte ölüm gerçekleşmeden simülasyon sınırına ulaşıldı.</p>':''}`:
+      `<p>Bu kararı seçseydin nasıl bir hayat yaşayacağını simüle et.</p>
+      <button type="button" class="life-alt-simulate" data-counterfactual-node="${index}" data-counterfactual-choice="${esc(alt.id)}" ${dead?'':'disabled'}>${dead?'Bu hayatı ölüme kadar simüle et':'Hayat tamamlandığında açılır'}</button>`}
+      </div></details>`;
   };
-  const changeZoom=(requested,clientX)=>{
-    const next=clampZoom(requested);
-    if(next===lifeTreeZoom)return;
-    const rect=treeScroll.getBoundingClientRect();
-    const offsetX=(clientX??rect.left+rect.width/2)-rect.left;
-    const contentX=(treeScroll.scrollLeft+offsetX)/lifeTreeZoom;
-    lifeTreeZoom=next;
-    canvas.style.zoom=String(next);
-    treeScroll.scrollLeft=contentX*next-offsetX;
-    updateZoomButtons();
-  };
-  canvas.style.zoom=String(lifeTreeZoom);
-  treeScroll.scrollLeft=position?.x??centerPosition();
-  treeScroll.scrollTop=position?.y??0;
-  updateZoomButtons();
-  treeScroll.addEventListener('wheel',event=>{
-    // Ordinary wheel/trackpad gestures scroll the long life trail.
-    // Ctrl+wheel is an explicit zoom gesture; toolbar buttons also zoom.
-    if(!event.ctrlKey)return;
-    event.preventDefault();
-    const delta=event.deltaY!==0?event.deltaY:event.deltaX;
-    if(delta)changeZoom(lifeTreeZoom*(delta>0?.9:1.1),event.clientX);
-  },{passive:false});
-  let dragging=null;
-  const stopDrag=()=>{
-    if(!dragging)return;
-    dragging=null;
-    treeScroll.classList.remove('is-panning');
-    window.removeEventListener('mousemove',moveDrag);
-    window.removeEventListener('mouseup',stopDrag);
-    window.removeEventListener('blur',stopDrag);
-  };
-  const moveDrag=event=>{
-    if(!dragging)return;
-    if(!(event.buttons&2)){stopDrag();return;}
-    event.preventDefault();
-    treeScroll.scrollLeft=dragging.left+dragging.x-event.clientX;
-    treeScroll.scrollTop=dragging.top+dragging.y-event.clientY;
-  };
-  treeScroll.addEventListener('contextmenu',event=>event.preventDefault());
-  treeScroll.addEventListener('mousedown',event=>{
-    if(event.button!==2)return;
-    event.preventDefault();
-    dragging={x:event.clientX,y:event.clientY,left:treeScroll.scrollLeft,top:treeScroll.scrollTop};
-    treeScroll.classList.add('is-panning');
-    window.addEventListener('mousemove',moveDrag);
-    window.addEventListener('mouseup',stopDrag);
-    window.addEventListener('blur',stopDrag);
-  });
-  zoomButtons.forEach(button=>button.addEventListener('click',()=>{
-    const action=button.dataset.treeZoom;
-    changeZoom(action==='reset'?1:lifeTreeZoom*(action==='in'?1.2:1/1.2));
-  }));
-  $('#lifeTree').querySelectorAll('[data-tree-branch-toggle]').forEach(toggle=>toggle.addEventListener('click',()=>{
-    const branch=toggle.closest('li');
-    const open=branch.classList.toggle('life-branch-open');
-    branch.classList.toggle('life-branch-collapsed',!open);
-    toggle.setAttribute('aria-expanded',String(open));
-    toggle.textContent=open?'− Dalı kapat':'＋ Dalı aç';
-    toggle.setAttribute('aria-label',open?'Alternatif hayat dalını kapat':'Alternatif hayat dalını aç');
-  }));
-  $('#lifeTree').querySelectorAll('[data-tree-node]').forEach(button=>button.addEventListener('click',()=>{
-    const entry=graph.details[button.dataset.treeNode];
-    if(!entry)return;
-    inspect.dataset.selected=button.dataset.treeNode;
-    inspect.innerHTML=`
-      <small>${entry.age==null?'BAŞLANGIÇ':entry.age+' YAŞ'}</small>
-      <strong>${treeHtml(entry.title)}</strong>
-      <p>${treeHtml(entry.detail)}</p>
-      ${entry.probability!=null?`<span>${entry.count??'?'}/${entry.samples??100} örnekte · %${entry.probability}</span>`:''}
-      ${entry.canExpand?'<span class="life-inspector-hint">Bu düğüme tıklayarak dalı büyütebilirsin.</span>':''}
-    `;
-    $('#lifeTree').querySelectorAll('.life-graph-node.is-selected').forEach(item=>item.classList.remove('is-selected'));
-    button.classList.add('is-selected');
-  }));
-
-  $('#lifeTree').querySelectorAll('[data-sim-fork],[data-sim-continue],[data-counterfactual-node]')
-   .forEach(button=>button.addEventListener('click',async()=>{
+  root.innerHTML=`<div class="life-trail-header"><strong>Hayatının kararları</strong><span>${nodes.length} kritik karar</span></div>
+    <div class="life-trail-scroll" tabindex="0" role="region" aria-label="Hayatın kararları ve alternatif yaşamlar">
+    <div class="life-trail-start">● Doğum · 0 yaş</div>
+    ${nodes.map((node,index)=>`<section class="life-trail-decision">
+      <div class="life-trail-lived"><small>${esc(node.age)} yaş · ${esc(node.title)}</small><strong>● ${esc(node.label)}</strong></div>
+      ${(node.alternatives??[]).map(alt=>alternative(node,index,alt)).join('')}
+    </section>`).join('')}
+    ${finale?`<div class="life-trail-ending"><small>${esc(finale.lifespan.age)} yaş</small><strong>${esc(finale.ending.title)}</strong><p>${esc(finale.ending.description)}</p></div>`:''}
+    ${!nodes.length&&!finale?'<div class="empty-state">Henüz kritik bir karar vermedin.</div>':''}
+    </div>`;
+  root.querySelector('.life-trail-scroll').scrollTop=oldScroll;
+  root.querySelectorAll('[data-counterfactual-node]').forEach(button=>button.addEventListener('click',async()=>{
     if(counterfactualBusy||!dead)return;
     const runGame=game;
-    const rootMode=button.hasAttribute('data-counterfactual-node');
-    const nodeIndex=Number(rootMode?button.dataset.counterfactualNode:button.dataset.rootNode);
-    const rootChoiceId=rootMode?button.dataset.counterfactualChoice:button.dataset.rootChoice;
-    const node=runGame.state.lifeTree.nodes[nodeIndex];
+    const index=Number(button.dataset.counterfactualNode);
+    const choiceId=button.dataset.counterfactualChoice;
+    const node=runGame.state.lifeTree.nodes[index];
     if(!node?.snapshot)return;
-    let root=node.counterfactual?.alternatives?.find(item=>item.choiceId===rootChoiceId);
-    const saved=discovery.simulatedChoices?.[choiceKey(node.eventId,rootChoiceId)]?.lastResult;
-    if(!root&&saved?.version===3&&saved.originKey===continuationOriginKey(runGame.seedText,node))root=saved;
-    let parent=root;
-    let last=null;
-    const path=rootMode?[]:JSON.parse(decodeURIComponent(button.dataset.forkPath));
-    if(!rootMode){
-      if(!parent||!path.length)return;
-      for(const step of path.slice(0,-1)){
-        const stage=parent.continuation?.[step.stage];
-        parent=step.follow?stage?.selectedResult:stage?.forks?.find(item=>item.choiceId===step.choiceId)?.result;
-        if(!parent)return;
-      }
-      last=path.at(-1);
-    }
     counterfactualBusy=true;
-    const controls=$('#lifeTree').querySelectorAll('[data-sim-fork],[data-sim-continue],[data-counterfactual-node]');
-    controls.forEach(control=>control.disabled=true);
-    const inspector=$('#lifeTree').querySelector('.life-tree-inspector');
+    button.disabled=true;
+    button.textContent='Alternatif hayat hesaplanıyor…';
     const progress=async update=>{
-      if(game!==runGame)throw new Error('Yeni hayat başlatıldı; önceki işlem durduruldu.');
-      const group=update.branch?' · dal '+update.branch+'/'+update.branchTotal:'';
-      if(inspector)inspector.innerHTML='<strong>Olasılıklar hesaplanıyor'+group+'</strong><p>'+
-        update.stage+'. aşama · '+update.completed+'/'+update.total+' örnek</p>';
+      if(game!==runGame)throw new Error('Yeni hayat başlatıldı; işlem durduruldu.');
+      button.textContent=update.stage+'. karar · '+update.completed+'/'+update.total+' örnek';
       await sleep(0);
     };
     try{
-      let result;
-      if(rootMode){
-        result=await simulateContinuation(runGame.seedText,node,rootChoiceId,{
-          samples:100,maxAge:130,onProgress:progress
-        });
-        node.counterfactual??={alternatives:[]};
-        node.counterfactual.alternatives??=[];
-        node.counterfactual.alternatives=node.counterfactual.alternatives.filter(item=>item.choiceId!==rootChoiceId);
-        node.counterfactual.alternatives.push(result);
-        root=result;
-      }else if(button.hasAttribute('data-sim-continue')){
-        result=await expandSelectedContinuation(runGame.seedText,parent,last.stage,{
-          samples:100,maxAge:130,maxStages:130,onProgress:progress
-        });
-      }else{
-        result=await expandContinuationFork(runGame.seedText,parent,last.stage,last.choiceId,{
-          samples:100,maxAge:130,maxStages:4,onProgress:progress
-        });
-      }
-      if(game!==runGame)return;
-      if(!rootMode&&!node.counterfactual?.alternatives?.some(item=>item===root)){
-        node.counterfactual??={alternatives:[]};
-        node.counterfactual.alternatives??=[];
-        node.counterfactual.alternatives=node.counterfactual.alternatives.filter(item=>item.choiceId!==rootChoiceId);
-        node.counterfactual.alternatives.push(root);
-      }
-      // Grow siblings automatically; later generations stay visible as choices
-      // instead of expanding an exponential number of full lives at once.
-      await growFirstGeneration(runGame.seedText,result,{
-        samples:100,maxStages:3,onProgress:progress
+      const result=await simulateContinuation(runGame.seedText,node,choiceId,{
+        samples:30,maxAge:130,maxStages:130,onProgress:progress
       });
       if(game!==runGame)return;
-      if(rootMode){
-        discovery=recordSimulatedChoice(discovery,node,result);
-      }else{
-        discovery=recordSimulatedChoice(discovery,node,root);
-      }
-      try{saveDiscovery(discovery);}catch{
-        showToast('Ağaç açık; kalıcı keşif alanı dolmuş olabilir.');
-      }
+      node.counterfactual??={alternatives:[]};
+      node.counterfactual.alternatives??=[];
+      node.counterfactual.alternatives=node.counterfactual.alternatives.filter(item=>item.choiceId!==choiceId);
+      node.counterfactual.alternatives.push(result);
+      discovery=recordSimulatedChoice(discovery,node,result);
+      try{saveDiscovery(discovery);}catch{showToast('Simülasyon açık; kayıt alanı dolmuş olabilir.');}
+      const id=index+':'+choiceId;
+      root.querySelectorAll('details[data-life-alternative]').forEach(el=>{if(el.dataset.lifeAlternative===id)el.open=true;});
       renderLifeTree();
-      showToast('Yeni olasılık dalları oluştu.');
+      showToast(result.ending?'Alternatif hayat tamamlandı.':'Alternatif hayat yaş sınırına ulaştı.');
     }catch(error){
-      if(game===runGame){
-        renderLifeTree();
-        showToast('Dallar üretilemedi: '+error.message);
-      }
-    }finally{
-      counterfactualBusy=false;
-      if(game===runGame)$('#lifeTree')
-        .querySelectorAll('[data-sim-fork],[data-sim-continue],[data-counterfactual-node]')
-        .forEach(control=>control.disabled=false);
-    }
-   }));
-
+      if(game===runGame){button.disabled=false;button.textContent='Yeniden dene';showToast('Simülasyon başarısız: '+error.message);}
+    }finally{counterfactualBusy=false;}
+  }));
 }
 
 function baseTimelineEntries() {
