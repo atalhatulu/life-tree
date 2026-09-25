@@ -220,6 +220,7 @@ function applyLeisure(kind,companionId,tier){
   game.state.actions.remaining--;
   const text=def.label+' • '+companion.label+' • '+money(cost)+' harcadın.';
   game.state.history.push({age:game.state.player.age,kind:'activity',activityId:'leisure:'+kind,text});
+  refreshPrimaryStats(game.state);
   activityMessage=text;leisurePicker=null;
 }
 function makeYearMoment(){
@@ -232,15 +233,15 @@ function makeYearMoment(){
 
   const pool=[
     {title:'Hafta sonu planı',text:'Kendine biraz zaman ayıracaksın.',choices:[{id:'cinema',label:'Sinemaya git'},{id:'rest',label:'Evde dinlen'},{id:'social',label:'Birini ara'}]},
-    {title:'Küçük bir para kararı',text:'Bu ay elinde biraz serbest para kaldı.',choices:[{id:'adult-save',label:'Biriktir'},{id:'shopping',label:'Kendine bir şey al'},{id:'meal',label:'Dışarıda yemek ye'}]},
-    {title:'Yoğun bir dönem',text:'Enerjini nereye vereceksin?',choices:[{id:'work-focus',label:'İşe yüklen'},{id:'exercise',label:'Spora dön'},{id:'rest',label:'Dinlen'}]},
+    ...((s.finance?.cash??0)>=350?[{title:'Küçük bir para kararı',text:'Bu ay elinde biraz harcanabilir para var.',choices:[{id:'adult-save',label:'Biriktir'},{id:'shopping',label:'Kendine bir şey al'},{id:'meal',label:'Dışarıda yemek ye'}]}]:[]),
+    {title:'Yoğun bir dönem',text:'Enerjini nereye vereceksin?',choices:[s.career?.employed?{id:'work-focus',label:'İşe yüklen'}:{id:'learn',label:'İş fırsatları için kendini geliştir'},{id:'exercise',label:'Spora dön'},{id:'rest',label:'Dinlen'}]},
     {title:'Sosyal çevre',text:'Bir süredir insanlarla görüşmedin.',choices:[{id:'social',label:'Birini ara'},{id:'family',label:'Aileyi ziyaret et'},{id:'solo',label:'Tek başına kal'}]},
     {title:'Kendine yatırım',text:'Biraz zaman ve enerji ayırabilirsin.',choices:[{id:'learn',label:'Yeni beceri öğren'},{id:'exercise',label:'Sağlığına odaklan'},{id:'shopping',label:'Görünüşünü yenile'}]},
     {title:'Akşam planı',text:'Günün sonunda ne yapmak istersin?',choices:[{id:'meal',label:'Dışarıda yemek'},{id:'cinema',label:'Bir şeyler izle'},{id:'rest',label:'Erken dinlen'}]}
   ];
-  if(s.social?.romance)pool.push({title:'İlişkiye zaman ayır',text:'Partnerinle bir süredir baş başa kalmadınız.',choices:[{id:'partner-time',label:'Birlikte vakit geçir'},{id:'social',label:'Uzun konuş'},{id:'work-focus',label:'Bu hafta işe odaklan'}]});
+  if(s.social?.romance)pool.push({title:'İlişkiye zaman ayır',text:'Partnerinle bir süredir baş başa kalmadınız.',choices:[{id:'partner-time',label:'Birlikte vakit geçir'},{id:'social',label:'Uzun konuş'},s.career?.employed?{id:'work-focus',label:'Bu hafta işe odaklan'}:{id:'learn',label:'Kendini geliştir'}]});
   if((s.children?.length??0)>0)pool.push({title:'Aile zamanı',text:'Evde senden ilgi bekleyenler var.',choices:[{id:'child-time',label:'Çocuklarla ilgilen'},{id:'family',label:'Ailece bir şey yap'},{id:'rest',label:'Biraz yalnız kal'}]});
-  if((s.finance?.debt??0)>250000)pool.push({title:'Bütçeyi toparlama',text:'Borç yükün kendini hissettiriyor.',choices:[{id:'adult-save',label:'Harcamayı kıs'},{id:'work-focus',label:'İşe odaklan'},{id:'rest',label:'Stresi azalt'}]});
+  if((s.finance?.debt??0)>250000)pool.push({title:'Bütçeyi toparlama',text:'Borç yükün kendini hissettiriyor.',choices:[{id:'adult-save',label:'Harcamayı kıs'},s.career?.employed?{id:'work-focus',label:'İşe odaklan'}:{id:'learn',label:'İş fırsatlarına hazırlan'},{id:'rest',label:'Stresi azalt'}]});
   return rng.pick(pool);
 }
 function spendChildMoney(amount,label){
@@ -325,6 +326,7 @@ function applyYearMoment(choice){
     leisurePicker=choice;text='Bir aktivite planladın.';switchScreen('activitiesScreen');
   }
   if(!text)text='Bu yıl küçük ama sana ait bir seçim yaptın.';
+  refreshPrimaryStats(s);
   s.history.push({age:s.player.age,kind:'year-moment',choiceId:choice,text});
   yearMoment=null;render();
 }
