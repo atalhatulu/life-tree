@@ -698,21 +698,22 @@ function renderLifeTree(){
     const actualAge=finale?.lifespan?.age??game.state.player.age;
     const dialog=$('#afterlifeDialog'),content=$('#afterlifeContent');
     if(!dialog||!content)return;
+    const laterActual=nodes.filter(entry=>entry.age>node.age);
+    const laterAlternative=stages.filter(stage=>stage.kind==='decision');
     const rows=[
-      ['Dönüm noktası',node.age+' yaş · '+node.title,node.age+' yaş · '+node.title],
-      ['Seçim',node.label,alt.label],
-      ['Yaşam süresi',actualAge+' yaş',age==null?'Bilinmiyor':age+' yaş'+(result.ending?'':' (sınır)')],
-      ['Son',actualEnding?.title??'Devam ediyor',result.ending?.title??simulatedEnding?.title??'Simülasyon sınırı'],
-      ['Kritik kararlar',String(nodes.length),String(stages.filter(stage=>stage.kind==='decision').length)+' (bu seçimden sonra)']
+      ['Seçilen yol',node.label,alt.label],
+      ['Yaşamın sonu',actualAge+' yaş',age==null?'Bilinmiyor':age+' yaş'+(result.ending?'':' · simülasyon sınırı')],
+      ['Hayatın kapanışı',actualEnding?.title??'Devam ediyor',result.ending?.title??simulatedEnding?.title??'Ölüm kaydı yok'],
+      ['Sonraki kritik kararlar',String(laterActual.length),String(laterAlternative.length)]
     ];
     $('#afterlifeTitle').textContent='Ya başka bir yol seçseydin?';
-    content.innerHTML=`<p class="afterlife-lead">${esc(node.age)} yaşında verdiğin karar, iki farklı hayatın başlangıcı.</p>
-      <div class="afterlife-compare-scroll"><table class="afterlife-table"><thead><tr><th>Karşılaştırma</th><th>Yaşadığın hayat</th><th>Diğer ihtimal</th></tr></thead><tbody>
+    content.innerHTML=`<div class="afterlife-origin"><small>AYNI DÖNÜM NOKTASI · ${esc(node.age)} YAŞ</small><strong>${esc(node.title)}</strong><p>Bu kararın ardından yaşadığın hayat ile seçmediğin yolun simüle edilmiş devamını yan yana incele.</p></div>
+      <div class="afterlife-compare-scroll"><table class="afterlife-table"><thead><tr><th scope="col">Ölçüt</th><th scope="col">Yaşadığın hayat</th><th scope="col">Diğer ihtimal</th></tr></thead><tbody>
       ${rows.map(([label,actual,other])=>`<tr><th scope="row">${esc(label)}</th><td>${esc(actual)}</td><td>${esc(other)}</td></tr>`).join('')}
       </tbody></table></div>
-      <h3>Diğer hayatın dönüm noktaları</h3>
-      <ol class="afterlife-moments">${stages.map(stage=>`<li><small>${esc(stage.age)} yaş</small><strong>${esc(stage.title)}</strong><p>${esc(stage.label)}</p></li>`).join('')}</ol>
-      <p class="afterlife-disclaimer">Alternatif yaşam, simülasyondan elde edilen örnek bir olasılıktır; kesin bir gelecek değildir.</p>`;
+      <details class="afterlife-chapters"><summary>Diğer hayatın dönüm noktaları <span>${stages.length} kayıt ▾</span></summary>
+      <ol class="afterlife-moments">${stages.map(stage=>`<li><small>${esc(stage.age)} yaş</small><strong>${esc(stage.title)}</strong><p>${esc(stage.label)}</p></li>`).join('')}</ol></details>
+      <p class="afterlife-disclaimer">Bu karşılaştırma, karar anından sonra simüle edilmiş örnek bir yaşamı gösterir. Kesin bir gelecek veya bütün olasılıkların ortalaması değildir.</p>`;
     if(!dialog.open)dialog.showModal();
   }));
   root.querySelector('.life-trail-scroll').scrollTop=oldScroll;
