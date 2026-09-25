@@ -1168,4 +1168,7 @@ $('#ageUp').addEventListener('click',()=>{
 $('#autoLife').addEventListener('click',toggleAutoLife);
 $('#simulateEnd').addEventListener('click',fastForwardToEnd);
 document.querySelectorAll('.nav-item').forEach(button=>button.addEventListener('click',()=>switchScreen(button.dataset.screen)));
+document.querySelectorAll('[data-open-screen]').forEach(button=>button.addEventListener('click',()=>switchScreen(button.dataset.openScreen)));
+$('#afterlifeClose')?.addEventListener('click',()=>$('#afterlifeDialog').close());
+$('#afterlifeDialog')?.addEventListener('click',event=>{if(event.target===event.currentTarget)event.currentTarget.close();});
 newLife('life-tree-demo');
