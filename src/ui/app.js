@@ -1,5 +1,5 @@
 import { Game } from '../core/game.js';
-import { eventIllustration, albumMarkup } from './life_album.js';
+import { albumMarkup } from './life_album.js';
 import { autoplay, humanLikeChoice, activityOrder, simulateToEnd } from '../simulation/autoplay.js';
 import {earlyYearMoment} from '../life/early_year_moments.js';
 import {schoolAgeYearMoment} from '../life/school_age_year_moments.js';
@@ -659,6 +659,7 @@ function renderLifeTree(){
     const saved=discovery.simulatedChoices?.[choiceKey(node.eventId,alt.id)]?.lastResult;
     return local?.version===3?local:saved?.version===3&&saved.originKey===continuationOriginKey(game.seedText,node)?saved:null;
   };
+  const compareButton=(index,alt)=>`<button type="button" class="life-alt-compare" data-afterlife-index="${index}" data-afterlife-choice="${esc(alt.id)}">Hayatları karşılaştır ↗</button>`;
   const alternative=(node,index,alt)=>{
     const id=index+':'+alt.id;
     const result=getResult(node,alt);
@@ -670,7 +671,7 @@ function renderLifeTree(){
       <summary><span class="life-alt-label">◇ ${esc(alt.label)}</span><span class="life-alt-status">${esc(status)} ▾</span></summary>
       <div class="life-alt-body">
       ${result?`<div class="life-alt-outcome"><strong>${esc(ending?.title??result.ending?.title??last?.title??'Alternatif hayat')}</strong><span>${esc(ending?.age??result.ending?.age??last?.age??node.age)} yaş · ${esc(ending?.label??last?.label??'')}</span></div>
-      <ol class="life-alt-timeline">${stages.map(stage=>`<li><small>${esc(stage.age)} yaş</small><span><strong>${esc(stage.title)}</strong>${stage.label?' · '+esc(stage.label):''}</span></li>`).join('')}</ol>${!ending?'<p class="life-alt-note">Bu örnekte ölüm gerçekleşmeden simülasyon sınırına ulaşıldı.</p>':''}`:
+      ${compareButton(index,alt)}<ol class="life-alt-timeline">${stages.map(stage=>`<li><small>${esc(stage.age)} yaş</small><span><strong>${esc(stage.title)}</strong>${stage.label?' · '+esc(stage.label):''}</span></li>`).join('')}</ol>${!ending?'<p class="life-alt-note">Bu örnekte ölüm gerçekleşmeden simülasyon sınırına ulaşıldı.</p>':''}`:
       `<p>Bu kararı seçseydin nasıl bir hayat yaşayacağını simüle et.</p>
       <button type="button" class="life-alt-simulate" data-counterfactual-node="${index}" data-counterfactual-choice="${esc(alt.id)}" ${dead?'':'disabled'}>${dead?'Bu hayatı ölüme kadar simüle et':'Hayat tamamlandığında açılır'}</button>`}
       </div></details>`;
@@ -685,6 +686,37 @@ function renderLifeTree(){
     ${finale?`<div class="life-trail-ending"><small>${esc(finale.lifespan.age)} yaş</small><strong>${esc(finale.ending.title)}</strong><p>${esc(finale.ending.description)}</p></div>`:''}
     ${!nodes.length&&!finale?'<div class="empty-state">Henüz kritik bir karar vermedin.</div>':''}
     </div>`;
+  root.querySelectorAll('[data-afterlife-index]').forEach(button=>button.addEventListener('click',()=>{
+    const index=Number(button.dataset.afterlifeIndex);
+    const node=nodes[index];
+    const alt=node?.alternatives?.find(item=>item.id===button.dataset.afterlifeChoice);
+    if(!node||!alt)return;
+    const result=getResult(node,alt);
+    if(!result)return;
+    const stages=result.continuation??[];
+    const actualEnding=finale?.ending;
+    const simulatedEnding=stages.find(stage=>stage.kind==='ending')??null;
+    const age=result.ending?.age??simulatedEnding?.age??stages.at(-1)?.age;
+    const actualAge=finale?.lifespan?.age??game.state.player.age;
+    const dialog=$('#afterlifeDialog'),content=$('#afterlifeContent');
+    if(!dialog||!content)return;
+    const rows=[
+      ['Dönüm noktası',node.age+' yaş · '+node.title,node.age+' yaş · '+node.title],
+      ['Seçim',node.label,alt.label],
+      ['Yaşam süresi',actualAge+' yaş',age==null?'Bilinmiyor':age+' yaş'+(result.ending?'':' (sınır)')],
+      ['Son',actualEnding?.title??'Devam ediyor',result.ending?.title??simulatedEnding?.title??'Simülasyon sınırı'],
+      ['Kritik kararlar',String(nodes.length),String(stages.filter(stage=>stage.kind==='decision').length)+' (bu seçimden sonra)']
+    ];
+    $('#afterlifeTitle').textContent='Ya başka bir yol seçseydin?';
+    content.innerHTML=`<p class="afterlife-lead">${esc(node.age)} yaşında verdiğin karar, iki farklı hayatın başlangıcı.</p>
+      <div class="afterlife-compare-scroll"><table class="afterlife-table"><thead><tr><th>Karşılaştırma</th><th>Yaşadığın hayat</th><th>Diğer ihtimal</th></tr></thead><tbody>
+      ${rows.map(([label,actual,other])=>`<tr><th scope="row">${esc(label)}</th><td>${esc(actual)}</td><td>${esc(other)}</td></tr>`).join('')}
+      </tbody></table></div>
+      <h3>Diğer hayatın dönüm noktaları</h3>
+      <ol class="afterlife-moments">${stages.map(stage=>`<li><small>${esc(stage.age)} yaş</small><strong>${esc(stage.title)}</strong><p>${esc(stage.label)}</p></li>`).join('')}</ol>
+      <p class="afterlife-disclaimer">Alternatif yaşam, simülasyondan elde edilen örnek bir olasılıktır; kesin bir gelecek değildir.</p>`;
+    if(!dialog.open)dialog.showModal();
+  }));
   root.querySelector('.life-trail-scroll').scrollTop=oldScroll;
   root.querySelectorAll('[data-counterfactual-node]').forEach(button=>button.addEventListener('click',async()=>{
     if(counterfactualBusy||!dead)return;
@@ -811,7 +843,7 @@ function renderEvent() {
   if(!pendingEvent){
     if(yearMoment&&!dead){
       card.classList.remove('hidden');
-      card.innerHTML=`${eventIllustration(yearMoment)}<h3>${yearMoment.title}</h3><p>${yearMoment.text}</p><div class="choice-list">${yearMoment.choices.map(c=>`<button class="choice-button" data-moment="${c.id}">${c.label}</button>`).join('')}</div>`;
+      card.innerHTML=`<h3>${yearMoment.title}</h3><p>${yearMoment.text}</p><div class="choice-list">${yearMoment.choices.map(c=>`<button class="choice-button" data-moment="${c.id}">${c.label}</button>`).join('')}</div>`;
       card.querySelectorAll('[data-moment]').forEach(b=>b.addEventListener('click',()=>applyYearMoment(b.dataset.moment)));
       $('#ageUp').disabled=true;
       return;
@@ -834,7 +866,7 @@ function renderEvent() {
   }
   $('#ageUp').disabled=true;
   card.classList.remove('hidden');
-  card.innerHTML=`${eventIllustration(pendingEvent)}<h3>${pendingEvent.title}</h3><p>${pendingEvent.majorDecision?'Bu seçim Life Tree üzerinde bir dönüm noktası olarak kaydedilecek.':'Bu yıl hayatında bir seçim yapman gerekiyor.'}</p><div class="choice-list">${game.eventChoices(pendingEvent).map(choice=>`<button class="choice-button" data-choice="${choice.id}">${choice.label}</button>`).join('')}</div>`;
+  card.innerHTML=`<h3>${pendingEvent.title}</h3><p>${pendingEvent.majorDecision?'Bu seçim Life Tree üzerinde bir dönüm noktası olarak kaydedilecek.':'Bu yıl hayatında bir seçim yapman gerekiyor.'}</p><div class="choice-list">${game.eventChoices(pendingEvent).map(choice=>`<button class="choice-button" data-choice="${choice.id}">${choice.label}</button>`).join('')}</div>`;
   card.querySelectorAll('[data-choice]').forEach(button=>button.addEventListener('click',()=>{
     const event=pendingEvent;
     const result=game.makeChoice(event,button.dataset.choice);
@@ -1107,7 +1139,7 @@ async function fastForwardToEnd(){
 
 function switchScreen(id){
   document.querySelectorAll('.screen-panel').forEach(panel=>panel.classList.toggle('active',panel.id===id));
-  document.querySelectorAll('.nav-item').forEach(button=>button.classList.toggle('active',button.dataset.screen===id));
+  document.querySelectorAll('.nav-item').forEach(button=>button.classList.toggle('active',button.dataset.screen===id||(id==='careerScreen'&&button.dataset.screen==='activitiesScreen')||(id==='albumScreen'&&button.dataset.screen==='treeScreen')));
   const active=document.getElementById(id);
   if(active)active.scrollTop=0;
   document.dispatchEvent(new Event('life-tree-screen'));
