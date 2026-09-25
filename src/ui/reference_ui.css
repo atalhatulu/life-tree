@@ -185,3 +185,29 @@ body.reference-ui #assets .activity-button:disabled,
 body.reference-ui #relationships button:disabled{opacity:.55;cursor:not-allowed}
 body.reference-ui #relationships .empty-state{padding:15px;color:#364a47}
 @media(max-width:360px){body.reference-ui #relationships .person-action-grid{grid-template-columns:minmax(0,1fr)}body.reference-ui #relationshipsScreen,body.reference-ui #assetsScreen{padding-inline:9px}}
+
+
+/* Critical grid fix: the home illustration must not occupy a second implicit
+   grid column on Relationships, Assets, Actions or Tree. */
+body.reference-ui .phone-frame{grid-template-columns:minmax(0,1fr)!important}
+body.reference-ui .phone-frame>.ref-status,
+body.reference-ui .phone-frame>.topbar,
+body.reference-ui .phone-frame>.ref-screen-head,
+body.reference-ui .phone-frame>.ref-hero,
+body.reference-ui .phone-frame>.stats,
+body.reference-ui .phone-frame>.quick-strip,
+body.reference-ui .phone-frame>.screen,
+body.reference-ui .phone-frame>.age-zone,
+body.reference-ui .phone-frame>.bottom-nav{grid-column:1/-1;min-width:0}
+body.reference-ui .ref-hero{display:none!important}
+body.reference-ui:has(#lifeScreen.active) .ref-hero{display:block!important}
+body.reference-ui:has(#lifeScreen.active) .ref-screen-head{display:none!important}
+body.reference-ui:not(:has(#lifeScreen.active)) .ref-screen-head{display:block!important}
+body.reference-ui:not(:has(#lifeScreen.active)) .topbar{position:relative;right:auto;top:auto}
+body.reference-ui .screen{width:100%;min-width:0}
+body.reference-ui .age-zone{min-width:0;width:100%}
+body.reference-ui .age-actions{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px}
+body.reference-ui .age-actions>.age-button{flex:1 1 110px}
+body.reference-ui .age-actions>.auto-button{flex:1 1 95px;min-width:0;white-space:normal}
+body.reference-ui .age-actions>.speed-select{flex:0 1 90px;min-width:0}
+body.reference-ui .bottom-nav{width:100%;min-width:0}
