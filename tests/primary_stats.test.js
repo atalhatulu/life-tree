@@ -54,3 +54,40 @@ test('happiness falls with stress and rises with stronger relationships',()=>{
  const high=computePrimaryStats(g.state).happiness;
  assert.ok(high>low+20);
 });
+
+
+test('yearly progression refreshes primary stats from the resulting life state',()=>{
+ const g=new Game('primary-stats-year-refresh');
+ g.state.primaryStats={health:-1,intelligence:-1,appearance:-1,happiness:-1};
+ g.ageOneYear();
+ assert.deepEqual(g.state.primaryStats,computePrimaryStats(g.state));
+});
+
+test('save/load repairs stale primary stats without changing the canonical attributes',()=>{
+ const g=new Game('primary-stats-save-refresh');
+ g.state.player.health.current=42;
+ g.state.player.appearance.attractiveness=78;
+ const payload={
+  version:2,schemaVersion:2,seedText:g.seedText,
+  rng:{seed:g.rng.seed,state:g.rng.state},
+  state:structuredClone(g.state)
+ };
+ payload.state.primaryStats={health:100,intelligence:100,appearance:100,happiness:100};
+ const loaded=Game.fromSave(payload);
+ assert.equal(loaded.state.player.health.current,42);
+ assert.equal(loaded.state.player.appearance.attractiveness,78);
+ assert.deepEqual(loaded.state.primaryStats,computePrimaryStats(loaded.state));
+});
+
+test('decision snapshots restore independently computed primary stats',()=>{
+ const original=new Game('primary-stats-snapshot');
+ original.state.player.health.current=38;
+ original.state.player.appearance.attractiveness=73;
+ const snapshot={state:structuredClone(original.state),rng:{seed:original.rng.seed,state:original.rng.state}};
+ const restored=Game.fromDecisionSnapshot(original.seedText,snapshot);
+ assert.deepEqual(restored.state.primaryStats,computePrimaryStats(restored.state));
+ restored.state.player.health.current=91;
+ refreshPrimaryStats(restored.state);
+ assert.equal(original.state.player.health.current,38);
+ assert.equal(restored.state.primaryStats.health,91);
+});
