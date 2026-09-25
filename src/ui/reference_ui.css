@@ -123,3 +123,14 @@ body.reference-ui .event-card.ref-decision.ref-swipe-right{box-shadow:14px 9px 2
 body.reference-ui .event-card.ref-decision .choice-list{grid-template-columns:repeat(2,minmax(0,1fr))}
 body.reference-ui .event-card.ref-decision .choice-button{min-width:0;overflow-wrap:anywhere}
 @media(max-width:560px){body.reference-ui:has(#treeScreen.active) .app-shell{padding:0!important}body.reference-ui:has(#treeScreen.active) .phone-frame{width:100vw!important;max-width:100vw!important;height:100dvh!important;border:0!important;border-radius:0!important}}
+
+
+/* Progressive disclosure prevents counterfactual subtrees from pushing the
+   lived-life timeline thousands of pixels sideways. */
+#lifeTree .life-family-tree li.life-branch-collapsed>ul{display:none!important}
+#lifeTree .life-family-tree li.life-branch-open>ul{display:flex}
+#lifeTree .life-branch-toggle{display:block;margin:5px auto 0;max-width:110px;padding:5px 8px;border:1px solid #bba16c;border-radius:999px;background:#fff1d1;color:#5b4d32;font:700 10px Arial,sans-serif;cursor:pointer;white-space:nowrap}
+#lifeTree .life-branch-toggle:focus-visible{outline:2px solid #e8bd65;outline-offset:2px}
+body.reference-ui #lifeTree .life-branch-toggle{background:#d7b979;color:#1b3135;border-color:#f7e1ad;box-shadow:0 2px 8px #0004}
+body.reference-ui #lifeTree .life-family-tree{max-width:none}
+body.reference-ui #lifeTree .life-graph-node{max-width:140px;overflow-wrap:anywhere}
