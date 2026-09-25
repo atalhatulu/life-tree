@@ -3,6 +3,9 @@ import {stdin as input,stdout as output} from 'node:process';
 import {readFile,writeFile} from 'node:fs/promises';
 import {Game} from '../core/game.js';
 import {refreshPrimaryStats} from '../life/primary_stats.js';
+import {earlyYearMoment} from '../life/early_year_moments.js';
+import {schoolAgeYearMoment} from '../life/school_age_year_moments.js';
+import {teenYearMoment} from '../life/teen_year_moments.js';
 import {RNG} from '../core/rng.js';
 import {serializeGame} from '../core/save_system.js';
 import {assertValidState} from '../simulation/invariants.js';
@@ -92,27 +95,16 @@ async function resolveEvent(game,event){
 }
 function makeYearMoment(game){
  const s=game.state,age=s.player.age,rng=new RNG(game.seedText+':text-year-moment:'+s.year);
- if(age<3)return {title:'Aileyle bir gün',text:'Bakımını üstlenen kişilerle zaman geçiriyorsun.',choices:[['family','Ailenle vakit geçir'],['play','Oyuncaklarınla oyna'],['rest','Dinlen']]};
- if(age<7)return rng.pick([
-  {title:'Küçük bir keşif',text:'Bugün seni ne çekiyor?',choices:[['play','Oyun kur'],['family','Ailenle vakit geçir'],['learn','Yeni bir şey öğren']]},
-  {title:'Evde bir gün',text:'Kendi kendine oyalanıyorsun.',choices:[['draw','Resim yap'],['help-home','Ev işine yardım et'],['rest','Dinlen']]}
- ]);
- if(age<13)return rng.pick([
-  {title:'Okuldan sonra',text:'Günün geri kalanını nasıl geçireceksin?',choices:[['friends','Arkadaşlarla oyna'],['study','Ödevlerini bitir'],['game-spend','Oyuna/oyuncağa harca']]},
-  {title:'Harçlık kararı',text:'Cebinde biraz harçlık var.',choices:[['child-save','Biriktir'],['snack','Atıştırmalık al'],['book','Kitap/dergi al']]},
-  {title:'Hafta sonu',text:'Ailen sana seçim bıraktı.',choices:[['family','Ailece dışarı çık'],['learn','Bir hobiyle uğraş'],['rest','Evde kal']]}
- ]);
- if(age<18)return rng.pick([
-  {title:'Okul ve sosyal hayat',text:'Bu hafta neye ağırlık vereceksin?',choices:[['friends','Arkadaşlarla takıl'],['study','Derse ağırlık ver'],['club','Kulüp/hobiye katıl']]},
-  {title:'Harçlık kararı',text:'Küçük ama senin olan bir paran var.',choices:[['child-save','Biriktir'],['meal-small','Arkadaşlarla bir şeyler ye'],['clothes-small','Kendine bir şey al']]},
-  {title:'Kendine yatırım',text:'Boş vaktini nasıl kullanacaksın?',choices:[['exercise','Spor yap'],['learn','Yeni beceri öğren'],['social','Sosyalleş']]}
- ]);
+ if(age<18){
+  const moment=age<7?earlyYearMoment(age,rng):age<13?schoolAgeYearMoment(s,rng):teenYearMoment(s,rng);
+  return moment?{...moment,choices:moment.choices.map(({id,label})=>[id,label])}:null;
+ }
  const pool=[
-  {title:'Hafta sonu planı',text:'Kendine biraz zaman ayıracaksın.',choices:[['cinema','Sinemaya git'],['rest','Evde dinlen'],['social','Birini ara']]},
-  ...((s.finance?.cash??0)>=350?[{title:'Küçük bir para kararı',text:'Bu ay elinde biraz harcanabilir para var.',choices:[['adult-save','Biriktir'],['shopping','Kendine bir şey al'],['meal','Dışarıda yemek ye']]}]:[]),
+  {title:'Hafta sonu planı',text:'Kendine biraz zaman ayıracaksın.',choices:[...((s.finance?.cash??0)>=250?[['cinema','Sinemaya git']]:[]),['rest','Evde dinlen'],['social','Birini ara']]},
+  ...((s.finance?.cash??0)>=350?[{title:'Küçük bir para kararı',text:'Bu ay elinde biraz harcanabilir para var.',choices:[['adult-save','Biriktir'],...((s.finance?.cash??0)>=500?[['shopping','Kendine bir şey al']]:[]),['meal','Dışarıda yemek ye']]}]:[]),
   {title:'Yoğun bir dönem',text:'Enerjini nereye vereceksin?',choices:[...(s.career?.employed?[['work-focus','İşe yüklen']]:[['learn','İş fırsatları için kendini geliştir']]),['exercise','Spora dön'],['rest','Dinlen']]},
   {title:'Sosyal çevre',text:'Bir süredir insanlarla görüşmedin.',choices:[['social','Birini ara'],['family','Aileyi ziyaret et'],['solo','Tek başına kal']]},
-  {title:'Kendine yatırım',text:'Biraz zaman ve enerji ayırabilirsin.',choices:[['learn','Yeni beceri öğren'],['exercise','Sağlığına odaklan'],['shopping','Görünüşünü yenile']]}
+  {title:'Kendine yatırım',text:'Biraz zaman ve enerji ayırabilirsin.',choices:[['learn','Yeni beceri öğren'],['exercise','Sağlığına odaklan'],...((s.finance?.cash??0)>=500?[['shopping','Görünüşünü yenile']]:[])]}
  ];
  if(s.social?.romance)pool.push({title:'İlişkiye zaman ayır',text:'Partnerinle baş başa kalmak için fırsat var.',choices:[['partner-time','Birlikte vakit geçir'],['social','Uzun konuş'],...(s.career?.employed?[['work-focus','Bu hafta işe odaklan']]:[['learn','Kendini geliştir']])]});
  if((s.children?.length??0)>0)pool.push({title:'Aile zamanı',text:'Evde senden ilgi bekleyenler var.',choices:[['child-time','Çocuklarla ilgilen'],['family','Ailece bir şey yap'],['rest','Biraz yalnız kal']]});
