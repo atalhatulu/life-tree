@@ -18,3 +18,4 @@ jobs:
       - run: node --check src/cli/text_mode.js
       - run: node --test tests/group6_part1.test.js tests/group6_part2.test.js
       - run: npm test
+      - run: npm run playtest-audit -- 60
