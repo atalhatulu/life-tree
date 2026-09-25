@@ -32,16 +32,17 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 
 .phone-frame {
-  width: min(430px, 100%);
-  height: min(92vh, 860px);
+  width: auto;
+  height: min(90vh, 840px);
   aspect-ratio: 9 / 16;
+  max-width: min(100%, 480px);
   background: #fbfcfe;
   border: 1px solid #d9dee8;
   border-radius: 30px;
   box-shadow: 0 24px 70px rgba(36, 43, 59, .18);
   overflow: hidden;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
 }
 
 .topbar {
