@@ -2403,3 +2403,38 @@ body:has(#treeScreen.active):not(.reference-ui) .age-zone{display:none}
 #lifeTree .life-map-viewport{min-width:0;max-width:100%;overflow-x:hidden}
 #lifeTree .life-map-canvas{width:100%;min-width:0;max-width:100%}
 @media(max-width:560px){body:has(#treeScreen.active):not(.reference-ui) .app-shell{padding:0}body:has(#treeScreen.active):not(.reference-ui) .phone-frame{width:100vw;height:100dvh;border-radius:0}}
+
+
+/* 9:16 Life Tree: no desktop expansion and no exponential graph. */
+body:has(#treeScreen.active):not(.reference-ui) .app-shell{display:flex!important;align-items:center!important;justify-content:center!important;width:100%;max-width:100vw;min-width:0;padding:12px!important}
+body:has(#treeScreen.active):not(.reference-ui) .phone-frame{display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto auto minmax(0,1fr) auto auto!important;width:min(430px,calc(100vw - 24px))!important;max-width:430px!important;min-width:0!important;height:min(92dvh,860px)!important;aspect-ratio:9/16!important;overflow:hidden!important;border-radius:22px!important}
+body:has(#treeScreen.active):not(.reference-ui) .phone-frame>*{min-width:0;grid-column:1/-1}
+body:has(#treeScreen.active):not(.reference-ui) .screen{min-width:0;min-height:0;overflow:hidden}
+#treeScreen.active{min-width:0;min-height:0;overflow:hidden}
+#treeScreen.active>#lifeTree{display:flex;flex-direction:column;flex:1 1 auto;min-width:0;min-height:0;overflow:hidden}
+#lifeTree .life-trail-header{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:8px 5px 12px;font-size:12px;color:#344d68}
+#lifeTree .life-trail-header span{font-size:10px;color:#8190a4}
+#lifeTree .life-trail-scroll{flex:1 1 auto;min-width:0;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;padding:0 4px 18px;scrollbar-width:thin}
+#lifeTree .life-trail-start,#lifeTree .life-trail-ending{padding:12px;border:1px solid #b6d3bf;border-radius:11px;background:#eef8f0;color:#34634a;font-size:12px}
+#lifeTree .life-trail-ending{display:grid;gap:5px;margin-top:12px;background:#fff8e9;border-color:#dfc996;color:#725a2e}
+#lifeTree .life-trail-ending p{margin:0;line-height:1.5}
+#lifeTree .life-trail-decision{position:relative;margin:0 0 0 13px;padding:13px 0 13px 15px;border-left:2px solid #c8d7e6;min-width:0}
+#lifeTree .life-trail-decision::before{content:'';position:absolute;left:-5px;top:27px;width:8px;height:8px;border-radius:50%;background:#74a985}
+#lifeTree .life-trail-lived{display:grid;gap:5px;min-width:0;padding:12px;border:1px solid #a9cbb3;border-radius:10px;background:#eff8f1;color:#315f44}
+#lifeTree .life-trail-lived small{font-size:10px;color:#6d8674}
+#lifeTree .life-trail-lived strong{font-size:12px;line-height:1.45;overflow-wrap:anywhere}
+#lifeTree .life-alternative{min-width:0;margin-top:7px;border:1px solid #d7e1ef;border-radius:10px;background:#fff;overflow:hidden}
+#lifeTree .life-alternative>summary{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;padding:11px;cursor:pointer;list-style:none;font-size:11px;color:#506988}
+#lifeTree .life-alternative>summary::-webkit-details-marker{display:none}
+#lifeTree .life-alt-label{flex:1 1 auto;min-width:0;overflow-wrap:anywhere;font-weight:800}
+#lifeTree .life-alt-status{flex:0 1 auto;max-width:45%;font-size:9px;text-align:right;color:#8491a3;overflow-wrap:anywhere}
+#lifeTree .life-alt-body{min-width:0;padding:0 11px 12px;border-top:1px solid #edf0f5;color:#566780;font-size:11px}
+#lifeTree .life-alt-body p{line-height:1.5}
+#lifeTree .life-alt-simulate{width:100%;min-height:40px;padding:9px;border:1px solid #a8c0de;border-radius:9px;background:#eef5ff;color:#42628b;font-size:11px;font-weight:800;white-space:normal}
+#lifeTree .life-alt-outcome{display:grid;gap:5px;margin-top:10px;padding:10px;border-radius:9px;background:#f0f7ef;color:#355f44}
+#lifeTree .life-alt-outcome span{font-size:10px;line-height:1.5}
+#lifeTree .life-alt-timeline{list-style:none;display:grid;gap:0;margin:10px 0 0;padding:0 0 0 9px;border-left:2px solid #dce6f0}
+#lifeTree .life-alt-timeline li{display:grid;gap:3px;margin:0;padding:7px 9px;font-size:10px;line-height:1.5;overflow-wrap:anywhere}
+#lifeTree .life-alt-timeline li+li{border-top:1px solid #edf1f5}
+#lifeTree .life-alt-timeline small{font-size:9px;color:#8291a6}
+@media(max-width:560px){body:has(#treeScreen.active):not(.reference-ui) .app-shell{padding:0!important}body:has(#treeScreen.active):not(.reference-ui) .phone-frame{width:100vw!important;max-width:100vw!important;height:100dvh!important;border-radius:0!important}}
