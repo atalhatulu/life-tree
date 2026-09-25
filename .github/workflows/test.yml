@@ -18,3 +18,5 @@ jobs:
       - run: node --check src/cli/text_mode.js
       - run: node --test tests/group6_part1.test.js tests/group6_part2.test.js
       - run: npm test
+      - name: Simulate 100 full lives
+        run: npm run fast-sim -- --lives 100 --to-age 100 --policy random --seed-prefix phase2-life-audit
