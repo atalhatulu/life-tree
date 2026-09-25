@@ -93,3 +93,33 @@ body.reference-ui .ref-action-filter[hidden]{display:none}
 body:not(.reference-ui) .ref-status,body:not(.reference-ui) .ref-hero,body:not(.reference-ui) .ref-screen-head,body:not(.reference-ui) .ref-action-filter,body:not(.reference-ui) .ref-tree-heading,body:not(.reference-ui) .ref-home-actions{display:none!important}
 @media(max-width:560px){body.reference-ui .phone-frame{width:100vw;height:100dvh;border:0;border-radius:0}body.reference-ui .screen-panel{padding:7px 12px 20px}}
 @media(prefers-reduced-motion:reduce){body.reference-ui *,body.reference-ui *::before,body.reference-ui *::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+
+/* 2026-09-25: containment fix. The legacy desktop-tree :has() rule must never
+   expand the illustrated phone; its canvas scrolls inside the screen instead. */
+body.reference-ui:has(#treeScreen.active) .app-shell{display:flex!important;align-items:center!important;justify-content:center!important;padding:12px!important;gap:0!important;width:100%!important;max-width:100vw!important;min-width:0!important;overflow:hidden!important}
+body.reference-ui:has(#treeScreen.active) .phone-frame{display:grid!important;grid-template-rows:30px auto auto minmax(0,1fr) auto auto!important;width:min(100%,420px)!important;max-width:420px!important;min-width:0!important;height:min(920px,calc(100dvh - 24px))!important;max-height:100dvh!important;aspect-ratio:auto!important;border-radius:29px!important;overflow:hidden!important}
+body.reference-ui:has(#treeScreen.active) .topbar{grid-row:2!important}
+body.reference-ui:has(#treeScreen.active) .ref-screen-head{grid-row:3!important}
+body.reference-ui:has(#treeScreen.active) .screen{grid-row:4!important;min-width:0!important;min-height:0!important;overflow:hidden!important}
+body.reference-ui:has(#treeScreen.active) #treeScreen.active{display:flex!important;flex-direction:column!important;height:100%!important;min-height:0!important;overflow:hidden!important;padding:6px 10px 12px!important}
+body.reference-ui:has(#treeScreen.active) #lifeTree{display:flex;flex-direction:column;flex:1 1 auto;min-width:0;min-height:0;overflow:hidden}
+body.reference-ui:has(#treeScreen.active) #lifeTree .life-map-toolbar{flex:0 0 auto;min-width:0}
+body.reference-ui:has(#treeScreen.active) #lifeTree .genealogy-navigation{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;min-width:0}
+body.reference-ui:has(#treeScreen.active) #lifeTree .genealogy-controls-hint{grid-column:1/-1;text-align:center}
+body.reference-ui:has(#treeScreen.active) #lifeTree .life-map-viewport{display:block;flex:1 1 auto;min-width:0!important;width:100%!important;max-width:100%!important;min-height:145px!important;max-height:none!important;overflow:auto!important;overscroll-behavior:contain;touch-action:pan-x pan-y;box-sizing:border-box}
+body.reference-ui:has(#treeScreen.active) #lifeTree .life-map-canvas{width:max-content;max-width:none;min-width:100%;transform-origin:top left}
+body.reference-ui:has(#treeScreen.active) #lifeTree .life-tree-inspector{flex:0 0 auto;max-height:130px;min-height:65px;overflow:auto;margin:8px 0 0;padding:10px}
+body.reference-ui:has(#treeScreen.active) .age-zone{display:none!important}
+body.reference-ui:has(#treeScreen.active) .bottom-nav{display:grid!important;grid-row:6!important}
+body.reference-ui:has(#treeScreen.active) .ref-hero{display:none!important}
+body.reference-ui:has(#treeScreen.active) .ref-screen-head{display:block!important}
+body.reference-ui:has(#treeScreen.active) .stats,body.reference-ui:has(#treeScreen.active) .quick-strip{display:none!important}
+body.reference-ui .event-card.ref-decision{position:relative;touch-action:pan-y;transition:transform .16s ease,box-shadow .16s ease}
+body.reference-ui .event-card.ref-decision::after{content:'← REDDET                       KABUL ET →';display:block;white-space:pre;text-align:center;font:700 10px Arial,sans-serif;letter-spacing:.03em;color:#826d52;margin:13px 0 0}
+body.reference-ui .event-card.ref-decision.ref-dragging{transition:none}
+body.reference-ui .event-card.ref-decision.ref-swipe-left{box-shadow:-14px 9px 28px #a34b4b44}
+body.reference-ui .event-card.ref-decision.ref-swipe-right{box-shadow:14px 9px 28px #3c9a7444}
+body.reference-ui .event-card.ref-decision .choice-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+body.reference-ui .event-card.ref-decision .choice-button{min-width:0;overflow-wrap:anywhere}
+@media(max-width:560px){body.reference-ui:has(#treeScreen.active) .app-shell{padding:0!important}body.reference-ui:has(#treeScreen.active) .phone-frame{width:100vw!important;max-width:100vw!important;height:100dvh!important;border:0!important;border-radius:0!important}}
