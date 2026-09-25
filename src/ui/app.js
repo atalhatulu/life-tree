@@ -747,6 +747,14 @@ function renderLifeTree(){
     const action=button.dataset.treeZoom;
     changeZoom(action==='reset'?1:lifeTreeZoom*(action==='in'?1.2:1/1.2));
   }));
+  $('#lifeTree').querySelectorAll('[data-tree-branch-toggle]').forEach(toggle=>toggle.addEventListener('click',()=>{
+    const branch=toggle.closest('li');
+    const open=branch.classList.toggle('life-branch-open');
+    branch.classList.toggle('life-branch-collapsed',!open);
+    toggle.setAttribute('aria-expanded',String(open));
+    toggle.textContent=open?'− Dalı kapat':'＋ Dalı aç';
+    toggle.setAttribute('aria-label',open?'Alternatif hayat dalını kapat':'Alternatif hayat dalını aç');
+  }));
   $('#lifeTree').querySelectorAll('[data-tree-node]').forEach(button=>button.addEventListener('click',()=>{
     const entry=graph.details[button.dataset.treeNode];
     if(!entry)return;
