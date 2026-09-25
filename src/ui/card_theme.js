@@ -1,5 +1,5 @@
 // The illustrated interface is a separate mode. Classic DOM and styles stay intact.
-const KEY='life-tree-reference-ui';
+const KEY='life-tree-reference-ui-v2';
 const button=document.getElementById('themeToggle');
 function applyReference(enabled){
   document.body.classList.toggle('reference-ui',enabled);
@@ -12,7 +12,8 @@ function applyReference(enabled){
   }
   document.dispatchEvent(new CustomEvent('life-tree-ui-mode',{detail:{enabled}}));
 }
-let enabled=true;
+// Restore the original readable interface by default; the illustrated mode remains optional.
+let enabled=false;
 try{const saved=localStorage.getItem(KEY);if(saved!==null)enabled=saved==='on';}catch{}
 applyReference(enabled);
 button?.addEventListener('click',()=>{
