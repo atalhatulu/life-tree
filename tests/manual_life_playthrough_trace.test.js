@@ -26,7 +26,7 @@ test('one narrated life from birth to death with deliberate choices',()=>{
  for(let i=0;i<135&&game.state.player.alive;i++){
   const before=game.state.history.length;
   const event=game.ageOneYear();
-  const s=game.state;
+  let s=game.state;
   if(!s.player.alive){
    print('DEATH',JSON.stringify({age:s.player.age,cause:s.deathSummary?.cause??s.death?.cause,recap:s.deathSummary?.recap,treeNodes:s.lifeTree?.nodes?.length,stats:s.primaryStats}));
    break;
@@ -40,6 +40,7 @@ test('one narrated life from birth to death with deliberate choices',()=>{
    if(selected){
     picked=selected;
     result=game.makeChoice(event,selected.id);
+    s=game.state;
     print('CHOICE',JSON.stringify({age:s.player.age,eventId:event.id,title:event.title,choiceId:selected.id,label:selected.label,result}));
    }
   }
