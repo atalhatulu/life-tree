@@ -1,3 +1,4 @@
+.header-actions{display:flex;align-items:center;gap:7px;flex-shrink:0}
 /* Optional Life Tree illustrated-card theme. Original styles remain untouched. */
 body.card-theme{--card-ink:#29332e;--card-green:#285b4d;--card-paper:#fff3df;background:#14232a;color:var(--card-ink)}
 body.card-theme .app-shell{background:radial-gradient(circle at 50% 0%,#38534a,#14232a 72%)}
