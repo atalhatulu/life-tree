@@ -712,7 +712,9 @@ function renderLifeTree(){
   treeScroll.scrollTop=position?.y??0;
   updateZoomButtons();
   treeScroll.addEventListener('wheel',event=>{
-    if(event.ctrlKey)return;
+    // Ordinary wheel/trackpad gestures scroll the long life trail.
+    // Ctrl+wheel is an explicit zoom gesture; toolbar buttons also zoom.
+    if(!event.ctrlKey)return;
     event.preventDefault();
     const delta=event.deltaY!==0?event.deltaY:event.deltaX;
     if(delta)changeZoom(lifeTreeZoom*(delta>0?.9:1.1),event.clientX);
