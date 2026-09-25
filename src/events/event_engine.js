@@ -30,9 +30,15 @@ export class EventEngine{
   if(!candidates.length)return null;
   if(!shouldPresentEventThisYear(state,candidates,rng.fork('pacing')))return null;
 
-  const maxPriority=Math.max(...candidates.map(e=>e.priority??0));
-  const pool=candidates.filter(e=>(e.priority??0)===maxPriority);
-  return rng.weighted(pool.map(event=>({value:event,weight:event.weight?.(state)??1})));
+  // A zero-weight event is ineligible for this draw. Filter before selecting
+  // the priority tier so a disabled high-priority event cannot starve others.
+  const weighted=candidates.map(event=>({
+   value:event,
+   weight:event.weight?.(state)??1
+  })).filter(item=>Number.isFinite(item.weight)&&item.weight>0);
+  if(!weighted.length)return null;
+  const maxPriority=Math.max(...weighted.map(item=>item.value.priority??0));
+  return rng.weighted(weighted.filter(item=>(item.value.priority??0)===maxPriority));
  }
 
  resolve(state,event,choiceId,rng){
