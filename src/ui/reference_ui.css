@@ -134,3 +134,48 @@ body.reference-ui .event-card.ref-decision .choice-button{min-width:0;overflow-w
 body.reference-ui #lifeTree .life-branch-toggle{background:#d7b979;color:#1b3135;border-color:#f7e1ad;box-shadow:0 2px 8px #0004}
 body.reference-ui #lifeTree .life-family-tree{max-width:none}
 body.reference-ui #lifeTree .life-graph-node{max-width:140px;overflow-wrap:anywhere}
+
+
+/* Relationships and assets: mobile card layout. Keep classic mode untouched. */
+body.reference-ui:has(#relationshipsScreen.active) .screen,
+body.reference-ui:has(#assetsScreen.active) .screen{min-width:0;min-height:0;overflow:hidden}
+body.reference-ui #relationshipsScreen,
+body.reference-ui #assetsScreen{width:100%;max-width:100%;min-width:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;padding:7px 12px 24px}
+body.reference-ui #relationships,
+body.reference-ui #assets{display:grid;grid-template-columns:minmax(0,1fr);gap:11px;min-width:0;max-width:100%;align-content:start}
+body.reference-ui #relationships>*,
+body.reference-ui #assets>*{min-width:0;max-width:100%;margin:0;overflow-wrap:anywhere}
+body.reference-ui #relationships .section-divider{margin:8px 2px 0;color:#f1d6a4;font:700 13px Georgia,serif}
+body.reference-ui #relationships .section-divider::after{background:#9b8b6a77}
+body.reference-ui #relationships .person-card,
+body.reference-ui #relationships .summary-card,
+body.reference-ui #assets .summary-card{position:relative;display:block;min-width:0;padding:14px;border:1px solid #d0b48b;border-radius:13px;background:#fff0d7;color:#293b3d;box-shadow:0 4px 0 #07151d55,0 10px 18px #0002;overflow:hidden}
+body.reference-ui #relationships .person-card::before{content:none;display:none;float:none}
+body.reference-ui #relationships .card-row,
+body.reference-ui #assets .card-row{display:flex;align-items:flex-start;justify-content:space-between;gap:9px;min-width:0;flex-wrap:wrap}
+body.reference-ui #relationships .card-row>div,
+body.reference-ui #assets .card-row>div{flex:1 1 170px;min-width:0}
+body.reference-ui #relationships h3,
+body.reference-ui #assets h3{margin:0 0 7px;color:#263b3b;font:700 18px/1.25 Georgia,serif;overflow-wrap:anywhere}
+body.reference-ui #relationships p,
+body.reference-ui #assets p{margin:7px 0;color:#514d43;font:12px/1.55 Arial,sans-serif;overflow-wrap:anywhere}
+body.reference-ui #relationships .relationship-pill{flex:0 0 auto;max-width:100%;padding:6px 9px;background:#e4eedb;color:#32604b;border:1px solid #9db995;border-radius:999px;font:700 11px Arial,sans-serif}
+body.reference-ui #relationships .person-card-actions{display:flex;justify-content:stretch;clear:both;margin-top:12px}
+body.reference-ui #relationships .person-action-toggle{width:100%;min-height:39px;border:1px solid #9bb79c;background:#e4efdd;color:#285644;border-radius:9px;font:700 12px Arial,sans-serif}
+body.reference-ui #relationships .person-action-panel{min-width:0;margin-top:10px;padding:10px;border:1px solid #c9ad84;border-radius:10px;background:#f8e6c8}
+body.reference-ui #relationships .person-action-head{display:flex;align-items:flex-start;gap:7px;flex-wrap:wrap;color:#344b48;white-space:normal}
+body.reference-ui #relationships .person-action-head small{white-space:normal}
+body.reference-ui #relationships .person-action-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+body.reference-ui #relationships .person-action-grid button{min-width:0;min-height:44px;flex-wrap:wrap;gap:4px;padding:8px;border:1px solid #c5aa83;background:#fff9ed;color:#34433e;border-radius:8px;font:700 11px Arial,sans-serif;overflow-wrap:anywhere}
+body.reference-ui #relationships .person-action-grid button small{white-space:normal;color:#80694c}
+body.reference-ui #assets .summary-card>p strong{color:#1c5848;font-weight:800}
+body.reference-ui #assets .summary-card>p.muted{color:#776a58;font-size:11px}
+body.reference-ui #assets .setting-row{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;margin:10px 0;color:#3b4b45;font:700 12px Arial,sans-serif}
+body.reference-ui #assets .setting-row select{display:block;width:100%;max-width:100%;min-width:0;min-height:40px;padding:8px 10px;border:1px solid #b9a17d;border-radius:9px;background:#fff9ec;color:#263b3b;font:12px Arial,sans-serif}
+body.reference-ui #assets .activity-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin-top:9px}
+body.reference-ui #assets .activity-button{display:block;width:100%;min-width:0;min-height:44px;padding:10px 12px;text-align:left;white-space:normal;overflow-wrap:anywhere;border:1px solid #b8a17e;border-radius:9px;background:#fff9eb;color:#2b4d43;font:700 12px/1.4 Arial,sans-serif}
+body.reference-ui #assets .activity-button small{display:block;margin-top:3px;color:#76674f;font-size:11px}
+body.reference-ui #assets .activity-button:disabled,
+body.reference-ui #relationships button:disabled{opacity:.55;cursor:not-allowed}
+body.reference-ui #relationships .empty-state{padding:15px;color:#364a47}
+@media(max-width:360px){body.reference-ui #relationships .person-action-grid{grid-template-columns:minmax(0,1fr)}body.reference-ui #relationshipsScreen,body.reference-ui #assetsScreen{padding-inline:9px}}
