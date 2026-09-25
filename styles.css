@@ -2376,3 +2376,30 @@ body:has(#treeScreen.active) .dev-panel{display:none;}
  }
  #treeScreen.active .life-map-viewport{padding:8px;}
 }
+
+
+/* Compact life tree: a readable vertical decision trail rather than a
+   recursively widening genealogy. Alternatives remain selectable. */
+body:has(#treeScreen.active):not(.reference-ui) .app-shell{padding:12px;gap:12px}
+body:has(#treeScreen.active):not(.reference-ui) .phone-frame{width:min(430px,100%);max-width:100%;height:min(92dvh,860px);aspect-ratio:9/16;border-radius:22px;grid-template-rows:auto auto minmax(0,1fr) auto auto}
+body:has(#treeScreen.active):not(.reference-ui) .age-zone{display:none}
+#lifeTree .genealogy-scroll{max-width:100%;overflow-x:hidden;overflow-y:auto}
+#lifeTree .genealogy-tree{width:100%;min-width:0;max-width:100%;padding:10px}
+#lifeTree .life-family-tree{display:block;width:100%;min-width:0;max-width:100%;margin:0}
+#lifeTree .life-family-tree ul,
+#lifeTree .life-family-tree>ul{display:block;position:static;width:100%;min-width:0;max-width:100%;margin:0;padding:0;list-style:none}
+#lifeTree .life-family-tree li,
+#lifeTree .life-family-tree>ul>li{display:block;position:relative;width:100%;min-width:0;max-width:100%;padding:5px 0;margin:0;text-align:left}
+#lifeTree .life-family-tree li::before,
+#lifeTree .life-family-tree li::after,
+#lifeTree .life-family-tree li>ul::before{display:none!important;content:none!important}
+#lifeTree .life-family-tree li>ul{margin:5px 0 0;padding:0 0 0 11px;border-left:2px solid #dce5ed}
+#lifeTree .life-family-tree li>ul>li{margin:0 0 5px}
+#lifeTree .life-graph-node{width:100%;max-width:100%;min-width:0;min-height:49px;display:flex;align-items:flex-start;text-align:left;padding:9px 11px;margin:0;gap:3px}
+#lifeTree .life-graph-node strong{font-size:11px;line-height:1.4}
+#lifeTree .life-branch-toggle{margin:5px 0 2px;max-width:100%}
+#lifeTree .life-family-tree li.life-branch-collapsed>ul{display:none!important}
+#lifeTree .life-family-tree li.life-branch-open>ul{display:block}
+#lifeTree .life-map-viewport{min-width:0;max-width:100%;overflow-x:hidden}
+#lifeTree .life-map-canvas{width:100%;min-width:0;max-width:100%}
+@media(max-width:560px){body:has(#treeScreen.active):not(.reference-ui) .app-shell{padding:0}body:has(#treeScreen.active):not(.reference-ui) .phone-frame{width:100vw;height:100dvh;border-radius:0}}
