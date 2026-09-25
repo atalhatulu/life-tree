@@ -1,4 +1,5 @@
 import { Game } from '../core/game.js';
+import { eventIllustration, albumMarkup } from './life_album.js';
 import { autoplay, humanLikeChoice, activityOrder, simulateToEnd } from '../simulation/autoplay.js';
 import {earlyYearMoment} from '../life/early_year_moments.js';
 import {schoolAgeYearMoment} from '../life/school_age_year_moments.js';
@@ -666,7 +667,7 @@ function renderLifeTree(){
   const graph=renderFamilyTree(tree,{dead});
   $('#lifeTree').innerHTML=`
     <div class="life-map-toolbar">
-      <div class="life-map-legend"><span>● Yaşanan</span><span>◇ Olası</span><span>? Açılmamış</span></div>
+      <div class="life-map-legend"><span>● Yaşanan</span><span>◇ Olası</span><span>? Açılmamış</span></div><p class="lt-tree-guide">Karar düğümüne dokunarak ayrıntısını gör. Hayat tamamlandığında alternatif dalları keşfedebilirsin.</p>
       <div class="genealogy-navigation" role="group" aria-label="Ağaç yakınlaştırma">
         <span class="genealogy-controls-hint">Sağ tıkla taşı · Tekerlekle yakınlaş</span>
         <button type="button" class="genealogy-zoom-button" data-tree-zoom="out" aria-label="Uzaklaştır">−</button>
@@ -943,7 +944,7 @@ function renderEvent() {
   if(!pendingEvent){
     if(yearMoment&&!dead){
       card.classList.remove('hidden');
-      card.innerHTML=`<h3>${yearMoment.title}</h3><p>${yearMoment.text}</p><div class="choice-list">${yearMoment.choices.map(c=>`<button class="choice-button" data-moment="${c.id}">${c.label}</button>`).join('')}</div>`;
+      card.innerHTML=`${eventIllustration(yearMoment)}<h3>${yearMoment.title}</h3><p>${yearMoment.text}</p><div class="choice-list">${yearMoment.choices.map(c=>`<button class="choice-button" data-moment="${c.id}">${c.label}</button>`).join('')}</div>`;
       card.querySelectorAll('[data-moment]').forEach(b=>b.addEventListener('click',()=>applyYearMoment(b.dataset.moment)));
       $('#ageUp').disabled=true;
       return;
@@ -953,7 +954,7 @@ function renderEvent() {
       const d=game.state.death??{};
       const finale=ensureLifeFinale(game.state);
       card.classList.add('death-card');
-      card.innerHTML=`<small class="death-kicker">BİR HAYAT TAMAMLANDI</small><h3>${finale.ending.title}</h3><p>${finale.ending.description}</p><p><strong>${game.state.player.age} yaş</strong> • ${d.cause??'Bilinmeyen neden'}</p><div class="death-stats"><span>${finale.majorDecisions} kritik karar</span><span>${finale.children} çocuk</span><span>${money(finale.netWorth)}</span></div><div class="finale-actions"><button class="choice-button finale-tree-button" data-open-life-tree>HAYAT AĞACINI GÖR →</button><button class="choice-button finale-alt-button" data-open-alternatives>ALTERNATİF HAYATLARI İNCELE ◇</button></div>`;
+      card.innerHTML=`${eventIllustration({title:'Hayatın sonu'})}<small class="death-kicker">BİR HAYAT TAMAMLANDI</small><h3>${finale.ending.title}</h3><p>${finale.ending.description}</p><p><strong>${game.state.player.age} yaş</strong> • ${d.cause??'Bilinmeyen neden'}</p><div class="death-stats"><span>${finale.majorDecisions} kritik karar</span><span>${finale.children} çocuk</span><span>${money(finale.netWorth)}</span></div><div class="finale-actions"><button class="choice-button finale-tree-button" data-open-life-tree>HAYAT AĞACINI GÖR →</button><button class="choice-button finale-alt-button" data-open-alternatives>ALTERNATİF HAYATLARI İNCELE ◇</button></div>`;
       card.querySelector('[data-open-life-tree]')?.addEventListener('click',()=>switchScreen('treeScreen'));
       card.querySelector('[data-open-alternatives]')?.addEventListener('click',()=>{
         switchScreen('treeScreen');
@@ -966,7 +967,7 @@ function renderEvent() {
   }
   $('#ageUp').disabled=true;
   card.classList.remove('hidden');
-  card.innerHTML=`<h3>${pendingEvent.title}</h3><p>${pendingEvent.majorDecision?'Bu seçim Life Tree üzerinde bir dönüm noktası olarak kaydedilecek.':'Bu yıl hayatında bir seçim yapman gerekiyor.'}</p><div class="choice-list">${game.eventChoices(pendingEvent).map(choice=>`<button class="choice-button" data-choice="${choice.id}">${choice.label}</button>`).join('')}</div>`;
+  card.innerHTML=`${eventIllustration(pendingEvent)}<h3>${pendingEvent.title}</h3><p>${pendingEvent.majorDecision?'Bu seçim Life Tree üzerinde bir dönüm noktası olarak kaydedilecek.':'Bu yıl hayatında bir seçim yapman gerekiyor.'}</p><div class="choice-list">${game.eventChoices(pendingEvent).map(choice=>`<button class="choice-button" data-choice="${choice.id}">${choice.label}</button>`).join('')}</div>`;
   card.querySelectorAll('[data-choice]').forEach(button=>button.addEventListener('click',()=>{
     const event=pendingEvent;
     const result=game.makeChoice(event,button.dataset.choice);
@@ -1003,6 +1004,7 @@ function render(){
   $('#familyQuick').textContent=`${r?.status==='married'?'Evli':r?'İlişki':'Bekâr'} • ${children?.length??0} çocuk`;
 
   renderTimeline();renderRelationships();renderActivities();renderAssets();renderCareer();renderLifeTree();renderEvent();
+  $('#lifeAlbum').innerHTML=albumMarkup(game.state,lifeChapter);
 }
 
 
