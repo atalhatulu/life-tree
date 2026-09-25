@@ -7,10 +7,14 @@
   <link rel="stylesheet" href="./styles.css" />
   <link rel="stylesheet" href="./src/ui/card_theme.css" />
   <link rel="stylesheet" href="./src/ui/life_album.css" />
+  <link rel="stylesheet" href="./src/ui/reference_ui.css" />
 </head>
 <body>
   <main class="app-shell">
     <section class="phone-frame" aria-label="Life Tree oyun ekranı">
+      <div class="ref-status" aria-hidden="true"><span>9:41</span><span>▴ ▰ ▰</span></div>
+      <section class="ref-hero" aria-label="Life Tree ana ekranı"><div class="ref-landscape"><div class="ref-sun"></div><div class="ref-mountains"></div><div class="ref-city"></div><div class="ref-hero-title"><span>❧</span><h2>Life Tree</h2><p>Her yaşam bir hikâye.<br>Her seçim yeni bir dal.</p></div><div class="ref-silhouette" aria-hidden="true">♟</div></div><div class="ref-profile"><div class="ref-avatar">✦</div><div><strong id="refName">Yeni hayat</strong><p id="refMeta">Yeni bir hikâye</p></div></div></section>
+      <div class="ref-screen-head"><h2 id="refScreenTitle">Hayat</h2><p id="refScreenDescription">Her seçim yeni bir dal.</p></div>
       <header class="topbar">
         <div class="identity-block">
           <div class="brand-row"><p class="eyebrow">LIFE TREE</p><span class="live-dot"></span></div>
@@ -41,6 +45,7 @@
       <section id="screen" class="screen">
         <div id="lifeScreen" class="screen-panel active">
           <div id="eventCard" class="event-card hidden"></div>
+          <div class="ref-home-actions"><button type="button" data-ref-screen="activitiesScreen">Eylemler →</button><button type="button" data-ref-screen="careerScreen">Kariyer →</button><button type="button" data-ref-screen="albumScreen">Günlük →</button></div>
           <div class="section-head"><h2>Hayat Akışı</h2><span id="seed"></span></div>
           <div id="timeline" class="timeline"></div>
         </div>
@@ -52,7 +57,7 @@
 
         <div id="activitiesScreen" class="screen-panel">
           <div class="section-head"><h2>Aktiviteler</h2></div>
-          <div id="activities"></div>
+          <div class="ref-action-filter" role="group" aria-label="Eylem kategorileri"><button type="button" data-ref-filter="all" class="selected">Tümü</button><button type="button" data-ref-filter="career">Kariyer</button><button type="button" data-ref-filter="social">Sosyal</button><button type="button" data-ref-filter="personal">Kişisel</button></div><div id="activities"></div>
         </div>
 
         <div id="assetsScreen" class="screen-panel">
@@ -67,7 +72,7 @@
 
         <div id="treeScreen" class="screen-panel">
           <div class="section-head"><h2>Life Tree</h2></div>
-          <div id="lifeTree"></div>
+          <div class="ref-tree-heading"><span>✧ HAYAT AĞACI</span><p>Geçmişini gör, yeni ihtimalleri keşfet.</p></div><div id="lifeTree"></div>
         </div>
         <div id="albumScreen" class="screen-panel">
           <div class="section-head"><h2>Hayat Albümü</h2></div>
@@ -108,5 +113,6 @@
 
   <script type="module" src="./src/ui/card_theme.js"></script>
   <script type="module" src="./src/ui/app.js"></script>
+  <script type="module" src="./src/ui/reference_ui.js"></script>
 </body>
 </html>

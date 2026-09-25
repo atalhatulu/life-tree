@@ -1005,6 +1005,7 @@ function render(){
 
   renderTimeline();renderRelationships();renderActivities();renderAssets();renderCareer();renderLifeTree();renderEvent();
   $('#lifeAlbum').innerHTML=albumMarkup(game.state,lifeChapter);
+  document.dispatchEvent(new Event('life-tree-render'));
 }
 
 
@@ -1242,6 +1243,7 @@ function switchScreen(id){
   document.querySelectorAll('.nav-item').forEach(button=>button.classList.toggle('active',button.dataset.screen===id));
   const active=document.getElementById(id);
   if(active)active.scrollTop=0;
+  document.dispatchEvent(new Event('life-tree-screen'));
 }
 function newLife(seed=$('#seedInput').value.trim()||String(Date.now())){
   autoLifeRunning=false;autoLifeToken++;setAutoStatus('');
