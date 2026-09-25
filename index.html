@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Life Tree</title>
   <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./src/ui/card_theme.css" />
 </head>
 <body>
   <main class="app-shell">
@@ -19,7 +20,7 @@
             <span id="goalQuick" class="meta-chip goal-chip">Hedef yok</span>
           </div>
         </div>
-        <button id="newLife" class="icon-button" aria-label="Yeni hayat">↻</button>
+        <div class="header-actions"><button id="themeToggle" class="icon-button" type="button" aria-label="Kart görünümüne geç" aria-pressed="false" title="Kart görünümüne geç">✦</button><button id="newLife" class="icon-button" aria-label="Yeni hayat">↻</button></div>
       </header>
 
       <section class="stats" aria-label="Ana özellikler">
@@ -99,6 +100,7 @@
     </aside>
   </main>
 
+  <script type="module" src="./src/ui/card_theme.js"></script>
   <script type="module" src="./src/ui/app.js"></script>
 </body>
 </html>
