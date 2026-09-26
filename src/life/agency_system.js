@@ -2,24 +2,26 @@ import {focusLifeGoal} from './life_goal_system.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export function availableLifeActions(state){
+ if(!state.player?.alive)return [];
  const actions=[];
  const activeGoal=state.lifeGoals?.active;
  if(activeGoal&&(activeGoal.lastFocusedAge==null||state.player.age-activeGoal.lastFocusedAge>=2))actions.push({id:'focus-goal',label:'Uzun vadeli hedefime odaklan'});
  const partner=state.social?.romance;
- if(partner?.life?.workStress>=60||partner?.resentment>=55)actions.push({id:'support-partner',label:'Partnerime destek ol'});
- const friend=(state.social?.friends??[]).find(f=>f.needsSupport);
+ if(partner?.alive!==false&&(partner?.life?.workStress>=60||partner?.resentment>=55))actions.push({id:'support-partner',label:'Partnerime destek ol'});
+ const friend=(state.social?.friends??[]).find(f=>f.alive!==false&&f.needsSupport);
  if(friend)actions.push({id:'support-friend:'+friend.id,label:friend.name+' için yanında ol'});
- const child=(state.children??[]).find(c=>c.age>=8&&c.age<18&&((c.development?.identityStress??0)>=45||(c.development?.confidence??50)<=45));
+ const child=(state.children??[]).find(c=>c.alive!==false&&c.age>=8&&c.age<18&&((c.development?.identityStress??0)>=45||(c.development?.confidence??50)<=45));
  if(child)actions.push({id:'mentor-child:'+child.id,label:child.name+' ile birebir ilgilen'});
  return actions;
 }
 
 export function performLifeAction(state,id){
+ if(!state.player?.alive)throw new Error('Hayat sona erdi; artık eylem yapılamaz.');
  if(state.actions?.remaining<=0)throw new Error('Bu yıl için aksiyon hakkın kalmadı.');
  if(id==='focus-goal')return focusLifeGoal(state);
 
  const partner=state.social?.romance;
- if(id==='support-partner'&&partner){
+ if(id==='support-partner'&&partner&&partner.alive!==false){
   partner.trust=clamp((partner.trust??60)+4);
   partner.intimacy=clamp((partner.intimacy??60)+3);
   partner.resentment=clamp((partner.resentment??20)-5);
@@ -30,7 +32,7 @@ export function performLifeAction(state,id){
 
  if(id.startsWith('support-friend:')){
   const friendId=id.slice('support-friend:'.length);
-  const friend=(state.social?.friends??[]).find(f=>f.id===friendId&&f.needsSupport);
+  const friend=(state.social?.friends??[]).find(f=>f.id===friendId&&f.alive!==false&&f.needsSupport);
   if(!friend)throw new Error('Bu destek aksiyonu artık kullanılamıyor.');
   friend.relationship=clamp((friend.relationship??55)+6);
   friend.trust=clamp((friend.trust??55)+7);
@@ -43,7 +45,7 @@ export function performLifeAction(state,id){
 
  if(id.startsWith('mentor-child:')){
   const childId=id.slice('mentor-child:'.length);
-  const child=(state.children??[]).find(c=>c.id===childId);
+  const child=(state.children??[]).find(c=>c.id===childId&&c.alive!==false);
   if(!child)throw new Error('Bu çocuk aksiyonu artık kullanılamıyor.');
   child.relationship=clamp((child.relationship??65)+4);
   if(child.development){
