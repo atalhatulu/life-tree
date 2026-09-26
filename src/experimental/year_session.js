@@ -2,7 +2,7 @@ import {RNG} from '../core/rng.js';
 import {createSavePayload} from '../core/save_system.js';
 import {settleExperimentalMonth} from './monthly_finance.js';
 import {daysInYear,scheduleYearPresentation} from './year_flow_scheduler.js';
-import {eventCalendar,scheduleEventDay} from './event_calendar.js';
+import {eventCalendar,eventTriggerDay,scheduleEventDay} from './event_calendar.js';
 
 // Experimental session: the live Game is never mutated. A year is calculated
 // once on a private clone; subsequent decisions are resolved on that clone.
@@ -34,9 +34,10 @@ export class ExperimentalYearSession {
       this.preview.state.finance.activitySpendingAnnual=0;
     }
     // A repeated event can be replaced by another currently eligible event.
-    const initial=first&&this.recentlyRepeated(first)?this.preview.events.eligible(this.preview.state)
-      .filter(e=>e.id!==first.id&&!this.recentlyRepeated(e))
-      .sort((a,b)=>(b.priority??0)-(a.priority??0))[0]??null:first;
+    const validInitial=e=>e&&!this.recentlyRepeated(e)&&scheduleEventDay({event:e,year:this.year,rng:new RNG(this.seed+':initial-window:'+e.id),totalDays:daysInYear(this.year),triggerDay:eventTriggerDay(e,{year:this.year,yearStartState:this.game.state})})!=null;
+    const initial=validInitial(first)?first:this.preview.events.eligible(this.preview.state)
+      .filter(e=>e.id!==first.id&&validInitial(e))
+      .sort((a,b)=>(b.priority??0)-(a.priority??0))[0]??null;
     this.timeline=scheduleYearPresentation({
       seed:this.seed,year:this.year,
       history:this.preview.state.history.slice(this.historyStart),
@@ -117,12 +118,12 @@ export class ExperimentalYearSession {
       const candidates=this.preview.events.eligible(this.preview.state)
         .filter(e=>!this.presentedIds.has(e.id)&&!this.recentlyRepeated(e)&&
           Number.isFinite(e.weight?.(this.preview.state)??1)&&(e.weight?.(this.preview.state)??1)>0);
-      const schedulable=candidates.filter(e=>scheduleEventDay({event:e,year:this.year,rng:new RNG(this.seed+':window-check:'+e.id),afterDay:this.day+19,totalDays:daysInYear(this.year)})!=null);
+      const schedulable=candidates.filter(e=>scheduleEventDay({event:e,year:this.year,rng:new RNG(this.seed+':window-check:'+e.id),afterDay:this.day+19,totalDays:daysInYear(this.year),triggerDay:eventTriggerDay(e,{year:this.year,yearStartState:this.game.state})})!=null);
       if(schedulable.length){
         const priority=Math.max(...schedulable.map(e=>e.priority??0));
         const pool=schedulable.filter(e=>(e.priority??0)===priority);
         const next=this.rng.weighted(pool.map(e=>({value:e,weight:e.weight?.(this.preview.state)??1})));
-        const day=scheduleEventDay({event:next,year:this.year,rng:this.rng,afterDay:this.day+19,totalDays:daysInYear(this.year)});
+        const day=scheduleEventDay({event:next,year:this.year,rng:this.rng,afterDay:this.day+19,totalDays:daysInYear(this.year),triggerDay:eventTriggerDay(next,{year:this.year,yearStartState:this.game.state})});
         if(day!=null){
           const remaining=this.timeline.slice(this.cursor);
           remaining.push({type:'decision',day,id:next.id,title:next.title});
