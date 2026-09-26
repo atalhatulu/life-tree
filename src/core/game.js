@@ -36,6 +36,8 @@ export class Game{
   this.rng=new RNG(this.seedText);
   this.state=generateFamily(this.rng);
   this.state.year=2026;
+  const birthdayRng=this.rng.fork('player-birthday');
+  this.state.player.birthDate='2026-'+String(birthdayRng.int(1,12)).padStart(2,'0')+'-'+String(birthdayRng.int(1,28)).padStart(2,'0');
   this.state.history=[];
   this.state.flags={completedEvents:[]};
   this.state.lifeTree={nodes:[]};
