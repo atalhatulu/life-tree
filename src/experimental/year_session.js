@@ -77,13 +77,11 @@ export class ExperimentalYearSession {
         const earliest=Math.min(daysInYear(this.year)-3,this.day+20);
         if(earliest<daysInYear(this.year)-2){
           const day=this.rng.int(earliest,daysInYear(this.year)-2);
-          this.timeline.push({type:'decision',day,id:next.id,title:next.title});
-          this.timeline.sort((a,b)=>a.day-b.day||(a.type==='notice'?-1:1));
-          // cursor must stay after already consumed items
-          this.cursor=this.timeline.findIndex((item,i)=>i>=this.cursor-1&&item.type==='decision'&&item.id===next.id);
-          // Rebuild remaining order explicitly to avoid revisiting past notices.
-          const future=this.timeline.slice(this.cursor).filter(item=>item.day>=this.day);
-          this.timeline=future;this.cursor=0;
+          const remaining=this.timeline.slice(this.cursor);
+          remaining.push({type:'decision',day,id:next.id,title:next.title});
+          remaining.sort((a,b)=>a.day-b.day||(a.type==='notice'?-1:1));
+          this.timeline=remaining;
+          this.cursor=0;
         }
       }
     }
