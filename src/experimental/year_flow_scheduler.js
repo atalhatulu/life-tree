@@ -1,4 +1,5 @@
 import {RNG} from '../core/rng.js';
+import {scheduleEventDay} from './event_calendar.js';
 
 // Experimental, pure presentation scheduler. Does not mutate Game or its RNG.
 export function daysInYear(year){
@@ -12,16 +13,19 @@ export function scheduleYearPresentation({seed,year,history=[],decision=null}){
   const rng=new RNG(String(seed)+':experimental-year:'+year);
   const total=daysInYear(year);
   const title=String(decision?.title??'').toLocaleLowerCase('tr-TR');
-  let decisionDay=75+rng.int(0,225);
-  if(/yaz tatili|yazlık|yaz kampı/.test(title))decisionDay=165+rng.int(0,35);
-  else if(/okul açıl|yeni eğitim yılı|dershane/.test(title))decisionDay=245+rng.int(0,25);
-  else if(/yılbaşı/.test(title))decisionDay=total-rng.int(0,5);
+  const fallback={...decision};
+  if(!decision?.calendar&&!decision?.id){
+    if(/yaz tatili|yazlık|yaz kampı/.test(title))fallback.calendar={earliest_date:'06-15',latest_date:'07-19'};
+    else if(/okul açıl|yeni eğitim yılı|dershane/.test(title))fallback.calendar={earliest_date:'09-01',latest_date:'09-30'};
+    else if(/yılbaşı/.test(title))fallback.calendar={earliest_date:'12-26',latest_date:'12-31'};
+  }
+  const decisionDay=decision?scheduleEventDay({event:fallback,year,rng,totalDays:total}):null;
   const notices=history.filter(item=>typeof(item.text??item.result)==='string'&&String(item.text??item.result).trim()).slice(0,8);
   const timeline=notices.map((item,index)=>({
     type:'notice',day:total,
     text:item.text??item.result,sourceKind:item.kind??null
   }));
-  if(decision)timeline.push({type:'decision',day:decisionDay,title:decision.title,id:decision.id??null});
+  if(decision&&decisionDay!=null)timeline.push({type:'decision',day:decisionDay,title:decision.title,id:decision.id??null});
   timeline.sort((a,b)=>a.day-b.day||(a.type==='notice'?-1:1));
   return {year,totalDays:total,timeline};
 }
