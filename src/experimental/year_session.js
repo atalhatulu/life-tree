@@ -60,16 +60,7 @@ export class ExperimentalYearSession {
     return this.snapshot();
   }
   settleMonth(month){
-    const entry=settleExperimentalMonth(this.preview.state,month);
-    if(entry){
-      const day=new Date(Date.UTC(this.year,month,0)).getUTCDate();
-      const dayOfYear=Math.round((Date.UTC(this.year,month-1,day)-Date.UTC(this.year,0,1))/86400000)+1;
-      this.timeline.push({type:'notice',day:dayOfYear,text:'Aylık bütçe: gelir ₺'+entry.income+' • gider ₺'+entry.expense+' • net ₺'+entry.net,sourceKind:'finance'});
-      this.timeline.sort((a,b)=>a.day-b.day||(a.type==='notice'?-1:1));
-      // Reposition cursor past items already processed, including this month's notice.
-      this.cursor=this.timeline.findIndex(item=>item.day>=this.day);
-      if(this.cursor<0)this.cursor=this.timeline.length;
-    }
+    return settleExperimentalMonth(this.preview.state,month);
   }
   pause(){
     if(this.phase!=='running')throw new Error('Only a running calendar can be paused');
