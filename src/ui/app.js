@@ -849,6 +849,7 @@ function renderTimeline() {
 }
 
 let yearFlow=null;
+let continuousAdvance=false;
 const YEAR_MONTHS=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 function yearDays(year){return (year%4===0&&(year%100!==0||year%400===0))?366:365;}
 function yearFlowDate(day,year){const date=new Date(Date.UTC(year,0,day));return date.getUTCDate()+' '+YEAR_MONTHS[date.getUTCMonth()]+' '+year;}
@@ -911,6 +912,7 @@ async function finishYearFlow(flow){
   $('#yearFlowCaption').textContent='Yılın geri kalanı ilerliyor…';
   if(!await playYearUntil(flow,yearDays(flow.year)))return;
   endYearFlow();render();
+  if(continuousAdvance&&game.state.player.alive&&!pendingEvent&&!yearMoment)void startYearFlow();
 }
 async function startYearFlow(){
   if(yearFlow||pendingEvent||yearMoment||autoLifeRunning||!game.state.player.alive)return;
@@ -1259,7 +1261,7 @@ function switchScreen(id){
   document.dispatchEvent(new Event('life-tree-screen'));
 }
 function newLife(seed=$('#seedInput').value.trim()||String(Date.now())){
-  endYearFlow();
+  continuousAdvance=false;endYearFlow();
   autoLifeRunning=false;autoLifeToken++;setAutoStatus('');
   game=new Game(seed);pendingEvent=null;yearMoment=null;leisurePicker=null;personActionTarget=null;activityMessage='';autoLifeRng=null;lastRenderedAge=null;recordedCompletedSeed=null;
   $('#autoLife')?.classList.remove('running');
@@ -1271,7 +1273,7 @@ function newLife(seed=$('#seedInput').value.trim()||String(Date.now())){
 $('#newLife').addEventListener('click',()=>newLife());
 $('#applySeed').addEventListener('click',()=>newLife());
 $('#seedInput').addEventListener('keydown',event=>{if(event.key==='Enter')newLife();});
-$('#ageUp').addEventListener('click',()=>{void startYearFlow();});
+$('#ageUp').addEventListener('click',()=>{continuousAdvance=true;void startYearFlow();});
 
 $('#autoLife').addEventListener('click',toggleAutoLife);
 $('#simulateEnd').addEventListener('click',fastForwardToEnd);
