@@ -24,6 +24,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Verify calendar and monthly finance
+        run: node --test tests/year_flow_experiment.test.js tests/year_session_experiment.test.js tests/experimental_monthly_finance.test.js
       - name: Play and capture full life
         run: node experimental/simulate_year_flow.js "${{ matrix.seed }}" "${{ matrix.policy }}" | tee playthrough.json.log
       - uses: actions/upload-artifact@v4
