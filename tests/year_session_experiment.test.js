@@ -23,22 +23,21 @@ test('experimental session leaves live game untouched until explicit commit',()=
   assert.equal(game.state.player.age,state.player.age+1);
 });
 test('a pending decision blocks calendar progression and invalid choices do not resolve it',()=>{
-  let found=false;
-  for(let i=0;i<60&&!found;i++){
-    const session=new ExperimentalYearSession(new Game('pause-'+i),{maxDecisions:2});
-    session.start();
-    for(let step=0;step<20&&session.phase==='running';step++){
-      const item=session.advance();
-      if(item.type==='decision'){
-        found=true;
-        assert.throws(()=>session.advance(),/Resolve/);
-        assert.throws(()=>session.choose('invalid-choice-id'),/Unknown|unavailable/);
-        assert.equal(session.phase,'waiting');
-        session.choose(item.pending.choices[0].id);
-      }
-    }
-  }
-  assert.ok(found,'expected at least one seed to produce an event');
+  const session=new ExperimentalYearSession(new Game('pause-test'),{maxDecisions:1});
+  session.start();
+  // Inject a deterministic fixture: newborn years may legitimately have no event.
+  const fixture={id:'experiment-pause-fixture',title:'Test kararı',
+    choices:[{id:'accept',label:'Kabul et',result:'Karar uygulandı.'}]};
+  session.preview.events.events.push(fixture);
+  session.timeline=[{type:'decision',day:100,id:fixture.id,title:fixture.title}];
+  session.cursor=0;
+  const item=session.advance();
+  assert.equal(item.type,'decision');
+  assert.throws(()=>session.advance(),/Resolve/);
+  assert.throws(()=>session.choose('invalid-choice-id'),/Unknown|unavailable/);
+  assert.equal(session.phase,'waiting');
+  session.choose(item.pending.choices[0].id);
+  assert.equal(session.phase,'running');
 });
 test('same seed and same decisions reproduce identical annual preview',()=>{
   const play=()=>{
