@@ -3,11 +3,13 @@ import {ExperimentalYearSession} from '../src/experimental/year_session.js';
 
 const seed=process.argv[2]??'year-flow-actions-demo-2026';
 const policy=process.argv[3]??'first';
+const targetAge=Number(process.argv[4]??25);
+if(!Number.isInteger(targetAge)||targetAge<1||targetAge>120)throw new Error('Invalid target age');
 const game=new Game(seed);
 const output={seed,policy,initial:{year:game.state.year,age:game.state.player.age},years:[],assertions:[]};
 function check(condition,message){if(!condition)throw new Error(message);output.assertions.push(message);}
 let decisionCount=0,noticeCount=0,paused=0;
-for(let yearIndex=0;yearIndex<25&&game.state.player.alive;yearIndex++){
+for(let yearIndex=0;yearIndex<120&&game.state.player.alive&&game.state.player.age<targetAge;yearIndex++){
   const before=structuredClone(game.state);
   const session=new ExperimentalYearSession(game,{maxDecisions:3});
   session.start();
@@ -42,7 +44,7 @@ for(let yearIndex=0;yearIndex<25&&game.state.player.alive;yearIndex++){
   check(game.state.year===before.year+1,'Commit advances exactly one year');
   output.years.push({year:game.state.year,age:game.state.player.age,alive:game.state.player.alive,beforeStats,afterStats:{health:game.state.player.health,money:game.state.player.money},events:log,monthlyLedger:ledger});
 }
-output.summary={years:output.years.length,decisions:decisionCount,notices:noticeCount,pauses:paused,alive:game.state.player.alive,finalAge:game.state.player.age,checks:output.assertions.length};
+output.summary={targetAge,years:output.years.length,decisions:decisionCount,notices:noticeCount,pauses:paused,alive:game.state.player.alive,finalAge:game.state.player.age,checks:output.assertions.length};
 console.log(JSON.stringify(output,null,2));
 check(output.years.length>=1,'At least one life year simulated');
 check(decisionCount>0,'At least one real event decision occurred');
