@@ -86,6 +86,8 @@ export class Game{
 
   ensureGuardianship(this.state);
 
+  const relatives=()=>[this.state.parents?.mother,this.state.parents?.father,...(this.state.siblings??[]),...Object.values(this.state.grandparents??{}).flatMap(g=>Object.values(g??{})),...(this.state.social?.friends??[]),this.state.social?.romance,...(this.state.children??[])].filter(Boolean);
+  const beforeDeaths=new Map(relatives().map(p=>[p,p.alive!==false]));
   const yearRng=this.rng.fork('year-'+this.state.year);
   const auto=[
    ...processWorldYear(this.state,yearRng.fork('world')),
