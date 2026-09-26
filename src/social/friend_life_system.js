@@ -16,6 +16,7 @@ export function ensureFriendLife(friend){
 export function processFriendLivesYear(state,rng){
  const entries=[];
  for(const friend of state.social?.friends??[]){
+  if(friend.alive===false)continue;
   const life=ensureFriendLife(friend);
   ensureNpcGoal(friend);
   life.personalStress=clamp(life.personalStress+rng.fork(friend.id+'-stress').int(-3,4));
