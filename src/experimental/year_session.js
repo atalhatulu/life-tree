@@ -28,6 +28,10 @@ export class ExperimentalYearSession {
   start(){
     if(this.phase!=='ready')throw new Error('Year already started');
     const first=this.preview.ageOneYear({deferFinance:true});
+    if(this.preview.state.finance){
+      this.preview.state.finance.discretionaryAnnual=0;
+      this.preview.state.finance.activitySpendingAnnual=0;
+    }
     // A repeated event can be replaced by another currently eligible event.
     const initial=first&&this.recentlyRepeated(first)?this.preview.events.eligible(this.preview.state)
       .filter(e=>e.id!==first.id&&!this.recentlyRepeated(e))
