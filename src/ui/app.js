@@ -887,7 +887,7 @@ function yearFlowNotice(flow,item){
   article.append(date,description);container.prepend(article);
   while(container.children.length>4)container.lastElementChild.remove();
 }
-function yearFlowSchedule(history,year,eventDay,seed,age){
+function yearFlowSchedule(history,year,eventDay,seed,age,birthday){
   const rng=new RNG(seed+':year-flow-notices:'+year);
   const entries=history.filter(item=>typeof (item.text??item.result)==='string'&&(item.text??item.result).trim()).slice(0,6);
   const historical=entries.map((item,index)=>{
@@ -895,7 +895,7 @@ function yearFlowSchedule(history,year,eventDay,seed,age){
     // The selected event has its own dated pause; notifications can occur on either side.
     return {day,text:item.text??item.result};
   });
-  return [...historical,...fixedCalendarMoments(year,age).map(item=>({day:item.day,text:item.title+' · '+item.text}))].sort((a,b)=>a.day-b.day);
+  return [...historical,...fixedCalendarMoments(year,age,birthday).map(item=>({day:item.day,text:item.title+' · '+item.text}))].sort((a,b)=>a.day-b.day);
 }
 async function playYearUntil(flow,target){
   const notices=flow.notices.filter(item=>item.day>flow.day&&item.day<=target);
@@ -941,7 +941,7 @@ async function startYearFlow(){
   if(/yaz tatili|yazlık|yaz kampı/.test(eventTitle))flow.eventDay=165+rng.int(0,35);
   else if(/okul açıl|yeni eğitim yılı|dershane/.test(eventTitle))flow.eventDay=245+rng.int(0,25);
   else if(/yılbaşı/.test(eventTitle))flow.eventDay=yearDays(year)-rng.int(0,5);
-  flow.notices=yearFlowSchedule(game.state.history.slice(previousHistoryLength),year,flow.eventDay,game.seedText,game.state.player.age);
+  flow.notices=yearFlowSchedule(game.state.history.slice(previousHistoryLength),year,flow.eventDay,game.seedText,game.state.player.age,game.state.player.birthDate);
   if(!await playYearUntil(flow,flow.eventDay))return;
   if(pendingEvent||yearMoment){
     flow.waiting=true;render();yearFlowProgress(flow.eventDay,year);
