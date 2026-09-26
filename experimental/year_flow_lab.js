@@ -22,7 +22,8 @@ async function animateTo(day,localToken){
   for(let i=1;i<=steps;i++){
     if(token!==localToken)return false;
     const shown=Math.round(from+(to-from)*i/steps);
-    $('date').textContent=dateText(session.year,shown);$('progress').value=shown;
+    while(session.day<shown)session.tickDay();
+    $('date').textContent=dateText(session.year,session.day);$('progress').value=session.day;
     await pause(Number($('speed').value));
   }
   return token===localToken;
