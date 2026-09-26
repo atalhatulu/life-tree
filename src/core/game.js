@@ -101,6 +101,13 @@ export class Game{
    ...processAdultYear(this.state,yearRng.fork('adult'),{deferFinance})
   ];
   this.state.history.push(...auto);
+  for(const person of relatives()){
+   if(beforeDeaths.get(person)===true&&person.alive===false){
+    person.ageAtDeath??=person.age;
+    person.deathYear??=this.state.year;
+    person.birthYear??=this.state.year-person.age;
+   }
+  }
   refreshPrimaryStats(this.state);
   if(!this.state.player.alive){
    ensureLifeFinale(this.state);
