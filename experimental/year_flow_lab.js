@@ -55,6 +55,10 @@ async function run(localToken){
     if(!next&&!await animateTo(session.snapshot().totalDays,localToken))return;
     const item=session.advance();refresh();
     if(item.type==='notice')add(item.text,item.day,'Yıl içinden bir gelişme');
+    if(item.type==='calendar'){
+      add(item.text,item.day,item.title??'Takvim olayı');
+      session.pause();$('status').textContent='Takvim olayı · devam etmek için Devam et';controls();return;
+    }
     if(item.type==='decision'){
       add('Kararını verdiğinde takvim kaldığı yerden devam edecek.',item.day,item.pending.title);
       $('status').textContent='Zaman durdu · karar bekleniyor';controls();
