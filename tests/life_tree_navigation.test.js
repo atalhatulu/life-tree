@@ -48,32 +48,24 @@ test('simulated decisions render sibling choice nodes, nested continuation and e
  assert.ok(graph.markup.includes('life-graph-ending'));
 });
 
-test('the graph supports right-mouse panning, wheel zoom and an independent inspector',()=>{
+test('current life trail is keyboard scrollable and preserves alternative detail state',()=>{
  const ui=app(),style=css();
- assert.ok(ui.includes("treeScroll.addEventListener('mousedown'"));
- assert.ok(ui.includes('event.button!==2'));
- assert.ok(ui.includes("treeScroll.addEventListener('contextmenu'"));
- assert.ok(ui.includes("window.addEventListener('mousemove',moveDrag)"));
- assert.ok(ui.includes('treeScroll.scrollLeft=dragging.left+dragging.x-event.clientX'));
- assert.ok(ui.includes('treeScroll.scrollTop=dragging.top+dragging.y-event.clientY'));
- assert.ok(ui.includes("treeScroll.addEventListener('wheel'"));
- assert.ok(ui.includes('canvas.style.zoom=String(next)'));
- for(const direction of ['out','reset','in'])assert.ok(ui.includes('data-tree-zoom="'+direction+'"'));
- assert.ok(ui.includes('class="life-tree-inspector"'));
- assert.ok(ui.includes("livedLifeTree(nodes,finale,getResult)"));
- assert.ok(style.includes('.life-family-tree ul'));
- assert.ok(style.includes('.life-graph-node'));
- assert.ok(style.includes('body:has(#treeScreen.active) .phone-frame'));
+ assert.ok(ui.includes('class="life-trail-scroll" tabindex="0"'));
+ assert.ok(ui.includes('aria-label="Hayatın kararları ve alternatif yaşamlar"'));
+ assert.ok(ui.includes("root.querySelectorAll('details[data-life-alternative][open]')"));
+ assert.ok(ui.includes("root.querySelector('.life-trail-scroll').scrollTop=oldScroll"));
+ assert.ok(ui.includes('class="life-alt-compare"'));
+ assert.ok(style.includes('.life-trail-scroll'));
 });
 
-test('graph keeps recursive branch growth while hiding detail text outside the tree',()=>{
+test('alternative lives simulate and compare through the current timeline interface',()=>{
  const ui=app(),engine=fs.readFileSync(new URL('../src/life/counterfactual_continuation.js',import.meta.url),'utf8');
- assert.ok(ui.includes('data-sim-fork'));
- assert.ok(ui.includes('data-sim-continue'));
- assert.ok(ui.includes('growFirstGeneration(runGame.seedText,result'));
- assert.ok(ui.includes('expandContinuationFork(runGame.seedText,parent,last.stage,last.choiceId'));
- assert.ok(ui.includes('expandSelectedContinuation(runGame.seedText,parent,last.stage'));
+ assert.ok(ui.includes('data-counterfactual-node'));
+ assert.ok(ui.includes('data-counterfactual-choice'));
+ assert.ok(ui.includes('simulateContinuation(runGame.seedText,node,choiceId'));
+ assert.ok(ui.includes('data-afterlife-index'));
+ assert.ok(ui.includes('class="afterlife-table"'));
+ assert.ok(ui.includes('renderLifeTree();'));
  assert.ok(engine.includes('const checkpoint=milestone.snapshot'));
- assert.ok(engine.includes('fork.result=result'));
- assert.ok(engine.includes('stage.selectedResult=result'));
 });
+
