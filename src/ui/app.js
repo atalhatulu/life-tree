@@ -835,6 +835,66 @@ function renderTimeline() {
   $('#timeline').innerHTML=overview+rows.join('');
 }
 
+let yearFlow=null;
+const YEAR_MONTHS=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+function yearFlowDate(day,year){const date=new Date(Date.UTC(year,0,day));return date.getUTCDate()+' '+YEAR_MONTHS[date.getUTCMonth()]+' '+year;}
+function yearFlowProgress(day,year){
+  const panel=$('#yearFlow');
+  if(!panel)return;
+  panel.hidden=false;
+  $('#yearFlowDate').textContent=yearFlowDate(day,year);
+  $('#yearFlowBar').style.width=Math.min(100,day/365*100)+'%';
+  $('#yearFlowCaption').textContent=day>=365?'Yıl tamamlandı':yearFlow?.waiting?'Kararın bekleniyor':'Yılın günleri ilerliyor…';
+}
+function endYearFlow(){
+  if(!yearFlow)return;
+  yearFlow=null;
+  const panel=$('#yearFlow');if(panel)panel.hidden=true;
+  $('#ageUp').disabled=!game.state.player.alive||Boolean(pendingEvent||yearMoment);
+}
+async function animateYearDays(flow,from,to){
+  for(let day=from;day<=to;day+=Math.max(1,Math.ceil((to-from)/28))){
+    if(yearFlow!==flow)return false;
+    yearFlowProgress(Math.min(day,to),flow.year);
+    await sleep(65);
+  }
+  if(yearFlow!==flow)return false;
+  yearFlowProgress(to,flow.year);
+  return true;
+}
+async function finishYearFlow(flow){
+  if(yearFlow!==flow)return;
+  flow.waiting=false;
+  $('#yearFlowCaption').textContent='Yılın geri kalanı ilerliyor…';
+  if(!await animateYearDays(flow,flow.eventDay,365))return;
+  endYearFlow();
+  render();
+}
+async function startYearFlow(){
+  if(yearFlow||pendingEvent||yearMoment||autoLifeRunning||!game.state.player.alive)return;
+  const year=game.state.year;
+  const rng=new RNG(game.seedText+':year-flow:'+year+':'+game.state.player.age);
+  const eventDay=75+rng.int(0,225);
+  const flow={year,eventDay,waiting:false};
+  yearFlow=flow;
+  switchScreen('lifeScreen');
+  $('#ageUp').disabled=true;
+  yearFlowProgress(1,year);
+  if(!await animateYearDays(flow,1,eventDay))return;
+  if(yearFlow!==flow)return;
+  activityMessage='';
+  pendingEvent=game.ageOneYear();
+  if(!pendingEvent&&game.state.player.alive)yearMoment=makeYearMoment();
+  if(pendingEvent||yearMoment){
+    flow.waiting=true;
+    render();
+    yearFlowProgress(eventDay,year);
+    $('#yearFlowCaption').textContent='Bu tarihte bir karar vermen gerekiyor';
+  }else{
+    render();
+    await finishYearFlow(flow);
+  }
+}
 function renderEvent() {
   const card=$('#eventCard');
   const dead=!game.state.player.alive;
@@ -871,6 +931,7 @@ function renderEvent() {
     const result=game.makeChoice(event,button.dataset.choice);
     pendingEvent=null;
     render();
+    if(yearFlow?.waiting)void finishYearFlow(yearFlow);
     showToast(result||'Kararın hayatına işlendi.');
   }));
 }
@@ -1144,6 +1205,7 @@ function switchScreen(id){
   document.dispatchEvent(new Event('life-tree-screen'));
 }
 function newLife(seed=$('#seedInput').value.trim()||String(Date.now())){
+  endYearFlow();
   autoLifeRunning=false;autoLifeToken++;setAutoStatus('');
   game=new Game(seed);pendingEvent=null;yearMoment=null;leisurePicker=null;personActionTarget=null;activityMessage='';autoLifeRng=null;lastRenderedAge=null;recordedCompletedSeed=null;
   $('#autoLife')?.classList.remove('running');
@@ -1155,14 +1217,7 @@ function newLife(seed=$('#seedInput').value.trim()||String(Date.now())){
 $('#newLife').addEventListener('click',()=>newLife());
 $('#applySeed').addEventListener('click',()=>newLife());
 $('#seedInput').addEventListener('keydown',event=>{if(event.key==='Enter')newLife();});
-$('#ageUp').addEventListener('click',()=>{
-  if(pendingEvent||!game.state.player.alive)return;
-  activityMessage='';
-  pendingEvent=game.ageOneYear();
-  if(!pendingEvent&&game.state.player.alive)yearMoment=makeYearMoment();
-  render();
-  if(!pendingEvent&&yearMoment)showToast(game.state.player.age+' yaş • yeni bir yıl');
-});
+$('#ageUp').addEventListener('click',()=>{void startYearFlow();});
 
 $('#autoLife').addEventListener('click',toggleAutoLife);
 $('#simulateEnd').addEventListener('click',fastForwardToEnd);
