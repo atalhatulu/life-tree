@@ -134,6 +134,14 @@ export class ExperimentalYearSession {
     }
     return {type:'choice-result',result,...this.snapshot()};
   }
+  exportCheckpoint(){
+    return {version:1,game:createSavePayload(this.game),preview:createSavePayload(this.preview),
+      maxDecisions:this.maxDecisions,year:this.year,day:this.day,phase:this.phase,
+      committed:this.committed,timeline:structuredClone(this.timeline),cursor:this.cursor,
+      currentEventId:this.currentEvent?.id??null,decisions:this.decisions,
+      presentedIds:[...this.presentedIds],historyStart:this.historyStart,seed:this.seed,
+      sessionRng:{seed:this.rng.seed,state:this.rng.state}};
+  }
   // Only an explicit caller can adopt the preview; the live Game stays untouched otherwise.
   commit(){
     if(this.phase!=='complete')throw new Error('Complete the year before committing');
@@ -146,4 +154,24 @@ export class ExperimentalYearSession {
     this.committed=true;
     return this.game;
   }
+}
+
+export function restoreExperimentalYearSession(Game,checkpoint){
+ if(checkpoint?.version!==1||!checkpoint.game||!checkpoint.preview)throw new Error('Invalid experimental checkpoint');
+ const game=Game.fromSave(checkpoint.game);
+ const session=new ExperimentalYearSession(game,{maxDecisions:checkpoint.maxDecisions});
+ session.preview=Game.fromSave(checkpoint.preview);
+ if(session.preview.state.year!==checkpoint.year||game.state.year!==checkpoint.year-1)throw new Error('Checkpoint year mismatch');
+ if(!Number.isInteger(checkpoint.day)||checkpoint.day<1||checkpoint.day>daysInYear(checkpoint.year))throw new Error('Checkpoint day invalid');
+ if(!['ready','running','paused','waiting','complete'].includes(checkpoint.phase))throw new Error('Checkpoint phase invalid');
+ if(!Array.isArray(checkpoint.timeline)||!Number.isInteger(checkpoint.cursor)||checkpoint.cursor<0||checkpoint.cursor>checkpoint.timeline.length)throw new Error('Checkpoint timeline invalid');
+ session.year=checkpoint.year;session.day=checkpoint.day;session.phase=checkpoint.phase;
+ session.timeline=structuredClone(checkpoint.timeline);session.cursor=checkpoint.cursor;
+ session.currentEvent=checkpoint.currentEventId?session.preview.events.events.find(e=>e.id===checkpoint.currentEventId):null;
+ if(checkpoint.phase==='waiting'&&!session.currentEvent)throw new Error('Pending checkpoint event missing');
+ session.decisions=checkpoint.decisions;session.presentedIds=new Set(checkpoint.presentedIds);
+ session.historyStart=checkpoint.historyStart;session.seed=checkpoint.seed;
+ session.rng.seed=checkpoint.sessionRng.seed;session.rng.state=checkpoint.sessionRng.state;
+ session.committed=Boolean(checkpoint.committed);
+ return session;
 }
