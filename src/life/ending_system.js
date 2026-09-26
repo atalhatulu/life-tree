@@ -84,11 +84,32 @@ export const ENDING_ARCHETYPES=[
   score:m=>m.social+m.family
  },
  {
+  id:'curious-wanderer',
+  title:'Merakın İzinde',
+  description:'Farklı yollar denedin; kararların seni tek bir hedefe değil, değişen ilgi ve deneyimlere taşıdı.',
+  match:m=>m.majorDecisions>=7&&m.completedGoals<=1&&m.age>=45,
+  score:m=>m.majorDecisions*5+m.fulfillment*.45
+ },
+ {
+  id:'steady-worker',
+  title:'Emekle Kurulan Yıllar',
+  description:'Çalışmak ve gündelik sorumluluklar hayatının uzun bir bölümüne yön verdi.',
+  match:m=>m.career>=48&&m.age>=55&&m.financeStability<75,
+  score:m=>m.career*.8+m.age*.3
+ },
+ {
+  id:'late-peace',
+  title:'Sakinleşen Yıllar',
+  description:'Hayatının ilerleyen dönemlerinde hızını azalttın ve günlük yaşamında daha sakin bir ritim buldun.',
+  match:m=>m.age>=68&&m.fulfillment>=52&&m.career<72,
+  score:m=>m.fulfillment+m.age*.3
+ },
+ {
   id:'self-made',
   title:'Kendi Yolunu Açan',
   description:'Kariyer, para ve bağımsızlık ekseninde kendi düzenini kurarak hayatını tamamladın.',
   match:m=>m.career>=68&&m.netWorth>0&&m.majorDecisions>=5,
-  score:m=>m.career+m.financeStability+m.majorDecisions*2
+  score:m=>m.career*.65+m.financeStability*.5+m.majorDecisions*1.5
  },
  {
   id:'resilient-survivor',
