@@ -42,7 +42,7 @@ export class ExperimentalYearSession {
     this.timeline=scheduleYearPresentation({
       seed:this.seed,year:this.year,
       history:this.preview.state.history.slice(this.historyStart),
-      age:this.calendarMoments?this.preview.state.player.age:null,decision:initial
+      age:this.calendarMoments?this.preview.state.player.age:null,birthday:this.preview.state.player.birthDate,decision:initial
     }).timeline;
     this.phase='running';
     return this.snapshot();
