@@ -80,14 +80,15 @@ export class ExperimentalYearSession {
     if(this.phase==='waiting')throw new Error('Resolve the pending decision first');
     if(this.phase==='paused')throw new Error('Resume the calendar first');
     if(this.phase==='complete')return {type:'complete',...this.snapshot()};
-    const item=this.timeline[this.cursor++];
+    const item=this.timeline[this.cursor];
     if(!item){
       if(this.day!==daysInYear(this.year))throw new Error('Reach December 31 before completing the year');
       this.settleMonth(12);
       this.phase='complete';
       return {type:'complete',...this.snapshot()};
     }
-    if(this.day!==item.day){this.cursor--;throw new Error('Reach scheduled day before processing item');}
+    if(this.day!==item.day)throw new Error('Reach scheduled day before processing item');
+    this.cursor++;
     if(item.type==='notice')return {type:'notice',day:this.day,text:item.text,...this.snapshot()};
     const event=this.preview.events.events.find(e=>e.id===item.id);
     if(!event||!this.preview.events.eligible(this.preview.state).some(e=>e.id===event.id)||
