@@ -94,7 +94,7 @@ function reset(){
 $('start').onclick=()=>{
   if(session&&session.phase!=='complete')return;
   if(!game.state.player.alive)return;
-  shownMonths=0;session=new ExperimentalYearSession(game,{maxDecisions:3});
+  shownMonths=0;session=new ExperimentalYearSession(game,{maxDecisions:3,calendarMoments:true});
   try{session.start();}catch(error){$('status').textContent=error.message;return;}
   $('start').disabled=true;$('feed').replaceChildren();refresh();
   $('status').textContent='Yıl ilerliyor…';controls();void run(++token);
