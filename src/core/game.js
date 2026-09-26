@@ -71,7 +71,7 @@ export class Game{
   return game;
  }
 
- ageOneYear(){
+ ageOneYear({deferFinance=false}={}){
   if(!this.state.player.alive) throw new Error('Bu hayat sona erdi.');
   this.state.player.age+=1;
   this.state.year+=1;
@@ -98,7 +98,7 @@ export class Game{
    ...processSocialYear(this.state,yearRng.fork('social')),
    ...processAdolescenceYear(this.state,yearRng.fork('adolescence')),
    ...processRomanceYear(this.state,yearRng.fork('romance')),
-   ...processAdultYear(this.state,yearRng.fork('adult'))
+   ...processAdultYear(this.state,yearRng.fork('adult'),{deferFinance})
   ];
   this.state.history.push(...auto);
   refreshPrimaryStats(this.state);
