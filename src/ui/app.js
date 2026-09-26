@@ -877,7 +877,8 @@ function yearFlowSchedule(history,year,eventDay,seed){
   const rng=new RNG(seed+':year-flow-notices:'+year);
   const entries=history.filter(item=>typeof (item.text??item.result)==='string'&&(item.text??item.result).trim()).slice(0,6);
   return entries.map((item,index)=>{
-    const day=Math.max(8,Math.min(eventDay-4,Math.floor((index+1)*eventDay/(entries.length+1))+rng.int(-8,8)));
+    const day=Math.max(8,Math.min(yearDays(year)-8,Math.floor((index+1)*yearDays(year)/(entries.length+1))+rng.int(-8,8)));
+    // The selected event has its own dated pause; notifications can occur on either side.
     return {day,text:item.text??item.result};
   }).sort((a,b)=>a.day-b.day);
 }
@@ -920,10 +921,14 @@ async function startYearFlow(){
   }catch(error){
     endYearFlow();showToast('Yıl ilerletilemedi: '+error.message);render();return;
   }
-  flow.notices=yearFlowSchedule(game.state.history.slice(previousHistoryLength),year,eventDay,game.seedText);
-  if(!await playYearUntil(flow,eventDay))return;
+  const eventTitle=(pendingEvent?.title??yearMoment?.title??'').toLocaleLowerCase('tr-TR');
+  if(/yaz tatili|yazlık|yaz kampı/.test(eventTitle))flow.eventDay=165+rng.int(0,35);
+  else if(/okul açıl|yeni eğitim yılı|dershane/.test(eventTitle))flow.eventDay=245+rng.int(0,25);
+  else if(/yılbaşı/.test(eventTitle))flow.eventDay=yearDays(year)-rng.int(0,5);
+  flow.notices=yearFlowSchedule(game.state.history.slice(previousHistoryLength),year,flow.eventDay,game.seedText);
+  if(!await playYearUntil(flow,flow.eventDay))return;
   if(pendingEvent||yearMoment){
-    flow.waiting=true;render();yearFlowProgress(eventDay,year);
+    flow.waiting=true;render();yearFlowProgress(flow.eventDay,year);
     $('#yearFlowCaption').textContent='Bu tarihte bir karar vermen gerekiyor';
   }else{
     render();await finishYearFlow(flow);
