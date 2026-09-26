@@ -2,7 +2,7 @@ name: tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, experiment/year-flow-v2]
   pull_request:
 
 jobs:
@@ -15,6 +15,8 @@ jobs:
         with:
           node-version: 22
       - run: node --check src/ui/app.js
+      - run: node --check src/experimental/year_session.js
+      - run: node --check experimental/year_flow_lab.js
       - run: node --check src/cli/text_mode.js
       - run: node --test tests/group6_part1.test.js tests/group6_part2.test.js
       - run: npm test
