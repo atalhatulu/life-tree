@@ -15,6 +15,9 @@ for(let yearIndex=0;yearIndex<25&&game.state.player.alive;yearIndex++){
   const log=[];
   const beforeStats={health:game.state.player.health,money:game.state.player.money};
   for(let step=0;step<50&&session.phase!=='complete';step++){
+    const next=session.timeline[session.cursor];
+    const target=next?.day??session.snapshot().totalDays;
+    while(session.day<target)session.tickDay();
     const item=session.advance();
     if(item.type==='notice'){noticeCount++;log.push({day:item.day,type:'notice',text:item.text});}
     if(item.type==='decision'){
