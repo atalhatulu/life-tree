@@ -31,6 +31,6 @@ test('a scheduled decision is revalidated when its day arrives',()=>{
  session.timeline=[{type:'decision',day:40,id:fixture.id,title:fixture.title}];
  session.cursor=0;
  while(session.day<40)session.tickDay();
- assert.equal(session.advance().type,'complete');
- assert.equal(session.phase,'complete'); 
+ assert.equal(session.advance().type,'skipped');
+ assert.equal(session.phase,'running'); 
 });
