@@ -15,6 +15,6 @@ button:disabled{opacity:.45;cursor:not-allowed}.controls{display:flex;gap:8px;fl
 <div class="meta"><span id="identity"></span><span id="age"></span></div>
 <div id="date">1 Ocak 2027</div><progress id="progress" value="1" max="365"></progress>
 <p id="status">Deney için yeni bir yıl başlat.</p>
-<div class="controls"><button id="start">+1 Yıl (deney)</button><button id="reset">Yeni deneme</button><label>Hız <select id="speed"><option value="170">Normal</option><option value="65" selected>Hızlı</option><option value="20">Çok hızlı</option></select></label></div>
+<div class="controls"><button id="start">+1 Yıl (deney)</button><button id="pause" disabled>Duraklat</button><button id="save" disabled>Kaydet</button><button id="load">Kaydı yükle</button><button id="reset">Yeni deneme</button><label>Hız <select id="speed"><option value="170">Normal</option><option value="65" selected>Hızlı</option><option value="20">Çok hızlı</option></select></label></div>
 <section id="feed" aria-live="polite"></section>
 </main><script type="module" src="./year_flow_lab.js"></script></body></html>
