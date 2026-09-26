@@ -18,7 +18,7 @@ export function scheduleYearPresentation({seed,year,history=[],decision=null}){
   else if(/yılbaşı/.test(title))decisionDay=total-rng.int(0,5);
   const notices=history.filter(item=>typeof(item.text??item.result)==='string'&&String(item.text??item.result).trim()).slice(0,8);
   const timeline=notices.map((item,index)=>({
-    type:'notice',day:Math.max(2,Math.min(total-2,Math.floor((index+1)*total/(notices.length+1))+rng.int(-9,9))),
+    type:'notice',day:total,
     text:item.text??item.result,sourceKind:item.kind??null
   }));
   if(decision)timeline.push({type:'decision',day:decisionDay,title:decision.title,id:decision.id??null});
