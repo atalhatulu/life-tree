@@ -26,10 +26,14 @@ export class ExperimentalYearSession {
   start(){
     if(this.phase!=='ready')throw new Error('Year already started');
     const first=this.preview.ageOneYear();
+    // A repeated event can be replaced by another currently eligible event.
+    const initial=first&&this.recentlyRepeated(first)?this.preview.events.eligible(this.preview.state)
+      .filter(e=>e.id!==first.id&&!this.recentlyRepeated(e))
+      .sort((a,b)=>(b.priority??0)-(a.priority??0))[0]??null:first;
     this.timeline=scheduleYearPresentation({
       seed:this.seed,year:this.year,
       history:this.preview.state.history.slice(this.historyStart),
-      decision:first
+      decision:initial
     }).timeline;
     this.phase='running';
     return this.snapshot();
@@ -38,6 +42,15 @@ export class ExperimentalYearSession {
     return {year:this.year,day:this.day,totalDays:daysInYear(this.year),
       phase:this.phase,decisions:this.decisions,pending:this.currentEvent?
       {id:this.currentEvent.id,title:this.currentEvent.title,choices:this.preview.eventChoices(this.currentEvent).map(c=>({id:c.id,label:c.label}))}:null};
+  }
+  // Advance the actual experimental calendar one day at a time. Never skip a pending item.
+  tickDay(){
+    if(this.phase!=='running')throw new Error('Calendar must be running');
+    const next=this.timeline[this.cursor];
+    if(next&&this.day>=next.day)throw new Error('Process the scheduled item before advancing');
+    if(this.day>=daysInYear(this.year))throw new Error('Process year completion');
+    this.day++;
+    return this.snapshot();
   }
   // One synchronous step reaches the next scheduled item, without timers.
   advance(){
@@ -57,6 +70,15 @@ export class ExperimentalYearSession {
     this.phase='waiting';
     return {type:'decision',day:this.day,...this.snapshot()};
   }
+  recentlyRepeated(event){
+    // Keep meaningful recurring events possible, but prevent identical unresolved
+    // dilemmas from occupying consecutive years in the experimental flow.
+    const gap={'gap-year-direction':2,'university-application':2,
+      'military-service-decision':3,'adult-dating':2,'parent-study-pressure':3}[event.id];
+    if(!gap)return false;
+    return this.preview.state.history.some(h=>h.kind==='choice'&&h.eventId===event.id&&
+      Number.isFinite(h.age)&&this.preview.state.player.age-h.age<gap);
+  }
   choose(choiceId){
     if(this.phase!=='waiting'||!this.currentEvent)throw new Error('No pending decision');
     const event=this.currentEvent;
@@ -66,7 +88,7 @@ export class ExperimentalYearSession {
     if(this.preview.state.player.alive&&this.decisions<this.maxDecisions){
       // Re-evaluate eligibility AFTER the choice. Never repeat an event in one year.
       const candidates=this.preview.events.eligible(this.preview.state)
-        .filter(e=>!this.presentedIds.has(e.id)&&
+        .filter(e=>!this.presentedIds.has(e.id)&&!this.recentlyRepeated(e)&&
           Number.isFinite(e.weight?.(this.preview.state)??1)&&(e.weight?.(this.preview.state)??1)>0);
       if(candidates.length){
         const priority=Math.max(...candidates.map(e=>e.priority??0));
