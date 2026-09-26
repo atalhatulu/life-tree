@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: 22
       - name: Verify calendar and monthly finance
-        run: node --test tests/year_flow_experiment.test.js tests/year_session_experiment.test.js tests/experimental_monthly_finance.test.js tests/experimental_checkpoint.test.js
+        run: node --test tests/year_flow_experiment.test.js tests/year_session_experiment.test.js tests/experimental_monthly_finance.test.js tests/experimental_checkpoint.test.js tests/event_calendar.test.js
       - name: Play and capture full life
         run: node experimental/simulate_year_flow.js "${{ matrix.seed }}" "${{ matrix.policy }}" "${{ matrix.target_age || 25 }}" | tee playthrough.json.log
       - uses: actions/upload-artifact@v4
