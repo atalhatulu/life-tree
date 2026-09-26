@@ -51,6 +51,9 @@ test('same seed and same decisions reproduce identical annual preview',()=>{
     session.start();
     const log=[];
     for(let step=0;step<40&&session.phase!=='complete';step++){
+      const next=session.timeline[session.cursor];
+      const target=next?.day??session.snapshot().totalDays;
+      while(session.day<target)session.tickDay();
       const item=session.advance();
       log.push([item.type,item.day,item.pending?.id??null]);
       if(item.type==='decision')session.choose(item.pending.choices[0].id);
