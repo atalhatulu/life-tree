@@ -1,4 +1,5 @@
 import {ensureNpcGoal,updateNpcGoal} from '../life/npc_goal_system.js';
+import {simulateNpcRoutineWeek} from './npc_daily_routine.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export function ensureFriendLife(friend){
@@ -28,6 +29,8 @@ export function processFriendLivesYear(state,rng){
     life.personalStress*.16+
     (friend.closeFriend?8:0)
   );
+  const routine=simulateNpcRoutineWeek(friend,{year:state.year,kind:'friend'});
+  friend.socialAvailability=routine.availability;
   updateNpcGoal(friend,{
    careerSatisfaction:life.workStability,
    financialStability:life.workStability,
