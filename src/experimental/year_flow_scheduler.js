@@ -14,8 +14,8 @@ export function scheduleYearPresentation({seed,year,history=[],decision=null}){
   const total=daysInYear(year);
   const title=String(decision?.title??'').toLocaleLowerCase('tr-TR');
   const fallback={...decision};
-  if(!decision?.calendar&&!decision?.id){
-    if(/yaz tatili|yazlık|yaz kampı/.test(title))fallback.calendar={earliest_date:'06-15',latest_date:'07-19'};
+  if(!decision?.calendar){
+    if(/yaz tatili|yazlık|yaz kampı/.test(title))fallback.calendar={earliest_date:'06-13',latest_date:'07-18'};
     else if(/okul açıl|yeni eğitim yılı|dershane/.test(title))fallback.calendar={earliest_date:'09-01',latest_date:'09-30'};
     else if(/yılbaşı/.test(title))fallback.calendar={earliest_date:'12-26',latest_date:'12-31'};
   }
