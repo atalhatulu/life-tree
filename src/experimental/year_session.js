@@ -14,6 +14,7 @@ export class ExperimentalYearSession {
     this.year=this.preview.state.year+1;
     this.day=1;
     this.phase='ready';
+    this.committed=false;
     this.timeline=[];
     this.cursor=0;
     this.currentEvent=null;
@@ -39,7 +40,9 @@ export class ExperimentalYearSession {
     return this.snapshot();
   }
   snapshot(){
-    return {year:this.year,day:this.day,totalDays:daysInYear(this.year),
+    const date=new Date(Date.UTC(this.year,0,this.day));
+    return {year:this.year,day:this.day,month:date.getUTCMonth()+1,dayOfMonth:date.getUTCDate(),
+      isoDate:date.toISOString().slice(0,10),totalDays:daysInYear(this.year),
       phase:this.phase,decisions:this.decisions,pending:this.currentEvent?
       {id:this.currentEvent.id,title:this.currentEvent.title,choices:this.preview.eventChoices(this.currentEvent).map(c=>({id:c.id,label:c.label}))}:null};
   }
@@ -52,17 +55,27 @@ export class ExperimentalYearSession {
     this.day++;
     return this.snapshot();
   }
-  // One synchronous step reaches the next scheduled item, without timers.
+  pause(){
+    if(this.phase!=='running')throw new Error('Only a running calendar can be paused');
+    this.phase='paused';return this.snapshot();
+  }
+  resume(){
+    if(this.phase!=='paused')throw new Error('Only a paused calendar can resume');
+    this.phase='running';return this.snapshot();
+  }
+  // A scheduled item may only be processed when the calendar reaches its day.
   advance(){
     if(this.phase==='ready')throw new Error('Start the year first');
     if(this.phase==='waiting')throw new Error('Resolve the pending decision first');
+    if(this.phase==='paused')throw new Error('Resume the calendar first');
     if(this.phase==='complete')return {type:'complete',...this.snapshot()};
     const item=this.timeline[this.cursor++];
     if(!item){
-      this.day=daysInYear(this.year);this.phase='complete';
+      if(this.day!==daysInYear(this.year))throw new Error('Reach December 31 before completing the year');
+      this.phase='complete';
       return {type:'complete',...this.snapshot()};
     }
-    this.day=Math.max(this.day,item.day);
+    if(this.day!==item.day){this.cursor--;throw new Error('Reach scheduled day before processing item');}
     if(item.type==='notice')return {type:'notice',day:this.day,text:item.text,...this.snapshot()};
     const event=this.preview.events.events.find(e=>e.id===item.id);
     if(!event||!this.preview.eventChoices(event).length)return this.advance();
@@ -110,10 +123,13 @@ export class ExperimentalYearSession {
   // Only an explicit caller can adopt the preview; the live Game stays untouched otherwise.
   commit(){
     if(this.phase!=='complete')throw new Error('Complete the year before committing');
+    if(this.committed)throw new Error('Year already committed');
+    if(this.game.state.year!==this.year-1)throw new Error('Live game changed during the experimental year');
     this.game.state=structuredClone(this.preview.state);
     this.game.rng.seed=this.preview.rng.seed;
     this.game.rng.state=this.preview.rng.state;
     this.game.activeEventId=null;
+    this.committed=true;
     return this.game;
   }
 }
