@@ -838,62 +838,95 @@ function renderTimeline() {
 
 let yearFlow=null;
 const YEAR_MONTHS=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+function yearDays(year){return (year%4===0&&(year%100!==0||year%400===0))?366:365;}
 function yearFlowDate(day,year){const date=new Date(Date.UTC(year,0,day));return date.getUTCDate()+' '+YEAR_MONTHS[date.getUTCMonth()]+' '+year;}
 function yearFlowProgress(day,year){
-  const panel=$('#yearFlow');
-  if(!panel)return;
+  const panel=$('#yearFlow');if(!panel)return;
   panel.hidden=false;
   $('#yearFlowDate').textContent=yearFlowDate(day,year);
-  $('#yearFlowBar').style.width=Math.min(100,day/365*100)+'%';
-  $('#yearFlowCaption').textContent=day>=365?'Yıl tamamlandı':yearFlow?.waiting?'Kararın bekleniyor':'Yılın günleri ilerliyor…';
+  $('#yearFlowBar').style.width=Math.min(100,day/yearDays(year)*100)+'%';
+  $('#yearFlowCaption').textContent=day>=yearDays(year)?'Yıl tamamlandı':yearFlow?.waiting?'Kararın bekleniyor':'Yılın günleri ilerliyor…';
 }
 function endYearFlow(){
   if(!yearFlow)return;
   yearFlow=null;
   const panel=$('#yearFlow');if(panel)panel.hidden=true;
   $('#ageUp').disabled=!game.state.player.alive||Boolean(pendingEvent||yearMoment);
+  $('#autoLife').disabled=false;
+  $('#simulateEnd').disabled=!game.state.player.alive;
 }
 async function animateYearDays(flow,from,to){
-  for(let day=from;day<=to;day+=Math.max(1,Math.ceil((to-from)/28))){
+  const duration=Math.max(400,Number($('#autoSpeed')?.value??420)*2.6);
+  const steps=Math.max(1,Math.ceil(duration/55));
+  for(let step=0;step<=steps;step++){
     if(yearFlow!==flow)return false;
-    yearFlowProgress(Math.min(day,to),flow.year);
-    await sleep(65);
+    yearFlowProgress(Math.round(from+(to-from)*step/steps),flow.year);
+    if(step<steps)await sleep(duration/steps);
   }
-  if(yearFlow!==flow)return false;
-  yearFlowProgress(to,flow.year);
-  return true;
+  return yearFlow===flow;
+}
+function yearFlowNotice(flow,item){
+  const container=$('#yearFlowNotices');if(!container)return;
+  const article=document.createElement('article');article.className='year-flow-notice';
+  const date=document.createElement('small');date.textContent=yearFlowDate(item.day,flow.year);
+  const description=document.createElement('p');description.textContent=item.text;
+  article.append(date,description);container.prepend(article);
+  while(container.children.length>4)container.lastElementChild.remove();
+}
+function yearFlowSchedule(history,year,eventDay,seed){
+  const rng=new RNG(seed+':year-flow-notices:'+year);
+  const entries=history.filter(item=>typeof (item.text??item.result)==='string'&&(item.text??item.result).trim()).slice(0,6);
+  return entries.map((item,index)=>{
+    const day=Math.max(8,Math.min(eventDay-4,Math.floor((index+1)*eventDay/(entries.length+1))+rng.int(-8,8)));
+    return {day,text:item.text??item.result};
+  }).sort((a,b)=>a.day-b.day);
+}
+async function playYearUntil(flow,target){
+  const notices=flow.notices.filter(item=>item.day>flow.day&&item.day<=target);
+  for(const notice of notices){
+    if(!await animateYearDays(flow,flow.day,notice.day))return false;
+    flow.day=notice.day;yearFlowNotice(flow,notice);
+    await sleep(Math.min(550,Number($('#autoSpeed')?.value??420)));
+    if(yearFlow!==flow)return false;
+  }
+  if(!await animateYearDays(flow,flow.day,target))return false;
+  flow.day=target;return true;
 }
 async function finishYearFlow(flow){
-  if(yearFlow!==flow)return;
-  flow.waiting=false;
+  if(yearFlow!==flow||flow.finishing)return;
+  flow.finishing=true;flow.waiting=false;
   $('#yearFlowCaption').textContent='Yılın geri kalanı ilerliyor…';
-  if(!await animateYearDays(flow,flow.eventDay,365))return;
-  endYearFlow();
-  render();
+  if(!await playYearUntil(flow,yearDays(flow.year)))return;
+  endYearFlow();render();
 }
 async function startYearFlow(){
   if(yearFlow||pendingEvent||yearMoment||autoLifeRunning||!game.state.player.alive)return;
-  const year=game.state.year;
+  const year=game.state.year+1;
   const rng=new RNG(game.seedText+':year-flow:'+year+':'+game.state.player.age);
   const eventDay=75+rng.int(0,225);
-  const flow={year,eventDay,waiting:false};
+  const flow={year,eventDay,day:1,waiting:false,finishing:false,notices:[]};
   yearFlow=flow;
   switchScreen('lifeScreen');
-  $('#ageUp').disabled=true;
+  $('#ageUp').disabled=true;$('#autoLife').disabled=true;$('#simulateEnd').disabled=true;
+  $('#yearFlowNotices').replaceChildren();
   yearFlowProgress(1,year);
-  if(!await animateYearDays(flow,1,eventDay))return;
-  if(yearFlow!==flow)return;
+  // The existing engine resolves one complete year atomically. Keep its results
+  // off-screen until their dated presentation; do not rerun its side effects.
+  const previousHistoryLength=game.state.history.length;
   activityMessage='';
-  pendingEvent=game.ageOneYear();
-  if(!pendingEvent&&game.state.player.alive)yearMoment=makeYearMoment();
+  try{
+    pendingEvent=game.ageOneYear();
+    if(!pendingEvent&&game.state.player.alive)yearMoment=makeYearMoment();
+  }catch(error){
+    endYearFlow();showToast('Yıl ilerletilemedi: '+error.message);render();return;
+  }
+  flow.notices=yearFlowSchedule(game.state.history.slice(previousHistoryLength),year,eventDay,game.seedText);
+  if(!await playYearUntil(flow,eventDay))return;
   if(pendingEvent||yearMoment){
-    flow.waiting=true;
-    render();
-    yearFlowProgress(eventDay,year);
+    flow.waiting=true;render();yearFlowProgress(eventDay,year);
     $('#yearFlowCaption').textContent='Bu tarihte bir karar vermen gerekiyor';
   }else{
-    render();
-    await finishYearFlow(flow);
+    render();await finishYearFlow(flow);
   }
 }
 function renderEvent() {
@@ -1201,6 +1234,7 @@ async function fastForwardToEnd(){
 }
 
 function switchScreen(id){
+  if(yearFlow?.waiting&&id!=='lifeScreen')return;
   document.querySelectorAll('.screen-panel').forEach(panel=>panel.classList.toggle('active',panel.id===id));
   document.querySelectorAll('.nav-item').forEach(button=>button.classList.toggle('active',button.dataset.screen===id||(id==='careerScreen'&&button.dataset.screen==='activitiesScreen')||(id==='albumScreen'&&button.dataset.screen==='treeScreen')));
   const active=document.getElementById(id);
