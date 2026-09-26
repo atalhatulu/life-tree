@@ -104,6 +104,7 @@ function changePersonRelationship(target,delta){
   }
 }
 function personActions(target){
+  if(!game.state.player.alive||target.person.alive===false)return [];
   const actions=[];
   if(target.type==='partner'){
     actions.push({id:'talk',label:'Uzun konuş',cost:0,rel:4,stress:-2});
@@ -127,8 +128,9 @@ function personActions(target){
   return actions;
 }
 function applyPersonAction(targetKey,actionId){
+  if(!game.state.player.alive){activityMessage='Hayat sona erdi; artık etkileşim yapılamaz.';render();return;}
   const target=personTarget(targetKey);
-  if(!target)return;
+  if(!target||target.person.alive===false)return;
   const action=personActions(target).find(x=>x.id===actionId);
   if(!action)return;
   if(game.state.actions.remaining<=0){activityMessage='Bu yıl aksiyon hakkın kalmadı.';return;}
@@ -165,12 +167,13 @@ function applyPersonAction(targetKey,actionId){
   render();
 }
 function personActionButton(key){
+  if(!game.state.player.alive||personTarget(key)?.person.alive===false)return '';
   return `<button class="person-action-toggle" data-person-target="${key}" ${game.state.actions.remaining<=0?'disabled':''}>Etkileşim</button>`;
 }
 function personActionPanel(key){
-  if(personActionTarget!==key)return '';
+  if(!game.state.player.alive||personActionTarget!==key)return '';
   const target=personTarget(key);
-  if(!target)return '';
+  if(!target||target.person.alive===false)return '';
   return `<div class="person-action-panel"><div class="person-action-head"><span>${target.label} ile ne yapmak istiyorsun?</span><small>${game.state.actions.remaining}/${game.state.actions.max} aksiyon</small></div><div class="person-action-grid">${personActions(target).map(a=>`<button data-person-action="${a.id}" data-person-key="${key}"><span>${a.label}</span><small>${a.cost?money(a.cost):'Ücretsiz'}</small></button>`).join('')}</div></div>`;
 }
 
@@ -198,6 +201,7 @@ const LEISURE={
  shopping:{label:'Alışveriş yap',costs:[500,1500,4000]}
 };
 function applyLeisure(kind,companionId,tier){
+  if(!game.state.player.alive){activityMessage='Hayat sona erdi.';return;}
   if(game.state.player.age<19){activityMessage='Bu etkinlikleri ailenle yapabilir veya harçlığınla ilgili seçenekleri kullanabilirsin.';return;}
   if(game.state.actions.remaining<=0){activityMessage='Bu yıl aksiyon hakkın kalmadı.';return;}
   const def=LEISURE[kind], cost=def.costs[tier];
@@ -252,6 +256,7 @@ function spendChildMoney(amount,label){
   return label;
 }
 function applyYearMoment(choice){
+  if(!game.state.player.alive)return;
   const s=game.state;
   s.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
   s.childMoney??={wallet:0,saved:0,totalAllowance:0,totalSpent:0,lastAllowanceAge:null};
