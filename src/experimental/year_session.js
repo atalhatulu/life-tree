@@ -36,7 +36,7 @@ export class ExperimentalYearSession {
     // A repeated event can be replaced by another currently eligible event.
     const validInitial=e=>e&&!this.recentlyRepeated(e)&&scheduleEventDay({event:e,year:this.year,rng:new RNG(this.seed+':initial-window:'+e.id),totalDays:daysInYear(this.year),triggerDay:eventTriggerDay(e,{year:this.year,yearStartState:this.game.state})})!=null;
     const initial=validInitial(first)?first:this.preview.events.eligible(this.preview.state)
-      .filter(e=>e.id!==first.id&&validInitial(e))
+      .filter(e=>e.id!==first?.id&&validInitial(e))
       .sort((a,b)=>(b.priority??0)-(a.priority??0))[0]??null;
     this.timeline=scheduleYearPresentation({
       seed:this.seed,year:this.year,
