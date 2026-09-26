@@ -47,6 +47,7 @@ export function eventTriggerDay(event,{year,yearStartState}){
 }
 export function scheduleEventDay({event,year,rng,afterDay=0,totalDays,triggerDay=0}){
  const {start,end}=eventWindow(event,year,totalDays);
- const earliest=Math.max(start,afterDay+1);
+ if(triggerDay==null)return null;
+ const earliest=Math.max(start,afterDay+1,triggerDay);
  return earliest>end?null:rng.int(earliest,end);
 }
