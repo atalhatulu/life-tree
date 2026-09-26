@@ -34,3 +34,34 @@ test('a scheduled decision is revalidated when its day arrives',()=>{
  assert.equal(session.advance().type,'skipped');
  assert.equal(session.phase,'running'); 
 });
+
+test('monthly debt interest is charged once and never twice for the same month',()=>{
+ const game=new Game('debt-interest-fixture');const state=game.state;
+ state.player.age=30;state.year=2056;
+ state.career={employed:false,monthlyIncome:0};
+ state.nextPath='work';state.finance={cash:0,savings:0,debt:120000,debts:{consumer:120000,medical:0,housing:0,car:0,emergency:0},
+  lifestyle:{housing:'family',food:'standard',clothing:'basic',transport:'public'}};
+ const january=settleExperimentalMonth(state,1);
+ assert.ok(january.interestCharged>0);
+ assert.ok(january.debt>120000);
+ assert.throws(()=>settleExperimentalMonth(state,1),/already settled/);
+ assert.equal(state.finance.experimentalMonthlyLedger.length,1);
+});
+test('monthly family support follows enrollment and living parents',()=>{
+ const game=new Game('monthly-family-fixture');const state=game.state;
+ state.player.age=20;state.year=2040;state.nextPath='university';
+ state.higherEducation={enrolled:true};state.career={employed:false,monthlyIncome:0};
+ state.parents.mother.alive=true;state.parents.father.alive=true;
+ const january=settleExperimentalMonth(state,1);
+ state.higherEducation.enrolled=false;state.nextPath='work';
+ const february=settleExperimentalMonth(state,2);
+ assert.ok(january.income>february.income);
+});
+test('twelve monthly settlements create one annual budget summary',()=>{
+ const game=new Game('monthly-annual-fixture');const state=game.state;
+ state.player.age=25;state.year=2050;state.career={employed:true,monthlyIncome:65000};
+ for(let month=1;month<=12;month++)settleExperimentalMonth(state,month);
+ assert.equal(state.finance.experimentalMonthlyLedger.filter(e=>e.year===2050).length,12);
+ assert.equal(state.history.filter(e=>e.kind==='finance').length,1);
+ assert.throws(()=>settleExperimentalMonth(state,12),/already settled/);
+});
