@@ -3,7 +3,7 @@ import {ExperimentalYearSession} from '../src/experimental/year_session.js';
 import {calendarDate} from '../src/experimental/year_flow_scheduler.js';
 const $=id=>document.getElementById(id);
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-let game,session,token=0;
+let game,session,token=0,shownMonths=0;
 function dateText(year,day){return new Intl.DateTimeFormat('tr-TR',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}).format(calendarDate(year,day));}
 function refresh(){
   $('identity').textContent=game.state.player.name+' '+game.state.player.surname;
@@ -22,7 +22,17 @@ async function animateTo(day,localToken){
   for(let i=1;i<=steps;i++){
     if(token!==localToken)return false;
     const shown=Math.round(from+(to-from)*i/steps);
-    while(session.day<shown)session.tickDay();
+    while(session.day<shown){
+      session.tickDay();
+      const ledger=session.preview.state.finance?.experimentalMonthlyLedger??[];
+      while(shownMonths<ledger.length){
+        const entry=ledger[shownMonths++];
+        const date=new Date(Date.UTC(entry.year,entry.month,0));
+        const day=Math.round((date-Date.UTC(entry.year,0,1))/86400000)+1;
+        add('Gelir ₺'+entry.income.toLocaleString('tr-TR')+' · gider ₺'+entry.expense.toLocaleString('tr-TR')+
+          ' · net ₺'+entry.net.toLocaleString('tr-TR')+' · borç ₺'+entry.debt.toLocaleString('tr-TR'),day,'Aylık bütçe');
+      }
+    }
     $('date').textContent=dateText(session.year,session.day);$('progress').value=session.day;
     await pause(Number($('speed').value));
   }
@@ -62,7 +72,7 @@ async function run(localToken){
   }
 }
 function reset(){
-  token++;game=new Game('year-flow-lab-'+Date.now());session=null;
+  token++;shownMonths=0;game=new Game('year-flow-lab-'+Date.now());session=null;
   $('feed').replaceChildren();$('status').textContent='Deney için yeni bir yıl başlat.';
   $('start').disabled=false;$('date').textContent=dateText(game.state.year+1,1);
   $('progress').value=1;$('progress').max=365;refresh();
@@ -70,7 +80,7 @@ function reset(){
 $('start').onclick=()=>{
   if(session&&session.phase!=='complete')return;
   if(!game.state.player.alive)return;
-  session=new ExperimentalYearSession(game,{maxDecisions:3});
+  shownMonths=0;session=new ExperimentalYearSession(game,{maxDecisions:3});
   try{session.start();}catch(error){$('status').textContent=error.message;return;}
   $('start').disabled=true;$('feed').replaceChildren();refresh();
   $('status').textContent='Yıl ilerliyor…';void run(++token);
