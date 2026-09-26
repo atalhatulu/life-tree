@@ -35,10 +35,10 @@ function actorFor(state,initiative){
   const p=state.social?.romance;
   if(!p)return null;
   const id=p.id??'partner';
-  return id===initiative.actorId?p:null;
+  return id===initiative.actorId&&p.alive!==false?p:null;
  }
- if(initiative.type==='child-direction')return (state.children??[]).find(c=>c.id===initiative.actorId)??null;
- if(initiative.type==='friend-support-request')return (state.social?.friends??[]).find(f=>f.id===initiative.actorId)??null;
+ if(initiative.type==='child-direction')return (state.children??[]).find(c=>c.id===initiative.actorId&&c.alive!==false)??null;
+ if(initiative.type==='friend-support-request')return (state.social?.friends??[]).find(f=>f.id===initiative.actorId&&f.alive!==false)??null;
  return null;
 }
 
@@ -87,7 +87,7 @@ function canRepeatTopic(state,type,actorId,currentSeverity){
 
 function partnerInitiative(state,rng){
  const p=state.social?.romance;
- if(!p||!['cohabiting','married'].includes(p.status))return null;
+ if(!p||p.alive===false||!['cohabiting','married'].includes(p.status))return null;
  const goal=ensureNpcGoal(p);
  const last=p.lastInitiativeAge??-99;
  if(state.player.age-last<3)return null;
@@ -133,7 +133,7 @@ function partnerInitiative(state,rng){
 
 function childInitiative(state,rng){
  for(const child of state.children??[]){
-  if(child.age<16||child.age>20)continue;
+  if(child.alive===false||child.age<16||child.age>20)continue;
   const goal=ensureNpcGoal(child,'child');
   const last=child.lastInitiativeAge??-99;
   if(state.player.age-last<2)continue;
@@ -162,7 +162,7 @@ function childInitiative(state,rng){
 }
 
 function friendInitiative(state,rng){
- const friend=(state.social?.friends??[]).find(f=>f.closeFriend&&f.needsSupport);
+ const friend=(state.social?.friends??[]).find(f=>f.alive!==false&&f.closeFriend&&f.needsSupport);
  if(!friend)return null;
  const last=friend.lastInitiativeAge??-99;
  if(state.player.age-last<3)return null;
@@ -180,6 +180,7 @@ function friendInitiative(state,rng){
 }
 
 export function generateNpcInitiatives(state,rng){
+ if(!state.player?.alive)return [];
  const store=prunePending(state);
  if(store.pending.length)return [];
  const created=[
@@ -191,6 +192,7 @@ export function generateNpcInitiatives(state,rng){
 }
 
 export function pendingInitiative(state,type){
+ if(!state.player?.alive)return null;
  return ensureNpcInitiatives(state).pending.find(x=>x.status==='pending'&&x.expiresAtAge>=state.player.age&&Boolean(actorFor(state,x))&&(!type||x.type===type))??null;
 }
 
@@ -205,6 +207,7 @@ function archive(state,initiative,response){
 }
 
 export function resolveNpcInitiative(state,type,response){
+ if(!state.player?.alive)throw new Error('Hayat sona erdi; NPC istekleri yanıtlanamaz.');
  const initiative=pendingInitiative(state,type);
  if(!initiative)throw new Error('Bekleyen NPC isteği artık geçerli değil.');
  const actor=actorFor(state,initiative);
@@ -266,6 +269,7 @@ export function resolveNpcInitiative(state,type,response){
 }
 
 export function processNpcInitiativeFollowups(state){
+ if(!state.player?.alive)return [];
  const entries=[];
  const history=ensureNpcInitiatives(state).history;
  for(const item of history){
@@ -283,14 +287,14 @@ export function processNpcInitiativeFollowups(state){
    }
   }
   if(item.type==='child-direction'){
-   const child=(state.children??[]).find(c=>c.id===item.actorId);
+   const child=(state.children??[]).find(c=>c.id===item.actorId&&c.alive!==false);
    if(child){
     if(item.response==='accept'){child.relationship=clamp((child.relationship??65)+2);entries.push({age:state.player.age,kind:'npc-followup',text:child.name+' kendi yolunu seçmesine izin vermeni önemli bir dönüm noktası olarak görüyor.'});}
     if(item.response==='reject'){child.relationship=clamp((child.relationship??65)-2);entries.push({age:state.player.age,kind:'npc-followup',text:child.name+' geleceğiyle ilgili eski anlaşmazlığınızı hâlâ unutmuş değil.'});}
    }
   }
   if(item.type==='friend-support-request'){
-   const f=(state.social?.friends??[]).find(x=>x.id===item.actorId);
+   const f=(state.social?.friends??[]).find(x=>x.id===item.actorId&&x.alive!==false);
    if(f){
     if(item.response==='accept'){f.reciprocity=clamp((f.reciprocity??50)+5);entries.push({age:state.player.age,kind:'npc-followup',text:f.name+' zor zamanında yanında olmanı unutmadı; artık sana daha çok destek oluyor.'});}
     if(item.response==='reject'){f.reciprocity=clamp((f.reciprocity??50)-5);entries.push({age:state.player.age,kind:'npc-followup',text:f.name+' eski destek talebinin karşılıksız kalmasını arkadaşlığınızda hâlâ hissediyor.'});}
