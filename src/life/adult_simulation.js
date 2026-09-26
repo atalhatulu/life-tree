@@ -34,7 +34,7 @@ import {processNarrativeEchoesYear} from './narrative_echo_system.js';
 import {processLongTermConsequences} from './long_term_consequence_system.js';
 import {generateNpcInitiatives,processNpcInitiativeFollowups} from './npc_initiative_system.js';
 
-export function processAdultYear(state,rng){
+export function processAdultYear(state,rng,{deferFinance=false}={}){
  const entries=[];
  const age=state.player.age;
  if(age<19||!state.player.alive) return entries;
@@ -84,7 +84,7 @@ export function processAdultYear(state,rng){
 
  const transitionPending=state.pendingUniversityApplications||state.pendingJobOffers||state.pendingCareerOffers;
  if(age>=20||state.career?.employed||state.higherEducation?.enrolled){
-  if(!transitionPending||age>=20) entries.push(...processPersonalFinanceYear(state));
+  if(!deferFinance&&(!transitionPending||age>=20)) entries.push(...processPersonalFinanceYear(state));
   entries.push(...processHouseholdDepthYear(state,rng.fork('household-depth')));
   entries.push(...processMemoryConsequencesYear(state));
   entries.push(...processConsequenceChainsYear(state,rng.fork('consequence-chains')));
