@@ -33,8 +33,14 @@ for(let yearIndex=0;yearIndex<25&&game.state.player.alive;yearIndex++){
   check(session.phase==='complete','Annual session reaches December 31');
   check(game.state.year===before.year,'Preview never commits before year end');
   session.commit();
+  const ledger=game.state.finance?.experimentalMonthlyLedger?.filter(entry=>entry.year===game.state.year)??[];
+  if(game.state.player.age>=19){
+    check(ledger.length===12,'Every adult year settles exactly twelve months');
+    check(new Set(ledger.map(entry=>entry.month)).size===12,'No month settles twice');
+    check(ledger.every(entry=>Number.isFinite(entry.cash)&&Number.isFinite(entry.debt)&&entry.debt>=0),'Monthly ledger remains finite and nonnegative');
+  }
   check(game.state.year===before.year+1,'Commit advances exactly one year');
-  output.years.push({year:game.state.year,age:game.state.player.age,alive:game.state.player.alive,beforeStats,afterStats:{health:game.state.player.health,money:game.state.player.money},events:log});
+  output.years.push({year:game.state.year,age:game.state.player.age,alive:game.state.player.alive,beforeStats,afterStats:{health:game.state.player.health,money:game.state.player.money},events:log,monthlyLedger:ledger});
 }
 output.summary={years:output.years.length,decisions:decisionCount,notices:noticeCount,pauses:paused,alive:game.state.player.alive,finalAge:game.state.player.age,checks:output.assertions.length};
 console.log(JSON.stringify(output,null,2));
