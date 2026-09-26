@@ -1,4 +1,5 @@
 import {RNG} from '../core/rng.js';
+import {createSavePayload} from '../core/save_system.js';
 import {daysInYear,scheduleYearPresentation} from './year_flow_scheduler.js';
 
 // Experimental session: the live Game is never mutated. A year is calculated
@@ -8,10 +9,7 @@ export class ExperimentalYearSession {
     if(!game?.state?.player?.alive)throw new Error('Cannot start a year for a deceased player');
     if(!Number.isInteger(maxDecisions)||maxDecisions<1||maxDecisions>5)throw new RangeError('maxDecisions must be 1..5');
     this.game=game;
-    this.preview=game.constructor.fromSave({
-      seedText:game.seedText,state:structuredClone(game.state),
-      rng:{seed:game.rng.seed,state:game.rng.state},activeEventId:game.activeEventId
-    });
+    this.preview=game.constructor.fromSave(createSavePayload(game));
     this.maxDecisions=maxDecisions;
     this.year=this.preview.state.year+1;
     this.day=1;
