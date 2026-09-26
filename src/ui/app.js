@@ -329,6 +329,7 @@ function applyYearMoment(choice){
   refreshPrimaryStats(s);
   s.history.push({age:s.player.age,kind:'year-moment',choiceId:choice,text});
   yearMoment=null;render();
+  if(yearFlow?.waiting)void finishYearFlow(yearFlow);
 }
 
 function updateBar(id, value) {
@@ -919,8 +920,8 @@ function renderEvent() {
         requestAnimationFrame(()=>document.querySelector('.life-trail-decision')?.scrollIntoView({behavior:'smooth',block:'start'}));
       });
     }else card.innerHTML='';
-    $('#ageUp').disabled=dead;
-    $('#autoLife').disabled=false;
+    $('#ageUp').disabled=dead||Boolean(yearFlow);
+    $('#autoLife').disabled=Boolean(yearFlow);
     return;
   }
   $('#ageUp').disabled=true;
@@ -1106,6 +1107,7 @@ async function autoLifeLoop(token){
 }
 function toggleAutoLife(){
   if(!game.state.player.alive){newLife();return;}
+  if(yearFlow)return;
   if(autoLifeRunning){
     autoLifeRunning=false;autoLifeToken++;
     $('#autoLife').classList.remove('running');
@@ -1123,6 +1125,7 @@ function toggleAutoLife(){
 }
 
 async function fastForwardToEnd(){
+  if(yearFlow)return;
   if(!game.state.player.alive){
     switchScreen('treeScreen');
     render();
