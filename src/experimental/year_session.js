@@ -1,5 +1,6 @@
 import {RNG} from '../core/rng.js';
 import {createSavePayload} from '../core/save_system.js';
+import {settleExperimentalMonth} from './monthly_finance.js';
 import {daysInYear,scheduleYearPresentation} from './year_flow_scheduler.js';
 
 // Experimental session: the live Game is never mutated. A year is calculated
@@ -26,7 +27,7 @@ export class ExperimentalYearSession {
   }
   start(){
     if(this.phase!=='ready')throw new Error('Year already started');
-    const first=this.preview.ageOneYear();
+    const first=this.preview.ageOneYear({deferFinance:true});
     // A repeated event can be replaced by another currently eligible event.
     const initial=first&&this.recentlyRepeated(first)?this.preview.events.eligible(this.preview.state)
       .filter(e=>e.id!==first.id&&!this.recentlyRepeated(e))
@@ -52,8 +53,23 @@ export class ExperimentalYearSession {
     const next=this.timeline[this.cursor];
     if(next&&this.day>=next.day)throw new Error('Process the scheduled item before advancing');
     if(this.day>=daysInYear(this.year))throw new Error('Process year completion');
+    const priorMonth=new Date(Date.UTC(this.year,0,this.day)).getUTCMonth()+1;
     this.day++;
+    const currentMonth=new Date(Date.UTC(this.year,0,this.day)).getUTCMonth()+1;
+    if(currentMonth!==priorMonth)this.settleMonth(priorMonth);
     return this.snapshot();
+  }
+  settleMonth(month){
+    const entry=settleExperimentalMonth(this.preview.state,month);
+    if(entry){
+      const day=new Date(Date.UTC(this.year,month,0)).getUTCDate();
+      const dayOfYear=Math.round((Date.UTC(this.year,month-1,day)-Date.UTC(this.year,0,1))/86400000)+1;
+      this.timeline.push({type:'notice',day:dayOfYear,text:'Aylık bütçe: gelir ₺'+entry.income+' • gider ₺'+entry.expense+' • net ₺'+entry.net,sourceKind:'finance'});
+      this.timeline.sort((a,b)=>a.day-b.day||(a.type==='notice'?-1:1));
+      // Reposition cursor past items already processed, including this month's notice.
+      this.cursor=this.timeline.findIndex(item=>item.day>=this.day);
+      if(this.cursor<0)this.cursor=this.timeline.length;
+    }
   }
   pause(){
     if(this.phase!=='running')throw new Error('Only a running calendar can be paused');
@@ -72,6 +88,7 @@ export class ExperimentalYearSession {
     const item=this.timeline[this.cursor++];
     if(!item){
       if(this.day!==daysInYear(this.year))throw new Error('Reach December 31 before completing the year');
+      this.settleMonth(12);
       this.phase='complete';
       return {type:'complete',...this.snapshot()};
     }
