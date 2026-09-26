@@ -2,6 +2,7 @@ import {focusLifeGoal} from './life_goal_system.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export function availableLifeActions(state){
+ if(!state.player?.alive)return [];
  const actions=[];
  const activeGoal=state.lifeGoals?.active;
  if(activeGoal&&(activeGoal.lastFocusedAge==null||state.player.age-activeGoal.lastFocusedAge>=2))actions.push({id:'focus-goal',label:'Uzun vadeli hedefime odaklan'});
@@ -15,6 +16,7 @@ export function availableLifeActions(state){
 }
 
 export function performLifeAction(state,id){
+ if(!state.player?.alive)throw new Error('Hayat sona erdi; artık eylem yapılamaz.');
  if(state.actions?.remaining<=0)throw new Error('Bu yıl için aksiyon hakkın kalmadı.');
  if(id==='focus-goal')return focusLifeGoal(state);
 
