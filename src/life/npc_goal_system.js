@@ -60,7 +60,7 @@ export function goalAlignment(playerGoalId,npcGoalId){
 
 export function applyPartnerGoalAlignment(state){
  const partner=state.social?.romance;
- if(!partner)return null;
+ if(!partner||partner.alive===false)return null;
  const playerGoal=state.lifeGoals?.active?.id;
  const npcGoal=ensureNpcGoal(partner).id;
  const alignment=goalAlignment(playerGoal,npcGoal);
