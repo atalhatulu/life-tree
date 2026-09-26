@@ -7,12 +7,13 @@ import {eventCalendar,eventTriggerDay,scheduleEventDay} from './event_calendar.j
 // Experimental session: the live Game is never mutated. A year is calculated
 // once on a private clone; subsequent decisions are resolved on that clone.
 export class ExperimentalYearSession {
-  constructor(game,{maxDecisions=3}={}){
+  constructor(game,{maxDecisions=3,calendarMoments=false}={}){
     if(!game?.state?.player?.alive)throw new Error('Cannot start a year for a deceased player');
     if(!Number.isInteger(maxDecisions)||maxDecisions<1||maxDecisions>5)throw new RangeError('maxDecisions must be 1..5');
     this.game=game;
     this.preview=game.constructor.fromSave(createSavePayload(game));
     this.maxDecisions=maxDecisions;
+    this.calendarMoments=calendarMoments;
     this.year=this.preview.state.year+1;
     this.day=1;
     this.phase='ready';
@@ -41,7 +42,7 @@ export class ExperimentalYearSession {
     this.timeline=scheduleYearPresentation({
       seed:this.seed,year:this.year,
       history:this.preview.state.history.slice(this.historyStart),
-      age:this.preview.state.player.age,decision:initial
+      age:this.calendarMoments?this.preview.state.player.age:null,decision:initial
     }).timeline;
     this.phase='running';
     return this.snapshot();
@@ -137,7 +138,7 @@ export class ExperimentalYearSession {
   }
   exportCheckpoint(){
     return {version:1,game:createSavePayload(this.game),preview:createSavePayload(this.preview),
-      maxDecisions:this.maxDecisions,year:this.year,day:this.day,phase:this.phase,
+      maxDecisions:this.maxDecisions,calendarMoments:this.calendarMoments,year:this.year,day:this.day,phase:this.phase,
       committed:this.committed,timeline:structuredClone(this.timeline),cursor:this.cursor,
       currentEventId:this.currentEvent?.id??null,decisions:this.decisions,
       presentedIds:[...this.presentedIds],historyStart:this.historyStart,seed:this.seed,
@@ -160,7 +161,7 @@ export class ExperimentalYearSession {
 export function restoreExperimentalYearSession(Game,checkpoint){
  if(checkpoint?.version!==1||!checkpoint.game||!checkpoint.preview)throw new Error('Invalid experimental checkpoint');
  const game=Game.fromSave(checkpoint.game);
- const session=new ExperimentalYearSession(game,{maxDecisions:checkpoint.maxDecisions});
+ const session=new ExperimentalYearSession(game,{maxDecisions:checkpoint.maxDecisions,calendarMoments:checkpoint.calendarMoments??false});
  session.preview=Game.fromSave(checkpoint.preview);
  if(session.preview.state.year!==checkpoint.year||game.state.year!==checkpoint.year-1)throw new Error('Checkpoint year mismatch');
  if(!Number.isInteger(checkpoint.day)||checkpoint.day<1||checkpoint.day>daysInYear(checkpoint.year))throw new Error('Checkpoint day invalid');
