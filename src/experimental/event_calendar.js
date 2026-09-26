@@ -34,7 +34,18 @@ export function eventWindow(event,year,totalDays){
  if(start>end)throw new RangeError('Event calendar window is inverted: '+event?.id);
  return {start,end,trigger:meta.trigger??'eligible',cooldown:meta.cooldown??0};
 }
-export function scheduleEventDay({event,year,rng,afterDay=0,totalDays}){
+export function eventTriggerDay(event,{year,yearStartState}){
+ const meta=eventCalendar(event);
+ if(meta.trigger!=='diagnosed-condition')return 0;
+ // Annual health progression is currently precomputed. Do not expose a newly
+ // diagnosed condition before the engine has a real diagnosis date.
+ const prior=yearStartState?.healthProfile?.conditions??[];
+ if(!prior.length)return null;
+ const dated=prior.map(c=>c.diagnosedOn??c.diagnosedDate).filter(Boolean);
+ const dates=dated.filter(d=>/^\\d{4}-\\d{2}-\\d{2}$/.test(d)&&Number(d.slice(0,4))===year);
+ return dates.length?Math.min(...dates.map(d=>calendarDay(year,d.slice(5)))):0;
+}
+export function scheduleEventDay({event,year,rng,afterDay=0,totalDays,triggerDay=0}){
  const {start,end}=eventWindow(event,year,totalDays);
  const earliest=Math.max(start,afterDay+1);
  return earliest>end?null:rng.int(earliest,end);
