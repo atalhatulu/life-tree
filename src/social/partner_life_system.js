@@ -1,4 +1,5 @@
 import {JOBS} from '../data/catalog.js';
+import {simulateNpcRoutineWeek} from './npc_daily_routine.js';
 import {ensureNpcGoal,updateNpcGoal,applyPartnerGoalAlignment} from '../life/npc_goal_system.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
@@ -45,6 +46,8 @@ export function processPartnerLifeYear(state,rng){
   life.workStress*.15+
   Math.min(12,(life.personalSavings??0)/100000)
  );
+ const routine=simulateNpcRoutineWeek(partner,{year:state.year,kind:'partner'});
+ partner.socialAvailability=routine.availability;
  updateNpcGoal(partner,{
   careerSatisfaction:life.careerSatisfaction,
   financialStability:Math.min(100,(life.personalSavings??0)/5000),
