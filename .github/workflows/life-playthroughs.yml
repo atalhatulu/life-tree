@@ -1,0 +1,32 @@
+name: Experimental life playthroughs
+on:
+  push:
+    branches: [experiment/year-flow-v2]
+  workflow_dispatch:
+jobs:
+  play:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - seed: life-a-bilecik
+            policy: first
+          - seed: life-b-different
+            policy: last
+          - seed: life-c-alternate
+            policy: alternate
+          - seed: life-d-unexpected
+            policy: last
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Play and capture full life
+        run: node experimental/simulate_year_flow.js "${{ matrix.seed }}" "${{ matrix.policy }}" | tee playthrough.json.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: life-${{ matrix.seed }}-${{ matrix.policy }}
+          path: playthrough.json.log
