@@ -28,7 +28,7 @@ function rerollJob(partner,rng){
 export function processPartnerLifeYear(state,rng){
  const entries=[];
  const partner=state.social?.romance;
- if(!partner||state.player.age<19)return entries;
+ if(!partner||partner.alive===false||state.player.age<19)return entries;
  const life=ensurePartnerLife(partner);
  const npcGoal=ensureNpcGoal(partner);
  life.careerYears+=1;
