@@ -41,7 +41,7 @@ export class ExperimentalYearSession {
     this.timeline=scheduleYearPresentation({
       seed:this.seed,year:this.year,
       history:this.preview.state.history.slice(this.historyStart),
-      decision:initial
+      age:this.preview.state.player.age,decision:initial
     }).timeline;
     this.phase='running';
     return this.snapshot();
@@ -91,7 +91,7 @@ export class ExperimentalYearSession {
     }
     if(this.day!==item.day)throw new Error('Reach scheduled day before processing item');
     this.cursor++;
-    if(item.type==='notice')return {type:'notice',day:this.day,text:item.text,...this.snapshot()};
+    if(item.type==='notice'||item.type==='calendar')return {type:item.type,day:this.day,title:item.title??null,text:item.text,...this.snapshot()};
     const event=this.preview.events.events.find(e=>e.id===item.id);
     if(!event||!this.preview.events.eligible(this.preview.state).some(e=>e.id===event.id)||
       this.recentlyRepeated(event)||this.presentedIds.has(event.id))return {type:'skipped',day:this.day,...this.snapshot()};
