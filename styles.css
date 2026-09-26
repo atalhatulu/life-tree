@@ -2485,3 +2485,14 @@ body:has(#treeScreen.active):not(.reference-ui) .screen{min-width:0;min-height:0
 #treeScreen>.section-head .section-link,#albumScreen>.section-head .section-link{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-height:34px;max-width:58%;padding:7px 10px;border:1px solid #d7e3f0;border-radius:9px;background:#fff;color:#446387;font-size:11px;font-weight:750;cursor:pointer;white-space:normal;text-align:center}
 #albumScreen{min-width:0;overflow-x:hidden;overflow-y:auto}
 #albumScreen #lifeAlbum{min-width:0;max-width:100%;overflow-wrap:anywhere}
+
+
+/* Accelerated year: contained within the existing 9:16 life screen. */
+.year-flow[hidden]{display:none!important}
+.year-flow{display:grid;gap:8px;min-width:0;margin:0 0 12px;padding:13px 14px;border:1px solid #d5e4db;border-radius:13px;background:#f1f8f3;box-shadow:0 3px 12px #344e3b0a}
+.year-flow-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.year-flow-heading small{font-size:9px;font-weight:800;letter-spacing:.11em;color:#779382}
+.year-flow-heading strong{font-size:17px;font-weight:800;color:#315e46;font-variant-numeric:tabular-nums}
+.year-flow-track{height:6px;overflow:hidden;border-radius:999px;background:#d9e7dd}
+.year-flow-track i{display:block;height:100%;width:0;background:#64ad7c;border-radius:inherit;transition:width .07s linear}
+.year-flow p{margin:0;color:#68806f;font-size:10px;line-height:1.4}
