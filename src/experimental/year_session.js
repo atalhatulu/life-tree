@@ -86,7 +86,8 @@ export class ExperimentalYearSession {
     if(this.day!==item.day){this.cursor--;throw new Error('Reach scheduled day before processing item');}
     if(item.type==='notice')return {type:'notice',day:this.day,text:item.text,...this.snapshot()};
     const event=this.preview.events.events.find(e=>e.id===item.id);
-    if(!event||!this.preview.eventChoices(event).length)return this.advance();
+    if(!event||!this.preview.events.eligible(this.preview.state).some(e=>e.id===event.id)||
+      this.recentlyRepeated(event)||this.presentedIds.has(event.id))return this.advance();
     this.currentEvent=event;this.presentedIds.add(event.id);
     this.phase='waiting';
     return {type:'decision',day:this.day,...this.snapshot()};
