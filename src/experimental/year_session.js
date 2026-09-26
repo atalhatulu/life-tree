@@ -2,6 +2,7 @@ import {RNG} from '../core/rng.js';
 import {createSavePayload} from '../core/save_system.js';
 import {settleExperimentalMonth} from './monthly_finance.js';
 import {daysInYear,scheduleYearPresentation} from './year_flow_scheduler.js';
+import {eventCalendar,scheduleEventDay} from './event_calendar.js';
 
 // Experimental session: the live Game is never mutated. A year is calculated
 // once on a private clone; subsequent decisions are resolved on that clone.
@@ -100,8 +101,7 @@ export class ExperimentalYearSession {
   recentlyRepeated(event){
     // Keep meaningful recurring events possible, but prevent identical unresolved
     // dilemmas from occupying consecutive years in the experimental flow.
-    const gap={'gap-year-direction':2,'university-application':2,
-      'military-service-decision':3,'adult-dating':2,'parent-study-pressure':3}[event.id];
+    const gap=eventCalendar(event).cooldown??({'gap-year-direction':2,'university-application':2}[event.id]??0);
     if(!gap)return false;
     return this.preview.state.history.some(h=>h.kind==='choice'&&h.eventId===event.id&&
       Number.isFinite(h.age)&&this.preview.state.player.age-h.age<gap);
@@ -117,13 +117,13 @@ export class ExperimentalYearSession {
       const candidates=this.preview.events.eligible(this.preview.state)
         .filter(e=>!this.presentedIds.has(e.id)&&!this.recentlyRepeated(e)&&
           Number.isFinite(e.weight?.(this.preview.state)??1)&&(e.weight?.(this.preview.state)??1)>0);
-      if(candidates.length){
-        const priority=Math.max(...candidates.map(e=>e.priority??0));
-        const pool=candidates.filter(e=>(e.priority??0)===priority);
+      const schedulable=candidates.filter(e=>scheduleEventDay({event:e,year:this.year,rng:new RNG(this.seed+':window-check:'+e.id),afterDay:this.day+19,totalDays:daysInYear(this.year)})!=null);
+      if(schedulable.length){
+        const priority=Math.max(...schedulable.map(e=>e.priority??0));
+        const pool=schedulable.filter(e=>(e.priority??0)===priority);
         const next=this.rng.weighted(pool.map(e=>({value:e,weight:e.weight?.(this.preview.state)??1})));
-        const earliest=Math.min(daysInYear(this.year)-3,this.day+20);
-        if(earliest<daysInYear(this.year)-2){
-          const day=this.rng.int(earliest,daysInYear(this.year)-2);
+        const day=scheduleEventDay({event:next,year:this.year,rng:this.rng,afterDay:this.day+19,totalDays:daysInYear(this.year)});
+        if(day!=null){
           const remaining=this.timeline.slice(this.cursor);
           remaining.push({type:'decision',day,id:next.id,title:next.title});
           remaining.sort((a,b)=>a.day-b.day||(a.type==='notice'?-1:1));
