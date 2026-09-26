@@ -348,13 +348,20 @@ function interestText(person) {
   return items.length ? items.map(([name]) => name).join(', ') : 'belirgin hobi yok';
 }
 
+function personLifeDates(person){
+  const born=person.birthDate??(Number.isInteger(person.birthYear)?String(person.birthYear):Number.isFinite(person.age)?String(game.state.year-person.age):'Bilinmiyor');
+  if(person.alive!==false)return 'Doğum: '+born;
+  const died=person.deathDate??(person.deathYear??'Tarih kaydedilmedi');
+  const age=person.ageAtDeath??person.age??'Bilinmiyor';
+  return 'Doğum: '+born+' • Ölüm: '+died+' • '+age+' yaşında vefat etti';
+}
 function personCard(person, relation, key=null) {
   const rel = relationScore(person);
   const education = person.education?.level ?? 0;
   return `
     <article class="person-card">
       <div class="card-row">
-        <div><h3>${relation}: ${person.name} ${person.surname??''}</h3><p>${person.age} yaş • ${person.job ?? 'Öğrenci/Çocuk'} • Eğitim ${education}/5</p></div>
+        <div><h3>${relation}: ${person.name} ${person.surname??''}</h3><p>${person.age} yaş • ${person.job ?? 'Öğrenci/Çocuk'} • Eğitim ${education}/5</p><p>${personLifeDates(person)}</p></div>
         ${rel == null ? '' : `<span class="relationship-pill">${Math.round(rel)}/100</span>`}
       </div>
       <p>Boy ${person.appearance?.heightCm??'—'} cm • Sağlık ${Math.round(person.health?.current??70)}/100 • Görünüş ${Math.round(person.appearance?.attractiveness??50)}/100</p>
@@ -383,13 +390,13 @@ function renderRelationships() {
     personCard(grandparents.paternal.grandfather, 'Baba tarafından dede')
   ];
   const romance= social.romance
-    ? `<div class="section-divider">Partner</div><article class="summary-card partner-card"><div class="card-row"><div><h3>${social.romance.name??'Partner'} ${social.romance.surname??''}</h3><p>Durum: <strong>${social.romance.status??'dating'}</strong> • Birlikte: ${social.romance.yearsTogether??0} yıl</p></div><span class="relationship-pill">${Math.round(social.romance.relationship??0)}/100</span></div><p>Gerilim: ${Math.round(social.romance.relationshipTension??0)}/100 • ${social.romance.relationshipState??'stable'}</p>
+    ? `<div class="section-divider">Partner</div><article class="summary-card partner-card"><div class="card-row"><div><h3>${social.romance.name??'Partner'} ${social.romance.surname??''}</h3><p>Durum: <strong>${social.romance.status??'dating'}</strong> • Birlikte: ${social.romance.yearsTogether??0} yıl</p><p>${personLifeDates(social.romance)}</p></div><span class="relationship-pill">${Math.round(social.romance.relationship??0)}/100</span></div><p>Gerilim: ${Math.round(social.romance.relationshipTension??0)}/100 • ${social.romance.relationshipState??'stable'}</p>
 <p>Güven: ${Math.round(social.romance.trust??0)}/100 • Yakınlık: ${Math.round(social.romance.intimacy??0)}/100 • Kırgınlık: ${Math.round(social.romance.resentment??0)}/100</p>
 <p>Ortak hedefler: ${Math.round(social.romance.sharedGoals??0)}/100 • Para uyumu: ${Math.round(social.romance.moneyAlignment??0)}/100</p>
 ${social.romance.life?`<p>Kendi hayatı: ${social.romance.job??'—'} • İş memnuniyeti ${Math.round(social.romance.life.careerSatisfaction??0)}/100 • İş stresi ${Math.round(social.romance.life.workStress??0)}/100 • Yaşam memnuniyeti ${Math.round(social.romance.life.lifeSatisfaction??0)}/100</p>`:''}<div class="person-card-actions">${personActionButton('partner')}</div>${personActionPanel('partner')}</article>`
     : '<div class="section-divider">Partner</div><div class="empty-state compact">Aktif partner yok.</div>';
   const kids=(game.state.children??[]).length
-    ? `<div class="section-divider">Çocuklar</div>${game.state.children.map((child,i)=>`<article class="summary-card child-card"><div class="card-row"><div><h3>${child.name??('Çocuk '+(i+1))}</h3><p>${child.age??0} yaş • ${child.educationPlan??child.education?.plan??'eğitim planı oluşuyor'}</p></div><span class="relationship-pill">${Math.round(child.relationship??70)}/100</span></div><p>İlgi: ${Math.round(child.parenting?.involvement??55)}/100 • Güven: ${Math.round(child.parenting?.emotionalSecurity??72)}/100</p>
+    ? `<div class="section-divider">Çocuklar</div>${game.state.children.map((child,i)=>`<article class="summary-card child-card"><div class="card-row"><div><h3>${child.name??('Çocuk '+(i+1))}</h3><p>${child.age??0} yaş • ${child.educationPlan??child.education?.plan??'eğitim planı oluşuyor'}</p><p>${personLifeDates(child)}</p></div><span class="relationship-pill">${Math.round(child.relationship??70)}/100</span></div><p>İlgi: ${Math.round(child.parenting?.involvement??55)}/100 • Güven: ${Math.round(child.parenting?.emotionalSecurity??72)}/100</p>
 ${child.development?`<p>Özgüven ${Math.round(child.development.confidence)}/100 • Bağımsızlık ${Math.round(child.development.independence)}/100 • Akademik dürtü ${Math.round(child.development.academicDrive)}/100 • Sosyal güven ${Math.round(child.development.socialSecurity)}/100</p>`:''}<div class="person-card-actions">${personActionButton('child:'+i)}</div>${personActionPanel('child:'+i)}</article>`).join('')}`
     : '';
   const friends = social.friends.length
