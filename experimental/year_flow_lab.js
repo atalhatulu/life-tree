@@ -1,14 +1,23 @@
 import {Game} from '../src/core/game.js';
+import {restoreExperimentalYearSession} from '../src/experimental/year_session.js';
 import {ExperimentalYearSession} from '../src/experimental/year_session.js';
 import {calendarDate} from '../src/experimental/year_flow_scheduler.js';
 const $=id=>document.getElementById(id);
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 let game,session,token=0,shownMonths=0;
+const SAVE_KEY='life-tree-experimental-year-v1';
+function controls(){
+ $('pause').disabled=!session||!['running','paused'].includes(session.phase);
+ $('pause').textContent=session?.phase==='paused'?'Devam et':'Duraklat';
+ $('save').disabled=!session;
+ $('start').disabled=Boolean(session&&session.phase!=='complete')||!game.state.player.alive;
+}
 function dateText(year,day){return new Intl.DateTimeFormat('tr-TR',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}).format(calendarDate(year,day));}
 function refresh(){
   $('identity').textContent=game.state.player.name+' '+game.state.player.surname;
   $('age').textContent=game.state.player.age+' yaş';
   if(session){$('date').textContent=dateText(session.year,session.day);$('progress').max=session.snapshot().totalDays;$('progress').value=session.day;}
+  controls();
 }
 function add(text,day,heading){
   const el=document.createElement('article');el.className='item';
@@ -20,9 +29,10 @@ function add(text,day,heading){
 async function animateTo(day,localToken){
   const from=session.day,to=day,steps=Math.max(1,Math.ceil((to-from)/5));
   for(let i=1;i<=steps;i++){
-    if(token!==localToken)return false;
+    if(token!==localToken||session.phase!=='running')return false;
     const shown=Math.round(from+(to-from)*i/steps);
     while(session.day<shown){
+      if(token!==localToken||session.phase!=='running')return false;
       session.tickDay();
       const ledger=session.preview.state.finance?.experimentalMonthlyLedger??[];
       while(shownMonths<ledger.length){
@@ -47,7 +57,7 @@ async function run(localToken){
     if(item.type==='notice')add(item.text,item.day,'Yıl içinden bir gelişme');
     if(item.type==='decision'){
       add('Kararını verdiğinde takvim kaldığı yerden devam edecek.',item.day,item.pending.title);
-      $('status').textContent='Zaman durdu · karar bekleniyor';
+      $('status').textContent='Zaman durdu · karar bekleniyor';controls();
       const wrap=document.createElement('div');wrap.id='choices';
       for(const choice of item.pending.choices){
         const button=document.createElement('button');button.textContent=choice.label;
@@ -56,7 +66,7 @@ async function run(localToken){
           try{
             const resolved=session.choose(choice.id);
             wrap.remove();add(String(resolved.result??'Kararın kaydedildi.'),session.day,'Seçiminin sonucu');
-            $('status').textContent='Yıl ilerliyor…';void run(localToken);
+            $('status').textContent='Yıl ilerliyor…';controls();void run(localToken);
           }catch(error){$('status').textContent=error.message;}
         };
         wrap.append(button);
@@ -66,7 +76,7 @@ async function run(localToken){
     if(item.type==='complete'){
       session.commit();refresh();
       $('status').textContent='Yıl tamamlandı · sonuçlar deney oyununa işlendi';
-      $('start').disabled=!game.state.player.alive;
+      controls();
       return;
     }
   }
@@ -83,7 +93,44 @@ $('start').onclick=()=>{
   shownMonths=0;session=new ExperimentalYearSession(game,{maxDecisions:3});
   try{session.start();}catch(error){$('status').textContent=error.message;return;}
   $('start').disabled=true;$('feed').replaceChildren();refresh();
-  $('status').textContent='Yıl ilerliyor…';void run(++token);
+  $('status').textContent='Yıl ilerliyor…';controls();void run(++token);
 };
+
+$('pause').onclick=()=>{
+ if(!session)return;
+ if(session.phase==='running'){session.pause();token++;$('status').textContent='Takvim duraklatıldı';}
+ else if(session.phase==='paused'){session.resume();$('status').textContent='Yıl ilerliyor…';void run(++token);}
+ controls();
+};
+$('save').onclick=()=>{
+ if(!session)return;
+ try{localStorage.setItem(SAVE_KEY,JSON.stringify(session.exportCheckpoint()));$('status').textContent='Deney oturumu kaydedildi';}
+ catch(error){$('status').textContent='Kaydetme başarısız: '+error.message;}
+};
+$('load').onclick=()=>{
+ try{
+  const saved=localStorage.getItem(SAVE_KEY);
+  if(!saved)throw new Error('Kayıt bulunamadı');
+  token++;session=restoreExperimentalYearSession(Game,JSON.parse(saved));game=session.game;
+  shownMonths=session.preview.state.finance?.experimentalMonthlyLedger?.length??0;
+  $('feed').replaceChildren();refresh();
+  $('status').textContent='Kayıt yüklendi · '+session.phase;
+  if(session.phase==='running')void run(++token);
+  else if(session.phase==='waiting')showPending(token);
+ }catch(error){$('status').textContent='Yükleme başarısız: '+error.message;}
+};
+function showPending(localToken){
+ const pending=session.snapshot().pending;if(!pending)return;
+ const wrap=document.createElement('div');wrap.id='choices';
+ for(const choice of pending.choices){
+  const button=document.createElement('button');button.textContent=choice.label;
+  button.onclick=()=>{
+   if(token!==localToken)return;
+   try{const result=session.choose(choice.id);wrap.remove();add(String(result.result??'Kararın kaydedildi.'),session.day,'Seçiminin sonucu');controls();void run(localToken);}
+   catch(error){$('status').textContent=error.message;}
+  };wrap.append(button);
+ }
+ $('feed').prepend(wrap);
+}
 $('reset').onclick=reset;
 reset();
