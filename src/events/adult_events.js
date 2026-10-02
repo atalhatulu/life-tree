@@ -134,8 +134,8 @@ export const adultEvents=[
     effect:(next,rng)=>{next.nextPath='work';next.pendingJobOffers=generateJobOffers(next,rng.fork('gap-job-search'));}},
    {id:'continue-gap',
     label:(s.gapYears??0)>=5?'Bir iki yıl daha karar vermeden devam et':(s.gapYears??0)>=2?'Hazırlığı iki yıl daha ertele':'İki yıl daha bekle',
-    condition:next=>next.player.age<33,
-    result:'Yeni bir eğitim veya iş kararı almadan önce iki yıl kendine zaman tanıdın.',
+    condition:next=>next.player.age<33&&(next.gapYears??0)<7,
+    result:'Eğitim veya iş kararını iki yıl erteledin; geçim ve gelecek planlarını yeniden değerlendirmen gerekecek.',
     effect:next=>{next.nextPath='gap';next.nextGapDecisionAge=next.player.age+2;}}
   ]
  },
@@ -194,10 +194,10 @@ export const adultEvents=[
   ]
  },
  {
-  id:'child-decision',title:'Aileyi Büyütmek',minAge:21,maxAge:47,once:false,majorDecision:false,priority:62,
+  id:'child-decision',title:'Aileyi Büyütmek',minAge:21,maxAge:47,once:false,majorDecision:false,priority:88,
   condition:s=>{
    const r=s.social?.romance;
-   return Boolean(r&&['cohabiting','married'].includes(r.status)&&(s.children?.length??0)<3&&r.relationship>=42&&s.player.age>=(s.nextChildDecisionAge??21)&&parenthoodReadiness(s)>=40);
+   return Boolean(r&&['cohabiting','married'].includes(r.status)&&(s.children?.length??0)<3&&r.relationship>=42&&s.player.age>=(s.nextChildDecisionAge??21)&&parenthoodReadiness(s)>=35);
   },
   choices:[
    {
@@ -205,7 +205,7 @@ export const adultEvents=[
     result:s=>s.lastParenthoodAttempt?.success?s.lastParenthoodAttempt.childName+' dünyaya geldi.':'Bu yıl çocuk sahibi olamadınız; daha sonra tekrar deneyebilirsiniz.',
     effect:(s,rng)=>{attemptChild(s,rng.fork('child-attempt'));s.nextChildDecisionAge=s.player.age+(s.lastParenthoodAttempt?.success?((s.children?.length??0)>=2?3:2):1);}
    },
-   {id:'wait-child',label:'Şimdilik bekle',result:'Çocuk kararını ertelediniz.',effect:s=>{s.nextChildDecisionAge=s.player.age+2;}}
+   {id:'wait-child',label:'Şimdilik bekle',result:'Çocuk kararını ertelediniz.',effect:s=>{s.nextChildDecisionAge=s.player.age+1;}}
   ]
  },
  {

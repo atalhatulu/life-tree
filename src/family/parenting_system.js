@@ -6,9 +6,14 @@ export function ensureChildren(state){
  return state.children;
 }
 
+export function mutuallyWantChildren(state){
+ const r=state.social?.romance;
+ return Boolean(r && (state.preferences?.parenthoodDesire??50)>=35 && (r.preferences?.parenthoodDesire??50)>=35);
+}
+
 export function parenthoodReadiness(state){
  const r=state.social?.romance;
- if(!r||!['cohabiting','married'].includes(r.status))return 0;
+ if(!r||!['cohabiting','married'].includes(r.status)||!mutuallyWantChildren(state))return 0;
  const age=state.player.age;
  const playerDesire=state.preferences?.parenthoodDesire??50;
  const partnerDesire=r.preferences?.parenthoodDesire??50;
@@ -19,6 +24,8 @@ export function parenthoodReadiness(state){
  const liquid=(state.finance?.cash??0)+(state.finance?.savings??0);
  let score=desire*.42+relationship*.28-tension*.16;
  if(r.status==='married')score+=8;
+ // Long-term couples can plan a family without needing unusually high savings.
+ score+=Math.min(12,Math.max(0,(r.yearsTogether??0)-1)*3);
  if(income>=70000)score+=8;
  else if(income>=40000)score+=4;
  if(liquid>=250000)score+=5;
@@ -56,6 +63,11 @@ export function addChild(state,rng){
 }
 
 export function attemptChild(state,rng){
+ if(!mutuallyWantChildren(state)||!['married','cohabiting'].includes(state.social?.romance?.status)||
+    (state.children?.length??0)>=3||state.player.age<21||state.player.age>47){
+  state.lastParenthoodAttempt={age:state.player.age,success:false,reason:'not-eligible'};
+  return null;
+ }
  const chance=fertilityChance(state);
  const success=rng.chance(chance);
  const child=success?addChild(state,rng.fork('new-child')):null;

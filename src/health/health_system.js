@@ -11,7 +11,9 @@ const CONDITIONS=[
 ];
 
 function ageMortalityBase(age){
- if(age<45)return 0;
+ if(age<18)return .00006;
+ if(age<30)return .00016+(age-18)*.000012;
+ if(age<45)return .00030+(age-30)*.000025;
  if(age<55)return .0008+(age-45)*.00018;
  if(age<65)return .0030+(age-55)*.00055;
  if(age<70)return .0090+(age-65)*.0015;
@@ -39,13 +41,15 @@ function conditionBurden(condition){
  return progressionBurden(condition);
 }
 
-function deathCause(state,rng){
+function deathCause(state,rng,{criticalReserve=false,health=100}={}){
  const severe=(state.healthProfile?.conditions??[])
   .filter(c=>c.severity>=2)
   .sort((a,b)=>b.severity-a.severity);
  if(severe.length&&rng.chance(.72))return severe[0].label;
+ if(health<=0)return 'Kritik sağlık kaybı';
+ if(criticalReserve)return 'İleri düzey sağlık ve fiziksel dayanıklılık kaybı';
  if(state.player.age>=82)return 'Yaşa bağlı doğal nedenler';
- return 'Genel sağlık komplikasyonları';
+ return 'Ani gelişen sağlık olayı';
 }
 
 function normalDeathEligible(state){
@@ -174,7 +178,7 @@ export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
   :Math.min(.98,ageMortalityBase(age)*sexFactor*reserveFactor*diseaseFactor+(criticalReserve?.025:0));
  if(mortality>0&&rng.chance(mortality)){
   state.player.alive=false;
-  state.death={age,year:state.year,cause:deathCause(state,rng.fork('cause'))};
+  state.death={age,year:state.year,cause:deathCause(state,rng.fork('cause'),{criticalReserve,health})};
   entries.push({age,kind:'death',text:'Hayatın '+age+' yaşında sona erdi.'});
  }
  return entries;

@@ -54,6 +54,13 @@ export function processAdultYear(state,rng){
  }
  if(state.nextPath==='gap'&&!state.pendingUniversityApplications&&!state.pendingJobOffers){
   state.gapYears=(state.gapYears??0)+1;
+  // Repeated deferral must not leave an adult indefinitely without a path.
+  if(state.gapYears>=7){
+   state.nextPath='work';
+   state.nextJobSearchAge=age;
+   state.pendingJobOffers=generateJobOffers(state,rng.fork('gap-fallback-job-'+age),3,{mode:'entry'});
+   entries.push({age,kind:'career',text:'Uzun süren ara döneminin ardından geçimini sağlamak için iş başvurularına yöneldin.'});
+  }
  }
 
  entries.push(...progressUniversityYear(state,rng.fork('university-progress')));

@@ -89,7 +89,7 @@ test('untreated chronic disease creates persistent health burden and recovery ce
  assert.ok(g.state.player.health.current<=88,'chronic disease should cap health below perfect');
 });
 
-test('mild condition alone cannot randomly kill a healthy young adult',()=>{
+test('mild condition does not create excessive young-adult mortality',()=>{
  const g=new Game('young-mild-condition');
  g.state.player.age=27;
  g.state.player.health.current=100;
@@ -102,7 +102,7 @@ test('mild condition alone cannot randomly kill a healthy young adult',()=>{
  };
  const rng={
   int:()=>0,
-  chance:(p)=>p>0,
+  chance:(p)=>p>=.01,
   fork:()=>({chance:()=>false})
  };
  processHealthYear(g.state,rng);
@@ -222,4 +222,16 @@ test('lower constitution accelerates age-related reserve loss',()=>{
  processHealthYear(high.state,rng);
  assert.ok(low.state.player.health.current<high.state.player.health.current);
  assert.ok(low.state.healthProfile.fitness<high.state.healthProfile.fitness);
+});
+
+
+test('young adult can die from a rare acute event with a traceable cause',()=>{
+ const g=new Game('rare-young-death');
+ g.state.player.age=27;
+ g.state.player.health.current=90;
+ g.state.healthProfile={conditions:[],stress:20,fitness:75,lastCheckupAge:null};
+ const rng={int:()=>0,chance:(p)=>p>0,fork:()=>({chance:()=>false})};
+ processHealthYear(g.state,rng);
+ assert.equal(g.state.player.alive,false);
+ assert.equal(g.state.death.cause,'Ani gelişen sağlık olayı');
 });

@@ -5,7 +5,7 @@ const EVENT_PACING={
 
  'relationship-commitment':{category:'relationship',globalGap:2,categoryGap:4},
  'marriage-after-cohabiting':{category:'relationship',globalGap:2,categoryGap:4},
- 'child-decision':{category:'family',globalGap:2,categoryGap:4},
+ 'child-decision':{category:'family',globalGap:0,categoryGap:1},
  'child-education-plan':{category:'family',globalGap:2,categoryGap:3},
 
  'move-out':{category:'housing',globalGap:2,categoryGap:4},
@@ -58,6 +58,8 @@ export function canPresentPacedEvent(state,event){
  const rule=pacingRule(event);
  if(!rule)return true;
  if(state.player.age<21)return true;
+ // Family planning must not be blocked by unrelated career/housing milestones.
+ if(event?.id==='child-decision')return !hasCurrentYearPaceBlock(state);
  if(hasCurrentYearPaceBlock(state))return false;
 
  const latest=lastMajorNode(state);

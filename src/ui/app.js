@@ -1,3 +1,4 @@
+import {schoolCalendarNotices} from '../life/school_calendar.js';
 import { Game } from '../core/game.js';
 import { albumMarkup } from './life_album.js';
 import { autoplay, humanLikeChoice, activityOrder, simulateToEnd } from '../simulation/autoplay.js';
@@ -873,14 +874,15 @@ function yearFlowNotice(flow,item){
   article.append(date,description);container.prepend(article);
   while(container.children.length>4)container.lastElementChild.remove();
 }
-function yearFlowSchedule(history,year,eventDay,seed){
+function yearFlowSchedule(history,year,eventDay,seed,age){
   const rng=new RNG(seed+':year-flow-notices:'+year);
   const entries=history.filter(item=>typeof (item.text??item.result)==='string'&&(item.text??item.result).trim()).slice(0,6);
-  return entries.map((item,index)=>{
+  const historyNotices=entries.map((item,index)=>{
     const day=Math.max(8,Math.min(yearDays(year)-8,Math.floor((index+1)*yearDays(year)/(entries.length+1))+rng.int(-8,8)));
     // The selected event has its own dated pause; notifications can occur on either side.
     return {day,text:item.text??item.result};
-  }).sort((a,b)=>a.day-b.day);
+  });
+  return [...historyNotices,...schoolCalendarNotices(age)].sort((a,b)=>a.day-b.day);
 }
 async function playYearUntil(flow,target){
   const notices=flow.notices.filter(item=>item.day>flow.day&&item.day<=target);
@@ -925,7 +927,7 @@ async function startYearFlow(){
   if(/yaz tatili|yazlık|yaz kampı/.test(eventTitle))flow.eventDay=165+rng.int(0,35);
   else if(/okul açıl|yeni eğitim yılı|dershane/.test(eventTitle))flow.eventDay=245+rng.int(0,25);
   else if(/yılbaşı/.test(eventTitle))flow.eventDay=yearDays(year)-rng.int(0,5);
-  flow.notices=yearFlowSchedule(game.state.history.slice(previousHistoryLength),year,flow.eventDay,game.seedText);
+  flow.notices=yearFlowSchedule(game.state.history.slice(previousHistoryLength),year,flow.eventDay,game.seedText,game.state.player.age);
   if(!await playYearUntil(flow,flow.eventDay))return;
   if(pendingEvent||yearMoment){
     flow.waiting=true;render();yearFlowProgress(flow.eventDay,year);
