@@ -59,11 +59,16 @@ test('balance regression sample remains inside broad health family and finance g
  const N=60;
  const children=[],conditions=[],debt=[],netWorth=[],datingAges=[];
  let invalid=0,everRomance=0,childless=0,extremeDebt=0;
+ const invalidDetails=[];
  for(let i=0;i<N;i++){
   const g=new Game('balance-regression-'+i);
-  try{autoplay(g,{toAge:75,policy:'human-like'});}catch{invalid++;continue;}
+  try{autoplay(g,{toAge:75,policy:'human-like'});}catch(error){
+   invalid++;
+   invalidDetails.push({seed:g.seedText,age:g.state.player.age,error:String(error?.stack??error)});
+   continue;
+  }
   const errors=validateState(g.state);
-  if(errors.length){invalid++;continue;}
+  if(errors.length){invalid++;invalidDetails.push({seed:g.seedText,age:g.state.player.age,errors});continue;}
   const s=g.state;
   const partners=[
    ...(s.social?.exPartners??[]),...(s.social?.exSpouses??[]),
@@ -79,7 +84,7 @@ test('balance regression sample remains inside broad health family and finance g
   const ages=(s.history??[]).filter(x=>x.kind==='choice'&&x.eventId==='adult-dating'&&x.choiceId==='meet').map(x=>x.age);
   if(ages.length)datingAges.push(Math.min(...ages));
  }
- assert.equal(invalid,0,'invalid lives='+invalid);
+ assert.equal(invalid,0,'invalid lives='+invalid+'; details='+JSON.stringify(invalidDetails));
  assert.ok(everRomance/N>=.45,'romance collapsed: '+everRomance+'/'+N);
  assert.ok(childless/N<=.90,'parenthood collapsed: childless '+childless+'/'+N);
  assert.ok(median(conditions)<=5,'condition median too high: '+median(conditions));
