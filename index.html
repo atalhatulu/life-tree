@@ -30,7 +30,12 @@
             <span id="goalQuick" class="meta-chip goal-chip">Hedef yok</span>
           </div>
         </div>
-        <div class="header-actions"><button id="newLife" class="icon-button" aria-label="Yeni hayat">↻</button></div>
+        <div class="header-actions">
+          <button id="exportSave" class="icon-button" title="Kaydı İndir (JSON)" aria-label="Kaydı İndir">↓</button>
+          <button id="importSaveBtn" class="icon-button" title="Kayıt Yükle (JSON)" aria-label="Kayıt Yükle">↑</button>
+          <input id="importSaveInput" type="file" accept=".json,application/json" style="display:none" />
+          <button id="newLife" class="icon-button" title="Yeni Hayat" aria-label="Yeni hayat">↻</button>
+        </div>
       </header>
 
       <section class="stats" aria-label="Ana özellikler">

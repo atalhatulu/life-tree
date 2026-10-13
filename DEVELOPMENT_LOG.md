@@ -1998,3 +1998,21 @@
 **Kalan riskler:** SharedArrayBuffer paylaşımlı baytları, detached ArrayBuffer yeniden oluşturma, farklı realm native nesneleri, Proxy iç slotları ve harici I/O rollback garantisinin dışında. Büyük ArrayBuffer'ların tam bayt kopyası zaman/bellek maliyetini artırabilir. Tam hızlı paket, orta yaş testi, tam CI ve gerçek tarayıcı E2E bu döngüde tamamlanmadı. ZIP `.git` içermediği ve yazma yetkisi doğrulanmadığı için GitHub'a push yapılmadı.
 
 **Sonraki döngü:** Yalnız bu döngünün CRC/içerik eşitliği ve bağımsız ilgili testleri başarıyla doğrulanmış tam ZIP'ini temel al. ArrayBuffer bayt/view/resize işlerini tekrarlama. Adaylar: büyük buffer snapshot bellek sınırı/benchmark, SharedArrayBuffer için kontrollü destek veya dışlama, tam CI zaman aşımı kök neden analizi.
+
+## 2026-10-13 — CI matris paralel bölümlemesi, group6 önbellek hızlandırması ve web kayıt dışa/içe aktarımı (döngü 106)
+
+**Temel:** Döngü 105 ve commit 1320377.
+
+**Uygulanan somut geliştirmeler:**
+1. **GitHub Actions CI Matris Paralelleştirmesi:** `.github/workflows/test.yml` tekil 25 dakikalık kilitlenmeden arındırıldı. Hızlı preflight (sözdizimi, web varlıkları, test:fast, test:midlife) ardından 4 paralel runner üzerinde `test_shard.js` ve ayrı simülasyon denetimi işlerine ayrıldı.
+2. **Group 6 Telemetri Önbelleklemesi:** `tests/group6_part2.test.js` içindeki `runTelemetry()` çağrısı önbelleğe alındı. Aynı deterministik tohumla 24 ömrün üç kez sıfırdan simüle edilmesi engellenerek test süresi dakikalarca kısaltıldı.
+3. **Web Arayüzünde Kayıt İndirme/Yükleme ve Otomatik Devam:** `src/ui/app.js` ve `index.html` içerisine JSON kayıt dışa aktarma (`exportCurrentSave`), içe aktarma (`importSaveFile` + `repairSavePayload` geri çekilme güvencesi) ve `localStorage` oturum devamlılığı eklendi.
+4. **Regresyon Testi:** `tests/web_save_export_import_regression.test.js` ile dışa aktarım, geri yükleme ve şema onarımlı içe aktarım doğrulandı.
+
+**Doğrulama:**
+- `node --check src/ui/app.js`: Başarılı.
+- `npm run test:web`: 2/2 başarılı.
+- `node --test tests/web_save_export_import_regression.test.js`: 2/2 başarılı.
+- `npm run test:fast`: 1715+ test başarılı.
+- `npm run test:midlife`: 10/10 yaşam, 40 yaş, 0 geçersiz durumla başarılı.
+

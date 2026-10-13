@@ -6,7 +6,9 @@ import {autoplay} from '../src/simulation/autoplay.js';
 import {validateState} from '../src/simulation/invariants.js';
 import {createSavePayload} from '../src/core/save_system.js';
 
+let cachedTelemetryReport = null;
 function runTelemetry(){
+ if (cachedTelemetryReport) return cachedTelemetryReport;
  const out=execFileSync(process.execPath,[
   'src/cli/fast_simulate.js',
   '--lives','24','--to-age','70','--policy','human-like','--seed-prefix','telemetry-quality'
@@ -14,7 +16,8 @@ function runTelemetry(){
  const marker='FAST SIMULATION FULL TELEMETRY';
  const idx=out.indexOf(marker);
  assert.ok(idx>=0,'telemetry marker missing');
- return JSON.parse(out.slice(idx+marker.length).trim());
+ cachedTelemetryReport = JSON.parse(out.slice(idx+marker.length).trim());
+ return cachedTelemetryReport;
 }
 
 test('fast telemetry exposes new Group 3-5 systems',()=>{

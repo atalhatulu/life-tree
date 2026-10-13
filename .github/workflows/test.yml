@@ -6,9 +6,9 @@ on:
   pull_request:
 
 jobs:
-  test:
+  preflight:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -16,7 +16,31 @@ jobs:
           node-version: 22
       - run: node --check src/ui/app.js
       - run: node --check src/cli/text_mode.js
-      - run: node --test tests/group6_part1.test.js tests/group6_part2.test.js
-      - run: npm test
+      - run: npm run test:web
+      - run: npm run test:fast
+      - run: npm run test:midlife
+
+  sharded-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm run test:shard -- ${{ matrix.shard }} 4
+
+  simulation-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Simulate 1000 full lives
         run: npm run fast-sim -- --lives 1000 --to-age 100 --policy random --seed-prefix main-1000-audit

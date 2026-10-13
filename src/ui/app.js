@@ -1,5 +1,6 @@
 import {schoolCalendarNotices} from '../life/school_calendar.js';
 import { Game } from '../core/game.js';
+import { serializeGame, parseSave, repairSavePayload } from '../core/save_system.js';
 import {saveMonthlySurplus,spendActivityCash} from '../finance/personal_finance.js';
 import {saveChildAllowance,spendChildAllowance} from '../finance/child_money.js';
 import { albumMarkup } from './life_album.js';
@@ -1000,6 +1001,11 @@ function render(){
 
   renderTimeline();renderRelationships();renderActivities();renderAssets();renderCareer();renderLifeTree();renderEvent();
   $('#lifeAlbum').innerHTML=albumMarkup(game.state,lifeChapter);
+  try{
+    if(game?.state?.player&&!autoLifeRunning&&typeof localStorage!=='undefined'){
+      localStorage.setItem('life_tree_current_save',serializeGame(game,false));
+    }
+  }catch{}
   document.dispatchEvent(new Event('life-tree-render'));
 }
 
@@ -1243,17 +1249,96 @@ function switchScreen(id){
   if(active)active.scrollTop=0;
   document.dispatchEvent(new Event('life-tree-screen'));
 }
+function exportCurrentSave(){
+  if(!game)return;
+  try{
+    const json=serializeGame(game,true);
+    const blob=new Blob([json],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const name=(game.state.player?.name||'hayat').replace(/\s+/g,'_');
+    const age=game.state.player?.age??0;
+    a.href=url;
+    a.download=`life-tree-${name}-yas${age}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Kayıt dosyası indirildi.');
+  }catch(err){
+    showToast('Kayıt indirilemedi: '+err.message);
+  }
+}
+
+function importSaveFile(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const text=e.target.result;
+      let payload;
+      try{
+        payload=parseSave(text);
+      }catch{
+        const repaired=repairSavePayload(text);
+        payload=repaired.payload;
+        showToast('Kayıt onarılarak yüklendi.');
+      }
+      endYearFlow();
+      autoLifeRunning=false;autoLifeToken++;setAutoStatus('');
+      game=Game.fromSave(payload);
+      pendingEvent=null;yearMoment=null;leisurePicker=null;personActionTarget=null;activityMessage='Kayıt başarıyla yüklendi.';autoLifeRng=null;lastRenderedAge=null;recordedCompletedSeed=null;
+      $('#autoLife')?.classList.remove('running');
+      if($('#autoLife'))$('#autoLife').textContent='▶ AUTO LIFE';
+      if($('#simulateEnd')){$('#simulateEnd').disabled=false;$('#simulateEnd').textContent='Sona ilerle';}
+      switchScreen('lifeScreen');
+      render();
+      showToast('Kayıt başarıyla yüklendi.');
+    }catch(err){
+      alert('Kayıt yüklenemedi: '+err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
 function newLife(seed=$('#seedInput').value.trim()||String(Date.now())){
   endYearFlow();
   autoLifeRunning=false;autoLifeToken++;setAutoStatus('');
   game=new Game(seed);pendingEvent=null;yearMoment=null;leisurePicker=null;personActionTarget=null;activityMessage='';autoLifeRng=null;lastRenderedAge=null;recordedCompletedSeed=null;
+  if(typeof localStorage!=='undefined')localStorage.removeItem('life_tree_current_save');
   $('#autoLife')?.classList.remove('running');
   if($('#autoLife'))$('#autoLife').textContent='▶ AUTO LIFE';
   if($('#simulateEnd')){$('#simulateEnd').disabled=false;$('#simulateEnd').textContent='Sona ilerle';}
   switchScreen('lifeScreen');render();
 }
 
+function initApp(){
+  if(typeof localStorage!=='undefined'){
+    const saved=localStorage.getItem('life_tree_current_save');
+    if(saved){
+      try{
+        const payload=parseSave(saved);
+        game=Game.fromSave(payload);
+        pendingEvent=null;yearMoment=null;leisurePicker=null;personActionTarget=null;activityMessage='Kayıtlı hayat devam ediyor.';autoLifeRng=null;lastRenderedAge=null;recordedCompletedSeed=null;
+        switchScreen('lifeScreen');
+        render();
+        return;
+      }catch{
+        localStorage.removeItem('life_tree_current_save');
+      }
+    }
+  }
+  newLife('life-tree-demo');
+}
+
 $('#newLife').addEventListener('click',()=>newLife());
+$('#exportSave')?.addEventListener('click',exportCurrentSave);
+$('#importSaveBtn')?.addEventListener('click',()=>$('#importSaveInput')?.click());
+$('#importSaveInput')?.addEventListener('change',e=>{
+  const file=e.target.files?.[0];
+  if(file){
+    importSaveFile(file);
+    e.target.value='';
+  }
+});
 $('#applySeed').addEventListener('click',()=>newLife());
 $('#seedInput').addEventListener('keydown',event=>{if(event.key==='Enter')newLife();});
 $('#ageUp').addEventListener('click',()=>{void startYearFlow();});
@@ -1264,4 +1349,4 @@ document.querySelectorAll('.nav-item').forEach(button=>button.addEventListener('
 document.querySelectorAll('[data-open-screen]').forEach(button=>button.addEventListener('click',()=>switchScreen(button.dataset.openScreen)));
 $('#afterlifeClose')?.addEventListener('click',()=>$('#afterlifeDialog').close());
 $('#afterlifeDialog')?.addEventListener('click',event=>{if(event.target===event.currentTarget)event.currentTarget.close();});
-newLife('life-tree-demo');
+initApp();
