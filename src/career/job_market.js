@@ -1,4 +1,5 @@
 import {physicalCapacity,workCapacityModifier} from '../health/physical_capacity.js';
+import {annualYearStatus} from '../core/annual_clock.js';
 import {JOBS} from '../data/catalog.js';
 import {economy} from '../world/world_state.js';
 import {chooseJobOfferCity,moveToCity,movingCost,relocationHouseholdSize,migrationScore} from '../world/migration_system.js';
@@ -153,6 +154,8 @@ function inferMode(state,requested){
 }
 
 export function generateJobOffers(state,rng,count=3,options={}){
+ // A pensioner must not receive offers that can later reactivate employment.
+ if(state.retirement?.retired)return [];
  ensureCareerProfile(state);
  const mode=inferMode(state,options.mode);
  if(mode==='reemployment')recordJobApplication(state);
@@ -207,6 +210,7 @@ export function generateJobOffers(state,rng,count=3,options={}){
 }
 
 export function acceptJob(state,jobId){
+ if(state.retirement?.retired)throw new Error('Emeklilik sonrası iş teklifi kabul edilemez.');
  const offer=state.pendingJobOffers?.find(j=>j.id===jobId);
  if(!offer) throw new Error('Bu iş teklifi artık geçerli değil.');
 
@@ -250,6 +254,8 @@ export function acceptJob(state,jobId){
 export function progressCareerYear(state,rng){
  const c=state.career;
  if(!c?.employed)return [];
+ const {calendarYear,replayed}=annualYearStatus(state.year,state.lastCareerProgressProcessedYear,'career progression');
+ if(replayed)return [];
  c.years+=1;
  c.totalYears=(c.totalYears??0)+1;
  const capacity=physicalCapacity(state);
@@ -260,7 +266,9 @@ export function progressCareerYear(state,rng){
   const raise=Math.round(c.monthlyIncome*rng.int(4,10)/100);
   c.monthlyIncome+=raise;
   state.player.monthlyIncome=c.monthlyIncome;
+  if(calendarYear!==null)state.lastCareerProgressProcessedYear=calendarYear;
   return [{age:state.player.age,kind:'career',text:'İşindeki performansın sayesinde maaşına zam aldın.'}];
  }
+ if(calendarYear!==null)state.lastCareerProgressProcessedYear=calendarYear;
  return [];
 }

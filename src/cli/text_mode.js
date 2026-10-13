@@ -2,6 +2,8 @@ import {createInterface} from 'node:readline/promises';
 import {stdin as input,stdout as output} from 'node:process';
 import {readFile,writeFile} from 'node:fs/promises';
 import {Game} from '../core/game.js';
+import {saveMonthlySurplus,spendActivityCash} from '../finance/personal_finance.js';
+import {saveChildAllowance,spendChildAllowance} from '../finance/child_money.js';
 import {refreshPrimaryStats} from '../life/primary_stats.js';
 import {earlyYearMoment} from '../life/early_year_moments.js';
 import {schoolAgeYearMoment} from '../life/school_age_year_moments.js';
@@ -111,9 +113,8 @@ function makeYearMoment(game){
  return rng.pick(pool);
 }
 function spendChild(s,amount){
- s.childMoney??={wallet:0,saved:0,totalAllowance:0,totalSpent:0,lastAllowanceAge:null};
- if((s.childMoney.wallet??0)<amount)return false;
- s.childMoney.wallet-=amount;s.childMoney.totalSpent=(s.childMoney.totalSpent??0)+amount;return true;
+ try{spendChildAllowance(s,amount);return true;}
+ catch{return false;}
 }
 async function leisure(game,kind){
  const defs={cinema:{label:'Sinemaya git',costs:[250,550,1100]},meal:{label:'Dışarıda yemek ye',costs:[350,850,1800]},shopping:{label:'Alışveriş yap',costs:[500,1500,4000]}};
@@ -127,9 +128,9 @@ async function leisure(game,kind){
  const tier=await choose('Bütçe',d.costs.map((cost,i)=>({label:['Ekonomik','Standart','Premium'][i]+' • '+money(cost),value:{i,cost}})));
  if(!tier)return false;
  const cost=tier.value.cost;
- if((s.finance?.cash??0)<cost){console.log('Yeterli nakdin yok.');return false;}
  if((s.actions?.remaining??0)<=0){console.log('Aksiyon hakkın kalmadı.');return false;}
- s.finance.cash-=cost;s.finance.activitySpendingAnnual=(s.finance.activitySpendingAnnual??0)+cost;s.actions.remaining--;
+ try{spendActivityCash(s,cost);}catch{console.log('Yetersiz nakit veya geçersiz harcama kaydı.');return false;}
+ s.actions.remaining--;
  const x=companion.value;
  if(x.type==='partner'){x.person.relationship=clamp((x.person.relationship??60)+3+tier.value.i*2);x.person.relationshipTension=clamp((x.person.relationshipTension??10)-2-tier.value.i);x.person.lastQualityTimeAge=s.player.age;}
  if(x.type==='friend'){x.person.relationship=clamp((x.person.relationship??55)+3+tier.value.i*2);x.person.lastContactAge=s.player.age;}
@@ -156,10 +157,13 @@ async function resolveYearMoment(game){
  if(['friends','social'].includes(choice)){s.player.personality.sociability=clamp((s.player.personality.sociability??50)+1);s.healthProfile.stress=clamp(s.healthProfile.stress-2);text='Sosyal bağlarına vakit ayırdın.';}
  if(choice==='exercise'){s.healthProfile.fitness=clamp((s.healthProfile.fitness??50)+3);s.healthProfile.stress=clamp(s.healthProfile.stress-2);text='Sağlığına zaman ayırdın.';}
  if(choice==='work-focus'){if(s.career?.employed)s.career.performance=clamp((s.career.performance??50)+3);s.healthProfile.stress=clamp(s.healthProfile.stress+2);text='İşine ekstra enerji ayırdın.';}
- if(choice==='child-save'){const moved=Math.round((s.childMoney.wallet??0)*.6);s.childMoney.wallet-=moved;s.childMoney.saved+=moved;text=moved?money(moved)+' biriktirdin.':'Cebinde biriktirecek para yoktu.';}
+ if(choice==='child-save'){
+  try{const moved=saveChildAllowance(s);text=moved?money(moved)+' biriktirdin.':'Cebinde biriktirecek para yoktu.';}
+  catch{text='Harçlık hesabındaki geçersiz bakiye nedeniyle birikim yapılamadı.';}
+ }
  const childCosts={snack:120,book:280,'game-spend':450,'meal-small':300,'clothes-small':650};
  if(childCosts[choice])text=spendChild(s,childCosts[choice])?money(childCosts[choice])+' harcadın.':'Harçlığın yetmedi.';
- if(choice==='adult-save'&&s.finance){const moved=Math.min(s.finance.cash??0,Math.max(500,Math.round((s.finance.monthlyIncome??0)*.08)));s.finance.cash-=moved;s.finance.savings=(s.finance.savings??0)+moved;text=money(moved)+' birikime ayırdın.';}
+ if(choice==='adult-save'&&s.finance){try{const moved=saveMonthlySurplus(s);text=moved>0?money(moved)+' birikime ayırdın.':'Bu ay birikime para ayıramadın.';}catch{text='Birikim işlemi geçersiz hesap verileri nedeniyle yapılamadı.';}}
  if(choice==='partner-time'&&s.social?.romance){const r=s.social.romance;r.relationship=clamp((r.relationship??60)+5);r.relationshipTension=clamp((r.relationshipTension??10)-4);r.lastQualityTimeAge=s.player.age;text='Partnerinle kaliteli zaman geçirdin.';}
  if(choice==='child-time'&&(s.children?.length??0)){for(const c of s.children){c.relationship=clamp((c.relationship??70)+3);if(c.parenting)c.parenting.involvement=clamp((c.parenting.involvement??55)+3);}text='Çocuklarına özellikle zaman ayırdın.';}
  if(['cinema','meal','shopping'].includes(choice)){
@@ -227,8 +231,10 @@ async function relationshipsMenu(game){
   if(!action)continue;
   const a=action.value;
   if((s.actions?.remaining??0)<=0){console.log('Aksiyon hakkın kalmadı.');await ask('\nEnter...');continue;}
-  if(a.cost&&(s.finance?.cash??0)<a.cost){console.log('Yeterli nakdin yok.');await ask('\nEnter...');continue;}
-  if(a.cost){s.finance.cash-=a.cost;s.finance.activitySpendingAnnual=(s.finance.activitySpendingAnnual??0)+a.cost;}
+  if(a.cost){
+   try{spendActivityCash(s,a.cost);}
+   catch{console.log('Yetersiz nakit veya geçersiz harcama kaydı.');await ask('\nEnter...');continue;}
+  }
   if(t.type==='family'){s.player.relationships??={};s.player.relationships[t.person.id]=clamp(relationValue(s,t)+a.rel);}
   else t.person.relationship=clamp((t.person.relationship??60)+a.rel);
   s.healthProfile.stress=clamp((s.healthProfile?.stress??20)+a.stress);
@@ -306,7 +312,7 @@ async function assetsMenu(game){
     if(a.home){console.log('Sahip olduğun ev varken doğrudan kiralık düzene geçemezsin.');}
     else{
      const h=await choose('Konut',[['family','Aile evi'],['shared','Paylaşımlı ev'],['studio','Stüdyo'],['apartment','Daire']].map(([value,label])=>({label,value})));
-     if(h){const r=moveHousing(s,h.value);console.log('→ Taşındın. Masraf '+money(r.cost));}
+     if(h){const r=moveHousing(s,h.value);console.log(r.changed?'→ Taşındın. Masraf '+money(r.cost):'→ Konut düzeni değişmedi.');}
     }
    }
    if(p.value==='car'){

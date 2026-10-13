@@ -1,3 +1,4 @@
+import {annualYearStatus} from '../core/annual_clock.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export function ensureUnemploymentState(state){
@@ -18,6 +19,10 @@ export function ensureUnemploymentState(state){
 }
 
 export function processUnemploymentYear(state){
+ // Validate an existing unemployment spell before normalization can mutate it.
+ const existing=state.career?.employed?null:state.unemployment;
+ const {calendarYear,replayed}=annualYearStatus(state.year,existing?.lastProcessedYear,'unemployment');
+ if(existing&&replayed)return [];
  const u=ensureUnemploymentState(state);
  if(!u)return [];
  const entries=[];
@@ -38,6 +43,7 @@ export function processUnemploymentYear(state){
 
  if(u.durationYears===2)entries.push({age:state.player.age,kind:'career',text:'İşsizlik uzadıkça yeni kariyer veya yeniden eğitim seçeneklerini değerlendirmeye başladın.'});
  if(u.durationYears===3)entries.push({age:state.player.age,kind:'career',text:'Uzun süreli işsizlik nedeniyle daha geniş bir iş havuzuna yönelmeye başladın.'});
+ if(calendarYear!==null)u.lastProcessedYear=calendarYear;
  return entries;
 }
 

@@ -43,7 +43,11 @@ test('persistent debt distress downgrades lifestyle and records distress',()=>{
  g.state.finance.savings=0;
  g.state.finance.debt=5000000;
  g.state.finance.lifestyle={housing:'apartment',food:'premium',clothing:'premium',transport:'public'};
- for(let i=0;i<2;i++)processPersonalFinanceYear(g.state);
+ for(let i=0;i<2;i++){
+  g.state.year+=1;
+  g.state.player.age+=1;
+  processPersonalFinanceYear(g.state);
+ }
  assert.ok(g.state.finance.financialDistressEvents>=1);
  assert.notEqual(g.state.finance.lifestyle.clothing,'premium');
  assert.notEqual(g.state.finance.lifestyle.food,'premium');

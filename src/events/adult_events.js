@@ -6,7 +6,7 @@ import {affordableCarOptions,buyCar,affordableHomeOptions,buyHome} from '../asse
 import {marryPartner,moveInTogether,ensurePartnershipState} from '../social/partnership_system.js';
 import {createRomanticInterest} from '../social/romance_system.js';
 import {attemptChild,parenthoodReadiness} from '../family/parenting_system.js';
-import {resolvePartnerMove,returnHome,canConsiderReturnHome,deferReturnHome} from '../world/migration_system.js';
+import {resolvePartnerMove,isCurrentPartnerMoveOpportunity,returnHome,canConsiderReturnHome,deferReturnHome} from '../world/migration_system.js';
 import {refreshMilitaryEligibility,completeMilitaryService,deferMilitaryService,paidMilitaryFee} from '../life/military_service.js';
 
 export const adultEvents=[
@@ -43,7 +43,7 @@ export const adultEvents=[
  },
  {
   id:'partner-job-relocation',title:'Partnerinin Kariyeri İçin Taşınma',minAge:23,maxAge:58,once:false,majorDecision:false,priority:84,
-  condition:s=>Boolean(s.pendingPartnerMove&&s.social?.romance&&['cohabiting','married'].includes(s.social.romance.status)),
+  condition:s=>isCurrentPartnerMoveOpportunity(s),
   choices:s=>[
    {
     id:'move-with-partner',
@@ -98,7 +98,7 @@ export const adultEvents=[
  },
  {
   id:'first-job',title:'İş Teklifleri',minAge:19,maxAge:72,once:false,majorDecision:true,priority:120,
-  condition:s=>Array.isArray(s.pendingJobOffers)&&s.pendingJobOffers.length>0,
+  condition:s=>!s.retirement?.retired&&Array.isArray(s.pendingJobOffers)&&s.pendingJobOffers.length>0,
   choices:s=>[
    ...s.pendingJobOffers.map(job=>({
    id:'job:'+job.id,label:job.title+' — '+job.cityName+' — ₺'+job.salary.toLocaleString('tr-TR')+'/ay'+(job.requiresMove?' • taşınma ~₺'+job.moveCost.toLocaleString('tr-TR'):''),
@@ -111,7 +111,7 @@ export const adultEvents=[
  },
  {
   id:'career-switch',title:'Kariyerini Değiştirme Fırsatı',minAge:22,maxAge:65,once:false,majorDecision:false,priority:78,
-  condition:s=>Array.isArray(s.pendingCareerOffers)&&s.pendingCareerOffers.length>0&&s.career?.employed,
+  condition:s=>!s.retirement?.retired&&Array.isArray(s.pendingCareerOffers)&&s.pendingCareerOffers.length>0&&s.career?.employed,
   choices:s=>[
    ...s.pendingCareerOffers.map(job=>({
     id:'switch:'+job.id,label:job.title+' — '+job.cityName+' — ₺'+job.salary.toLocaleString('tr-TR')+'/ay'+(job.requiresMove?' • taşınma ~₺'+job.moveCost.toLocaleString('tr-TR'):''),majorDecision:true,
@@ -169,14 +169,14 @@ export const adultEvents=[
   condition:s=>s.finance?.lifestyle?.housing==='family'&&s.career?.employed&&s.player.age>=(s.nextMoveOutAge??22),
   choices:[
    {id:'stay-family',label:'Bir süre daha ailemle kal',result:'Birikim yapmak için aile evinde kalmaya devam ettin.',effect:s=>{s.nextMoveOutAge=s.player.age+3;}},
-   {id:'shared',label:'Paylaşımlı eve çık',majorDecision:true,result:'Paylaşımlı bir eve taşındın.',effect:s=>setLifestyle(s,{housing:'shared'})},
-   {id:'studio',label:'Tek başıma stüdyo eve çık',majorDecision:true,condition:s=>(s.career?.monthlyIncome??0)>=40000,result:'Kendi evine çıktın.',effect:s=>setLifestyle(s,{housing:'studio'})}
+   {id:'shared',label:'Paylaşımlı eve çık',majorDecision:true,condition:s=>!s.assets?.home&&(s.finance?.cash??0)>=12000,result:'Paylaşımlı bir eve taşındın.',effect:s=>setLifestyle(s,{housing:'shared'})},
+   {id:'studio',label:'Tek başıma stüdyo eve çık',majorDecision:true,condition:s=>(s.career?.monthlyIncome??0)>=40000&&!s.assets?.home&&(s.finance?.cash??0)>=24000,result:'Kendi evine çıktın.',effect:s=>setLifestyle(s,{housing:'studio'})}
   ]
  },
  {
   id:'relationship-commitment',title:'İlişkinin Geleceği',minAge:21,maxAge:55,once:false,majorDecision:false,priority:58,
   condition:s=>{
-   const r=s.social?.romance;if(!r)return false;ensurePartnershipState(s);
+   const r=s.social?.romance;if(!r||r.alive===false)return false;ensurePartnershipState(s);
    return r.status==='dating'&&r.yearsTogether>=1&&r.relationship>=48&&s.player.age>=(s.nextCommitmentAge??21)&&(s.preferences?.partnershipDesire??50)>=35;
   },
   choices:[
@@ -187,7 +187,7 @@ export const adultEvents=[
  },
  {
   id:'marriage-after-cohabiting',title:'Evlilik Kararı',minAge:20,maxAge:60,once:false,majorDecision:false,priority:57,
-  condition:s=>s.social?.romance?.status==='cohabiting'&&s.social.romance.yearsTogether>=2&&s.social.romance.relationship>=48&&s.player.age>=(s.nextMarriageAge??20)&&(s.preferences?.marriageDesire??50)>=28,
+  condition:s=>s.social?.romance?.alive!==false&&s.social?.romance?.status==='cohabiting'&&s.social.romance.yearsTogether>=2&&s.social.romance.relationship>=48&&s.player.age>=(s.nextMarriageAge??20)&&(s.preferences?.marriageDesire??50)>=28,
   choices:[
    {id:'marry',label:'Evlen',majorDecision:true,result:'Evlendiniz.',effect:s=>marryPartner(s)},
    {id:'continue',label:'Birlikte yaşamaya devam et',result:'Resmî evlilik olmadan birlikte yaşamaya devam ettiniz.',effect:s=>{s.social.romance.relationship=Math.min(100,s.social.romance.relationship+1);s.nextMarriageAge=s.player.age+2;}}

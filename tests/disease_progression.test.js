@@ -22,7 +22,11 @@ test('untreated disease progresses across stages over time',()=>{
  const rng={int:()=>4,chance:()=>false};
  const condition=g.state.healthProfile.conditions[0];
  const start=ensureConditionProgression(condition).score;
- for(let i=0;i<4;i++)processDiseaseProgressionYear(g.state,rng);
+ for(let i=0;i<4;i++){
+  g.state.year=2071+i;
+  g.state.player.age=50+i;
+  processDiseaseProgressionYear(g.state,rng);
+ }
  assert.ok(condition.progression.score>start);
  assert.ok(['severe','critical'].includes(condition.progression.stage));
  assert.equal(condition.progression.status,'active');

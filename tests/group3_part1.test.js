@@ -47,7 +47,10 @@ test('sustained stress raises mental strain and can create episodes',()=>{
  g.state.social={friends:[],romance:null};
  const m=ensureMentalHealth(g.state);
  const before=m.strain;
- for(let i=0;i<6;i++)processMentalHealthYear(g.state,new RNG('mental-'+i));
+ for(let i=0;i<6;i++){
+  g.state.year++;g.state.player.age++;
+  processMentalHealthYear(g.state,new RNG('mental-'+i));
+ }
  assert.ok(m.strain>before);
  assert.notEqual(m.status,'stable');
  assert.ok(m.episodes.length>0);

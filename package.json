@@ -15,6 +15,12 @@
     "trace": "node src/cli/trace.js",
     "branch": "node src/cli/branch.js",
     "showcase": "node src/cli/showcase.js",
-    "start": "python3 -m http.server 8080"
+    "start": "python3 -m http.server 8080",
+    "test:fast": "node --test --test-concurrency=4 tests/*regression.test.js tests/core.test.js tests/npc_activity_ledger.test.js tests/npc_activity_auto.test.js",
+    "test:midlife": "node src/cli/midlife_smoke.js",
+    "test:web": "node --test tests/cycle100_web_entry_assets_regression.test.js",
+    "test:shard": "node src/cli/test_shard.js",
+    "save:repair": "node src/cli/repair_save.js",
+    "bench:snapshot": "node src/cli/benchmark_snapshot.js"
   }
 }

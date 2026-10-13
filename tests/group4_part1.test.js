@@ -14,7 +14,13 @@ function employed(game,{jobId='developer',title='Yazılımcı',years=8,income=12
  game.state.player.jobId=jobId;
  game.state.player.monthlyIncome=income;
  const p=ensureCareerProfile(game.state);
- for(let i=0;i<years;i++)recordCareerYear(game.state);
+ // Credit prior experience across distinct calendar years, not repeated calls in one year.
+ const currentYear=game.state.year;
+ for(let i=0;i<years;i++){
+  game.state.year=currentYear-years+1+i;
+  recordCareerYear(game.state);
+ }
+ game.state.year=currentYear;
  return p;
 }
 
@@ -48,6 +54,9 @@ test('unrelated professional switch requires retraining rather than normal offer
  const r=beginRetraining(g.state,'designer');
  assert.equal(r.requiredYears,2);
  processRetrainingYear(g.state);
+ // Retraining takes two distinct calendar years, not two calls in one year.
+ g.state.year++;
+ g.state.player.age++;
  processRetrainingYear(g.state);
  assert.equal(r.completed,true);
 });

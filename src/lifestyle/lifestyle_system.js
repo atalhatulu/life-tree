@@ -1,5 +1,6 @@
 import {TURKEY_2026_ECONOMY} from '../data/countries/turkey/economy.js';
 import {locationProfile} from '../data/countries/turkey/profile.js';
+import {moveHousing} from '../assets/asset_system.js';
 
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
@@ -34,10 +35,20 @@ export function lifestyleEffects(state){
 }
 
 export function setLifestyle(state,changes){
- if(!state.finance) throw new Error('Kişisel finans henüz başlamadı.');
- const l=state.finance.lifestyle;
- for(const [key,value] of Object.entries(changes)){
-  if(!LIFESTYLE_COSTS[key]?.[value]&&LIFESTYLE_COSTS[key]?.[value]!==0) throw new Error('Geçersiz yaşam standardı seçimi.');
-  l[key]=value;
+ if(!state.finance?.lifestyle) throw new Error('Kişisel finans henüz başlamadı.');
+ if(!changes||typeof changes!=='object'||Array.isArray(changes))
+  throw new TypeError('Geçersiz yaşam standardı seçimi.');
+ const entries=Object.entries(changes);
+ // Validate the entire batch before changing a single preference.
+ for(const [key,value] of entries){
+  if(!['housing','food','clothing','transport'].includes(key)||
+     !Object.hasOwn(LIFESTYLE_COSTS[key],value))
+   throw new Error('Geçersiz yaşam standardı seçimi.');
  }
+ // Housing is a paid move, not a free preference toggle. Validate all
+ // requested preferences first, then perform the potentially failing move
+ // before changing unrelated fields. Owned housing is asset-managed.
+ if(Object.hasOwn(changes,'housing')&&changes.housing!==state.finance.lifestyle.housing)
+  moveHousing(state,changes.housing);
+ for(const [key,value] of entries)if(key!=='housing')state.finance.lifestyle[key]=value;
 }

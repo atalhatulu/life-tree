@@ -1,5 +1,7 @@
 import {progressionBurden} from './disease_progression.js';
+import {annualYearStatus} from '../core/annual_clock.js';
 import {geneticRiskMultiplier,geneticDiseaseModifiers} from './genetic_system.js';
+import {captureRngCheckpoint,restoreRngOrThrow,snapshotObjectGraph,snapshotOwnFields} from '../core/transaction_snapshot.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 const CONDITIONS=[
@@ -65,8 +67,42 @@ function normalDeathEligible(state){
 
 export function ensureHealthProfile(state){
  state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
+ state.healthProfile.conditions??=[];
+ state.healthProfile.stress??=20;
+ state.healthProfile.fitness??=50;
  state.healthProfile.riskExposure??={};
  return state.healthProfile;
+}
+
+function assertHealthYearInput(state,healthBeforeYear){
+ const validReserve=(value)=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=100;
+ const profile=state.healthProfile;
+ if(!validReserve(state.player.health?.current)||
+    (state.player.health.constitution!=null&&!validReserve(state.player.health.constitution)))
+  throw new RangeError('Invalid player health reserves');
+ if(healthBeforeYear!=null&&!validReserve(healthBeforeYear))
+  throw new RangeError('Invalid healthBeforeYear reserve');
+ if(profile==null)return;
+ if(typeof profile!=='object'||Array.isArray(profile))throw new TypeError('Invalid health profile');
+ for(const field of ['stress','fitness'])
+  if(profile[field]!=null&&!validReserve(profile[field]))throw new RangeError('Invalid health '+field);
+ if(profile.conditions!=null){
+  if(!Array.isArray(profile.conditions))throw new TypeError('Invalid health conditions');
+  for(const condition of profile.conditions){
+   if(!condition||typeof condition!=='object'||Array.isArray(condition)||
+      !Number.isFinite(condition.severity)||condition.severity<=0||condition.severity>5)
+    throw new RangeError('Invalid health condition severity');
+   if(condition.progression!=null&&
+      (typeof condition.progression!=='object'||Array.isArray(condition.progression)))
+    throw new TypeError('Invalid health condition progression');
+  }
+ }
+ if(profile.riskExposure!=null){
+  if(typeof profile.riskExposure!=='object'||Array.isArray(profile.riskExposure))
+   throw new TypeError('Invalid health risk exposure');
+  for(const exposure of Object.values(profile.riskExposure))
+   if(!validReserve(exposure))throw new RangeError('Invalid health risk exposure value');
+ }
 }
 
 function exposureGain(state,condition,geneticMultiplier){
@@ -91,8 +127,16 @@ function exposureGain(state,condition,geneticMultiplier){
 }
 
 export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
- const h=ensureHealthProfile(state);
  const entries=[];
+ if(state.player.alive===false)return entries;
+ const {calendarYear,replayed}=annualYearStatus(state.year,state.healthProfile?.lastHealthProcessedYear,'health');
+ if(replayed)return entries;
+ assertHealthYearInput(state,healthBeforeYear);
+ const restoreGraph=snapshotObjectGraph([state.player,state.healthProfile]);
+ const restoreFields=snapshotOwnFields(state,['healthProfile','death']);
+ const restoreRng=captureRngCheckpoint(rng);
+ try {
+ const h=ensureHealthProfile(state);
  const age=state.player.age;
  const lifestyle=state.finance?.lifestyle;
  const baseWear=annualAgingWear(age);
@@ -110,7 +154,7 @@ export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
  h.fitness=wear.fitness>0?Math.min(simulatedFitness,clamp(previousFitness-wear.fitness)):simulatedFitness;
 
  const activeBurden=h.conditions.reduce((sum,condition)=>sum+conditionBurden(condition),0);
- let delta=(state.player.health.constitution-60)*.02+(h.fitness-50)*.025-(h.stress-40)*.02;
+ let delta=((state.player.health.constitution??60)-60)*.02+(h.fitness-50)*.025-(h.stress-40)*.02;
  if(lifestyle?.food==='healthy')delta+=1.5;
  if(lifestyle?.food==='frugal')delta-=1;
  delta-=activeBurden*.70;
@@ -181,5 +225,10 @@ export function processHealthYear(state,rng,{healthBeforeYear=null}={}){
   state.death={age,year:state.year,cause:deathCause(state,rng.fork('cause'),{criticalReserve,health})};
   entries.push({age,kind:'death',text:'Hayatın '+age+' yaşında sona erdi.'});
  }
+ if(calendarYear!==null)h.lastHealthProcessedYear=calendarYear;
  return entries;
+ }catch(error){
+  restoreGraph();restoreFields();
+  restoreRngOrThrow(restoreRng,error);
+ }
 }

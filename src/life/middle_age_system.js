@@ -1,3 +1,4 @@
+import {annualYearStatus} from '../core/annual_clock.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export function ensureMiddleAgeState(state){
@@ -14,8 +15,11 @@ export function ensureMiddleAgeState(state){
 }
 
 export function processMiddleAgeYear(state,rng){
+ if(state.player.age<35||state.player.age>60)return [];
+ // Validate before ensureMiddleAgeState can initialize a new profile.
+ const {calendarYear,replayed}=annualYearStatus(state.year,state.middleAge?.lastProcessedYear,'middle age');
+ if(replayed)return [];
  const m=ensureMiddleAgeState(state);
- if(!m)return [];
  const entries=[];
  const age=state.player.age;
  const career=state.career;
@@ -63,5 +67,6 @@ export function processMiddleAgeYear(state,rng){
   entries.push({age,kind:'life',text:'Hayatının bu döneminde kariyer, sağlık ve aile dengeni yeniden değerlendirdin.'});
   m.lastReflectionAge=age;
  }
+ if(calendarYear!==null)m.lastProcessedYear=calendarYear;
  return entries;
 }

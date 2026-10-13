@@ -1,8 +1,9 @@
+import {safeCashAmount} from '../finance/safe_cash.js';
+import {transferToSavings} from '../finance/personal_finance.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 function ready(s,id,years=4){
- s.storyletCooldowns??={};
- const last=s.storyletCooldowns[id];
+ const last=s.storyletCooldowns?.[id];
  return last==null||s.player.age-last>=years;
 }
 function cool(s,id){
@@ -15,6 +16,58 @@ function underLimit(s,id,max=2){
  return (s.storyletCounts?.[id]??0)<max;
 }
 function stress(s,d){if(s.healthProfile)s.healthProfile.stress=clamp((s.healthProfile.stress??20)+d);}
+// Fixed-cost storylet purchases must never charge malformed cash or grant
+// relationship/career rewards on a rejected or replayed purchase.
+function storyletCanPay(s,cost){
+ const cash=s.finance?.cash;
+ return typeof cash==='number'&&Number.isSafeInteger(cash)&&cash>=cost;
+}
+function storyletPay(s,cost){
+ if(!storyletCanPay(s,cost))return false;
+ s.finance.cash-=cost;
+ return true;
+}
+function livingCloseFriend(s){
+ return (s.social?.friends??[]).find(f=>f.alive!==false&&f.closeFriend&&(f.trust??0)>=65);
+}
+function hasLivingSupport(s){
+ return Boolean((s.social?.romance&&s.social.romance.alive!==false)||(s.social?.friends??[]).some(f=>f.alive!==false&&f.closeFriend));
+}
+function validShockPrincipal(s){
+ const shock=s.householdDynamics?.recentShock;
+ return Boolean(shock&&Number.isSafeInteger(shock.cost)&&shock.cost>=0&&
+  Number.isSafeInteger(shock.remainingDebt)&&shock.remainingDebt>=0&&
+  shock.remainingDebt<=shock.cost);
+}
+function shockDebtOutstanding(s){
+ if(!validShockPrincipal(s))return 0;
+ const emergency=s.finance?.debts?.emergency;
+ const total=s.finance?.debt;
+ if(!Number.isSafeInteger(emergency)||emergency<0||
+    !Number.isSafeInteger(total)||total<0||emergency>total)return 0;
+ return Math.min(s.householdDynamics.recentShock.remainingDebt,emergency,total);
+}
+// Reserve settlement must not charge a corrupted legacy ledger or use an
+// Infinity/string balance. Unlike a general debt reconciliation, rejecting a
+// cached storylet decision must leave the entire save unchanged.
+function reserveCashPayment(s){
+ const cash=s.finance?.cash;
+ const total=s.finance?.debt;
+ const emergency=s.finance?.debts?.emergency;
+ const remaining=s.householdDynamics?.recentShock?.remainingDebt;
+ if(!validShockPrincipal(s)||
+    ![cash,total,emergency,remaining].every(v=>Number.isSafeInteger(v)&&v>=0)||
+    remaining>emergency||emergency>total)return 0;
+ return Math.min(cash,total,emergency,remaining);
+}
+// A presented choice can outlive its event. Prevent stale choice references
+// from reapplying rewards or charging another bill after this shock was handled.
+function reserveDecisionOpen(s){
+ return ready(s,'reserve-choice',4)&&s.householdDynamics?.recentShock?.age===s.player?.age;
+}
+function livingFriendById(s,id){
+ return (s.social?.friends??[]).find(f=>f.id===id&&f.alive!==false);
+}
 function relationship(s,d,tension=0){
  const r=s.social?.romance;if(!r)return;
  r.relationship=clamp((r.relationship??60)+d);
@@ -61,25 +114,27 @@ export const systemicStorylets=[
  },
  {
   id:'storylet-child-needs-you',title:'Çocuğun Sana İhtiyaç Duyuyor',minAge:28,maxAge:58,priority:63,
-  condition:s=>ready(s,'child-needs',3)&&(s.children??[]).some(c=>c.age>=8&&c.age<=17&&(c.parenting?.emotionalSecurity??70)<62),
+  condition:s=>ready(s,'child-needs',3)&&(s.children??[]).some(c=>c.alive!==false&&c.age>=8&&c.age<=17&&(c.parenting?.emotionalSecurity??70)<62),
   choices:s=>{
-   const child=s.children.find(c=>c.age>=8&&c.age<=17&&(c.parenting?.emotionalSecurity??70)<62);
+   const child=s.children.find(c=>c.alive!==false&&c.age>=8&&c.age<=17&&(c.parenting?.emotionalSecurity??70)<62);
+   if(!child)return [];
    return [
-    {id:'make-time',label:child.name+' için programını boşalt',result:'Çocuğuna gerçek anlamda zaman ayırdın.',effect:n=>{const c=n.children.find(x=>x.id===child.id);c.relationship=clamp((c.relationship??70)+8);c.parenting.emotionalSecurity=clamp((c.parenting.emotionalSecurity??60)+9);c.parenting.involvement=clamp((c.parenting.involvement??55)+7);if(n.career?.workplace)n.career.workplace.workload=clamp(n.career.workplace.workload+2);cool(n,'child-needs');}},
-    {id:'buy-support',label:'Kurs / destek ayarla',result:'Zaman yerine maddi ve profesyonel destek sundun.',effect:n=>{const cost=5000;if((n.finance?.cash??0)>=cost)n.finance.cash-=cost;const c=n.children.find(x=>x.id===child.id);c.parenting.accumulatedSupport=(c.parenting.accumulatedSupport??0)+5;c.relationship=clamp((c.relationship??70)+3);cool(n,'child-needs');}},
-    {id:'dismiss',label:'Kendi başına çözmesini bekle',result:'Müdahale etmemeyi seçtin.',effect:n=>{const c=n.children.find(x=>x.id===child.id);c.relationship=clamp((c.relationship??70)-5);c.parenting.emotionalSecurity=clamp((c.parenting.emotionalSecurity??60)-5);cool(n,'child-needs');}}
+    {id:'make-time',label:child.name+' için programını boşalt',result:'Çocuğuna gerçek anlamda zaman ayırdın.',effect:n=>{const c=n.children.find(x=>x.id===child.id&&x.alive!==false);if(!c)return;c.relationship=clamp((c.relationship??70)+8);c.parenting.emotionalSecurity=clamp((c.parenting.emotionalSecurity??60)+9);c.parenting.involvement=clamp((c.parenting.involvement??55)+7);if(n.career?.workplace)n.career.workplace.workload=clamp(n.career.workplace.workload+2);cool(n,'child-needs');}},
+    {id:'buy-support',label:'Kurs / destek ayarla',condition:n=>ready(n,'child-needs',3)&&storyletCanPay(n,5000),result:'Zaman yerine maddi ve profesyonel destek sundun.',effect:n=>{const cost=5000;const c=n.children.find(x=>x.id===child.id&&x.alive!==false);if(!c||!ready(n,'child-needs',3)||!storyletPay(n,cost))return;c.parenting.accumulatedSupport=(c.parenting.accumulatedSupport??0)+5;c.relationship=clamp((c.relationship??70)+3);cool(n,'child-needs');}},
+    {id:'dismiss',label:'Kendi başına çözmesini bekle',result:'Müdahale etmemeyi seçtin.',effect:n=>{const c=n.children.find(x=>x.id===child.id&&x.alive!==false);if(!c)return;c.relationship=clamp((c.relationship??70)-5);c.parenting.emotionalSecurity=clamp((c.parenting.emotionalSecurity??60)-5);cool(n,'child-needs');}}
    ];
   }
  },
  {
   id:'storylet-close-friend-crisis',title:'Eski Bir Arkadaş Aradı',minAge:21,maxAge:75,priority:46,
-  condition:s=>ready(s,'friend-crisis',6)&&underLimit(s,'friend-crisis',2)&&(s.social?.friends??[]).some(f=>f.closeFriend&&(f.trust??0)>=65),
+  condition:s=>ready(s,'friend-crisis',6)&&underLimit(s,'friend-crisis',2)&&Boolean(livingCloseFriend(s)),
   choices:s=>{
-   const f=s.social.friends.find(x=>x.closeFriend&&(x.trust??0)>=65);
+   const f=livingCloseFriend(s);
+   if(!f)return [];
    return [
-    {id:'show-up',label:f.name+' için zaman ayır',result:'Arkadaşının yanında oldun.',effect:n=>{const x=n.social.friends.find(y=>y.id===f.id);x.relationship=clamp(x.relationship+7);x.trust=clamp((x.trust??60)+8);x.reciprocity=clamp((x.reciprocity??50)+5);stress(n,2);cool(n,'friend-crisis');}},
-    {id:'send-message',label:'Mesajla destek ol',result:'Uzaktan da olsa yanında olduğunu gösterdin.',effect:n=>{const x=n.social.friends.find(y=>y.id===f.id);x.relationship=clamp(x.relationship+3);x.trust=clamp((x.trust??60)+3);cool(n,'friend-crisis');}},
-    {id:'too-busy',label:'Şu ara yetişemiyorum',result:'Bu kez arkadaşına zaman ayıramadın.',effect:n=>{const x=n.social.friends.find(y=>y.id===f.id);x.relationship=clamp(x.relationship-4);x.trust=clamp((x.trust??60)-5);cool(n,'friend-crisis');}}
+    {id:'show-up',label:f.name+' için zaman ayır',result:'Arkadaşının yanında oldun.',effect:n=>{const x=livingFriendById(n,f.id);if(!x)return;x.relationship=clamp(x.relationship+7);x.trust=clamp((x.trust??60)+8);x.reciprocity=clamp((x.reciprocity??50)+5);stress(n,2);cool(n,'friend-crisis');}},
+    {id:'send-message',label:'Mesajla destek ol',result:'Uzaktan da olsa yanında olduğunu gösterdin.',effect:n=>{const x=livingFriendById(n,f.id);if(!x)return;x.relationship=clamp(x.relationship+3);x.trust=clamp((x.trust??60)+3);cool(n,'friend-crisis');}},
+    {id:'too-busy',label:'Şu ara yetişemiyorum',result:'Bu kez arkadaşına zaman ayıramadın.',effect:n=>{const x=livingFriendById(n,f.id);if(!x)return;x.relationship=clamp(x.relationship-4);x.trust=clamp((x.trust??60)-5);cool(n,'friend-crisis');}}
    ];
   }
  },
@@ -87,16 +142,41 @@ export const systemicStorylets=[
   id:'storylet-emergency-reserve',title:'Beklenmedik Masraf',minAge:23,maxAge:75,priority:64,
   condition:s=>ready(s,'reserve-choice',4)&&Boolean(s.householdDynamics?.recentShock)&&s.householdDynamics.recentShock.age===s.player.age,
   choices:[
-   {id:'pay-cash',label:'Rezervden karşıla',condition:s=>(s.finance?.cash??0)>5000,result:'Masrafı rezervinden karşıladın.',effect:s=>{stress(s,-2);s.lifeMemory.tags.money=(s.lifeMemory.tags.money??0)+1;cool(s,'reserve-choice');}},
-   {id:'tighten',label:'Önümüzdeki ayları sıkılaştır',result:'Harcamaları azaltıp şoku absorbe etmeyi seçtin.',effect:s=>{if(s.finance?.lifestyle){s.finance.lifestyle.food='frugal';s.finance.lifestyle.clothing='basic';}stress(s,2);cool(s,'reserve-choice');}},
-   {id:'ignore-debt',label:'Borçla devam et',result:'Masrafı borç tarafında bıraktın.',effect:s=>{stress(s,4);if(s.social?.romance)s.social.romance.resentment=clamp((s.social.romance.resentment??20)+3);cool(s,'reserve-choice');}}
+   {id:'pay-cash',label:'Kalan acil borcu nakitten kapat',condition:s=>reserveDecisionOpen(s)&&reserveCashPayment(s)>0,result:'Kalan acil borcunun karşılayabildiğin kısmını nakitten ödedin.',effect:s=>{
+    const amount=reserveCashPayment(s);
+    if(!reserveDecisionOpen(s)||amount<=0)return;
+    s.finance.cash-=amount;
+    s.finance.debts.emergency-=amount;
+    s.finance.debt-=amount;
+    s.householdDynamics.recentShock.remainingDebt-=amount;
+    stress(s,-2);
+    s.lifeMemory??={};s.lifeMemory.tags??={};
+    s.lifeMemory.tags.money=(s.lifeMemory.tags.money??0)+1;
+    cool(s,'reserve-choice');
+   }},
+   {id:'tighten',label:'Önümüzdeki ayları sıkılaştır',condition:reserveDecisionOpen,result:'Harcamaları azaltıp şoku absorbe etmeyi seçtin.',effect:s=>{if(!reserveDecisionOpen(s))return;if(s.finance?.lifestyle){s.finance.lifestyle.food='frugal';s.finance.lifestyle.clothing='basic';}stress(s,2);cool(s,'reserve-choice');}},
+   {id:'ignore-debt',label:'Borçla devam et',condition:s=>reserveDecisionOpen(s)&&shockDebtOutstanding(s)>0,result:'Masrafı borç tarafında bıraktın.',effect:s=>{if(!reserveDecisionOpen(s)||shockDebtOutstanding(s)<=0)return;stress(s,4);if(s.social?.romance)s.social.romance.resentment=clamp((s.social.romance.resentment??20)+3);cool(s,'reserve-choice');}}
   ]
  },
  {
   id:'storylet-secure-couple-future',title:'Birlikte Gelecek Planı',minAge:27,maxAge:62,priority:44,
-  condition:s=>ready(s,'future-plan',7)&&underLimit(s,'future-plan',2)&&(s.social?.romance?.trust??0)>=78&&(s.social?.romance?.sharedGoals??0)>=68,
+  condition:s=>ready(s,'future-plan',7)&&underLimit(s,'future-plan',2)&&s.social?.romance?.alive!==false&&(s.social?.romance?.trust??0)>=78&&(s.social?.romance?.sharedGoals??0)>=68,
   choices:[
-   {id:'financial-goal',label:'Ortak birikim hedefi koyun',result:'Ortak finans hedefi belirlediniz.',effect:s=>{s.social.romance.moneyAlignment=clamp(s.social.romance.moneyAlignment+6);s.social.romance.sharedGoals=clamp(s.social.romance.sharedGoals+5);if(s.finance)s.finance.savings=(s.finance.savings??0)+Math.min(s.finance.cash??0,5000);cool(s,'future-plan');}},
+   {id:'financial-goal',label:'Ortak birikim hedefi koyun',result:'Ortak finans hedefi belirlediniz.',effect:s=>{
+    if(!ready(s,'future-plan',7)||!underLimit(s,'future-plan',2)||
+       !s.social?.romance||s.social.romance.alive===false)return;
+    let moved=0;
+    if(s.finance){
+     const cash=safeCashAmount(s.finance.cash??0,'Future-plan cash');
+     const savings=safeCashAmount(s.finance.savings??0,'Future-plan savings');
+     moved=Math.min(cash,5000,Number.MAX_SAFE_INTEGER-savings);
+    }
+    // Commit the validated transfer before awarding relationship progress.
+    if(s.finance)transferToSavings(s,moved);
+    s.social.romance.moneyAlignment=clamp(s.social.romance.moneyAlignment+6);
+    s.social.romance.sharedGoals=clamp(s.social.romance.sharedGoals+5);
+    cool(s,'future-plan');
+   }},
    {id:'family-goal',label:'Aile hayatını konuşun',result:'Aile ve yaşam beklentilerinizi açıkça konuştunuz.',effect:s=>{s.social.romance.sharedGoals=clamp(s.social.romance.sharedGoals+8);s.social.romance.trust=clamp(s.social.romance.trust+3);cool(s,'future-plan');}},
    {id:'keep-light',label:'Plan yapmadan devam edin',result:'İlişkiyi akışına bırakmayı seçtiniz.',effect:s=>{s.social.romance.intimacy=clamp(s.social.romance.intimacy+2);cool(s,'future-plan');}}
   ]
@@ -106,19 +186,20 @@ export const systemicStorylets=[
   condition:s=>ready(s,'burnout-crossroads',5)&&(s.career?.workplace?.burnout??0)>=76,
   choices:[
    {id:'slow-down',label:'İş yükünü azaltmaya çalış',result:'Performans riskine rağmen tempoyu düşürdün.',effect:s=>{s.career.workplace.workload=clamp(s.career.workplace.workload-12);s.career.workplace.burnout=clamp(s.career.workplace.burnout-10);s.career.performance=clamp(s.career.performance-3);stress(s,-7);cool(s,'burnout-crossroads');}},
-   {id:'vacation',label:'Parayı kullanıp kısa tatil yap',condition:s=>(s.finance?.cash??0)>=12000,result:'Kısa bir tatille zihnini toparladın.',effect:s=>{s.finance.cash-=12000;s.career.workplace.burnout=clamp(s.career.workplace.burnout-14);stress(s,-10);if(s.social?.romance)relationship(s,4,-4);cool(s,'burnout-crossroads');}},
+   {id:'vacation',label:'Parayı kullanıp kısa tatil yap',condition:s=>ready(s,'burnout-crossroads',5)&&storyletCanPay(s,12000),result:'Kısa bir tatille zihnini toparladın.',effect:s=>{if(!ready(s,'burnout-crossroads',5)||!storyletPay(s,12000))return;s.career.workplace.burnout=clamp(s.career.workplace.burnout-14);stress(s,-10);if(s.social?.romance)relationship(s,4,-4);cool(s,'burnout-crossroads');}},
    {id:'grind',label:'Dayan ve devam et',result:'İşi bırakmadın; bedelini stresle ödedin.',effect:s=>{s.career.workplace.recognition=clamp(s.career.workplace.recognition+5);s.career.workplace.burnout=clamp(s.career.workplace.burnout+7);stress(s,8);cool(s,'burnout-crossroads');}}
   ]
  },
  {
   id:'storylet-adult-child-request',title:'Yetişkin Çocuğundan Bir İstek',minAge:45,maxAge:78,priority:49,
-  condition:s=>ready(s,'adult-child-request',7)&&underLimit(s,'adult-child-request',2)&&(s.children??[]).some(c=>c.age>=20),
+  condition:s=>ready(s,'adult-child-request',7)&&underLimit(s,'adult-child-request',2)&&(s.children??[]).some(c=>c.alive!==false&&c.age>=20),
   choices:s=>{
-   const c=s.children.find(x=>x.age>=20);
+   const c=s.children.find(x=>x.alive!==false&&x.age>=20);
+   if(!c)return [];
    return [
-    {id:'help-money',label:c.name+' için maddi destek ver',condition:n=>(n.finance?.cash??0)>=15000,result:'Yetişkin çocuğuna maddi destek verdin.',effect:n=>{n.finance.cash-=15000;const x=n.children.find(y=>y.id===c.id);x.relationship=clamp((x.relationship??70)+6);cool(n,'adult-child-request');}},
-    {id:'help-time',label:'Para yerine zaman ve bağlantılarını kullan',result:'Sorunu birlikte çözmeye çalıştınız.',effect:n=>{const x=n.children.find(y=>y.id===c.id);x.relationship=clamp((x.relationship??70)+5);if(n.career)n.career.network=clamp((n.career.network??50)-2);cool(n,'adult-child-request');}},
-    {id:'say-no',label:'Kendi ayakları üzerinde durmasını iste',result:'Bu kez yardım etmemeyi seçtin.',effect:n=>{const x=n.children.find(y=>y.id===c.id);x.relationship=clamp((x.relationship??70)-4);cool(n,'adult-child-request');}}
+    {id:'help-money',label:c.name+' için maddi destek ver',condition:n=>ready(n,'adult-child-request',7)&&underLimit(n,'adult-child-request',2)&&storyletCanPay(n,15000),result:'Yetişkin çocuğuna maddi destek verdin.',effect:n=>{const x=n.children.find(y=>y.id===c.id&&y.alive!==false);if(!x||!ready(n,'adult-child-request',7)||!underLimit(n,'adult-child-request',2)||!storyletPay(n,15000))return;x.relationship=clamp((x.relationship??70)+6);cool(n,'adult-child-request');}},
+    {id:'help-time',label:'Para yerine zaman ve bağlantılarını kullan',result:'Sorunu birlikte çözmeye çalıştınız.',effect:n=>{const x=n.children.find(y=>y.id===c.id&&y.alive!==false);if(!x)return;x.relationship=clamp((x.relationship??70)+5);if(n.career)n.career.network=clamp((n.career.network??50)-2);cool(n,'adult-child-request');}},
+    {id:'say-no',label:'Kendi ayakları üzerinde durmasını iste',result:'Bu kez yardım etmemeyi seçtin.',effect:n=>{const x=n.children.find(y=>y.id===c.id&&y.alive!==false);if(!x)return;x.relationship=clamp((x.relationship??70)-4);cool(n,'adult-child-request');}}
    ];
   }
  },
@@ -136,7 +217,7 @@ export const systemicStorylets=[
   choices:[
    {id:'reflect',label:'Üzerine düşün ve kabullen',result:'Geçmişi bastırmak yerine anlamlandırmaya çalıştın.',effect:s=>{s.lifeMemory.resilience=clamp((s.lifeMemory.resilience??50)+5);s.lifeMemory.scarLoad=clamp((s.lifeMemory.scarLoad??0)-3);stress(s,-4);cool(s,'scar-trigger');}},
    {id:'avoid',label:'Üzerini kapat',result:'Eski meseleyi tekrar açmamayı seçtin.',effect:s=>{stress(s,2);cool(s,'scar-trigger');}},
-   {id:'lean-on-someone',label:'Yakın olduğun biriyle paylaş',condition:s=>Boolean(s.social?.romance||(s.social?.friends??[]).some(f=>f.closeFriend)),result:'Yükü tek başına taşımamayı seçtin.',effect:s=>{stress(s,-5);s.lifeMemory.resilience=clamp((s.lifeMemory.resilience??50)+3);if(s.social?.romance)relationship(s,3,-2);cool(s,'scar-trigger');}}
+   {id:'lean-on-someone',label:'Yakın olduğun biriyle paylaş',condition:hasLivingSupport,result:'Yükü tek başına taşımamayı seçtin.',effect:s=>{if(!hasLivingSupport(s))return;stress(s,-5);s.lifeMemory.resilience=clamp((s.lifeMemory.resilience??50)+3);if(s.social?.romance?.alive!==false&&s.social?.romance)relationship(s,3,-2);cool(s,'scar-trigger');}}
   ]
  }
 ];

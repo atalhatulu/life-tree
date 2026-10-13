@@ -1,4 +1,5 @@
 import {changeTrait} from '../character/personality_dynamics.js';
+import {annualYearStatus} from '../core/annual_clock.js';
 import {enterMiddleSchool,graduationReadiness} from '../education/pathways.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
@@ -6,6 +7,8 @@ export function processAdolescenceYear(state,rng){
  const entries=[];
  const age=state.player.age;
  if(age<10||age>18) return entries;
+ const {calendarYear,replayed}=annualYearStatus(state.year,state.lastAdolescenceProcessedYear,'adolescence');
+ if(replayed)return entries;
 
  if(age===10&&state.education?.stage==='primary'){
   if(enterMiddleSchool(state,rng.fork('middle-school'))){
@@ -14,7 +17,7 @@ export function processAdolescenceYear(state,rng){
  }
 
  const p=state.player;
- const friends=state.social?.friends??[];
+ const friends=(state.social?.friends??[]).filter(friend=>friend.alive!==false);
  const peerAverage=friends.length?friends.reduce((sum,f)=>sum+(f.relationship??50),0)/friends.length:50;
  p.personality.sociability=changeTrait(p.personality.sociability,rng.int(-2,2)+(peerAverage>70?1:0));
  p.personality.ambition=changeTrait(p.personality.ambition,rng.int(-2,2)+(state.education?.performance>70?1:0));
@@ -28,5 +31,6 @@ export function processAdolescenceYear(state,rng){
  if(age===18&&state.education?.stage==='high'){
   state.education.graduationReadiness=graduationReadiness(state);
  }
+ if(calendarYear!==null)state.lastAdolescenceProcessedYear=calendarYear;
  return entries;
 }

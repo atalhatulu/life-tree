@@ -1,3 +1,5 @@
+import {annualYearStatus} from '../core/annual_clock.js';
+import {captureRngCheckpoint,restoreRngOrThrow,snapshotObjectGraph,snapshotOwnFields} from '../core/transaction_snapshot.js';
 import {MONOGENIC_CONDITIONS,POLYGENIC_TRAITS} from './genetic_conditions.js';
 
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
@@ -66,11 +68,50 @@ export function inheritGenome(rng,mother,father){
  return {monogenic,polygenic};
 }
 
+// Validate the entire persisted genome and diagnosis ledger before the first
+// manifestation roll; a corrupt later locus must not partially diagnose an earlier one.
+function assertGeneticYearInput(state,genetics){
+ if(!Number.isSafeInteger(state.player.age)||state.player.age<0)
+  throw new RangeError('Invalid genetic player age');
+ const reserve=state.player.health?.current;
+ if(typeof reserve!=='number'||!Number.isFinite(reserve)||reserve<0||reserve>100)
+  throw new RangeError('Invalid genetic health reserve');
+ if(!genetics||typeof genetics!=='object'||Array.isArray(genetics)||
+    (genetics.monogenic!=null&&(typeof genetics.monogenic!=='object'||Array.isArray(genetics.monogenic))))
+  throw new TypeError('Invalid genetic genome');
+ for(const condition of MONOGENIC_CONDITIONS){
+  const locus=genetics.monogenic?.[condition.id];
+  if(locus==null)continue; // Missing loci in old saves are treated as clear.
+  if(typeof locus!=='object'||Array.isArray(locus)||
+     !['affected','carrier','clear'].includes(locus.status)||
+     (locus.alleles!=null&&(!Array.isArray(locus.alleles)||locus.alleles.length!==2||
+       locus.alleles.some(a=>a!=='V'&&a!=='N'))))
+   throw new TypeError('Invalid genetic locus '+condition.id);
+ }
+ const profile=state.healthProfile;
+ if(profile==null)return;
+ if(typeof profile!=='object'||Array.isArray(profile)||
+    (profile.conditions!=null&&!Array.isArray(profile.conditions)))
+  throw new TypeError('Invalid genetic health conditions');
+ for(const condition of profile.conditions??[]){
+  if(!condition||typeof condition!=='object'||Array.isArray(condition)||
+     typeof condition.id!=='string')
+   throw new TypeError('Invalid genetic health condition');
+ }
+}
+
 export function processGeneticHealthYear(state,rng){
  const entries=[];
+ const {calendarYear,replayed}=annualYearStatus(state.year,state.lastGeneticHealthProcessedYear,'genetic health');
+ if(replayed)return entries;
+ if(state.player.alive===false)return entries;
  const genetics=state.player.health?.genetics;
  if(!genetics)return entries;
-
+ assertGeneticYearInput(state,genetics);
+ const restoreGraph=snapshotObjectGraph([state.player,state.healthProfile]);
+ const restoreFields=snapshotOwnFields(state,['healthProfile','lastGeneticHealthProcessedYear']);
+ const restoreRng=captureRngCheckpoint(rng);
+ try {
  state.healthProfile??={conditions:[],stress:20,fitness:50,lastCheckupAge:null};
 
  for(const condition of MONOGENIC_CONDITIONS){
@@ -99,7 +140,11 @@ export function processGeneticHealthYear(state,rng){
    });
   }
  }
+ if(calendarYear!==null)state.lastGeneticHealthProcessedYear=calendarYear;
  return entries;
+ }catch(error){
+  restoreGraph();restoreFields();restoreRngOrThrow(restoreRng,error);
+ }
 }
 
 export function geneticRiskScore(state,traitId){

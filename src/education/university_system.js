@@ -1,3 +1,4 @@
+import {annualYearStatus} from '../core/annual_clock.js';
 import {UNIVERSITY_PROGRAMS} from '../data/university_programs.js';
 import {UNIVERSITIES} from '../data/countries/turkey/education.js';
 import {cityById} from '../data/countries/turkey/cities.js';
@@ -128,7 +129,9 @@ export function applyUniversityProgram(state,rng,programId){
 
 export function progressUniversityYear(state,rng){
  const u=state.higherEducation;
- if(!u?.enrolled||u.completed) return [];
+ if(!u?.enrolled||u.completed||state.player?.alive===false) return [];
+ const {calendarYear,replayed}=annualYearStatus(state.year,u.lastProgressProcessedYear,'university progression');
+ if(replayed)return [];
  const entries=[];
  const target=clamp(
   state.player.personality.discipline*.30+
@@ -152,5 +155,6 @@ export function progressUniversityYear(state,rng){
    });
   }
  }
+ if(calendarYear!==null)u.lastProgressProcessedYear=calendarYear;
  return entries;
 }

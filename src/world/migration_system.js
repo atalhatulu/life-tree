@@ -1,7 +1,8 @@
 import {TURKEY_CITIES,cityById,migrationAttractionWeight} from '../data/countries/turkey/cities.js';
-import {ensurePersonalFinance} from '../finance/personal_finance.js';
+import {ensurePersonalFinance,addDebt} from '../finance/personal_finance.js';
 import {archiveCareer} from '../career/career_profile.js';
 import {economy} from './world_state.js';
+import {LIFESTYLE_COSTS} from '../lifestyle/lifestyle_system.js';
 
 function cloneLocation(location){return location?structuredClone(location):null;}
 
@@ -17,7 +18,7 @@ export function chooseJobOfferCity(state,rng){
  const current=cityById(state.location?.cityId??state.origin?.cityId);
  const lastMoveAge=state.migrationHistory?.at(-1)?.age;
  const recentMove=lastMoveAge!=null&&state.player.age-lastMoveAge<3;
- const children=(state.children??[]).filter(c=>c.age<18).length;
+ const children=(state.children??[]).filter(c=>c.alive!==false&&c.age<18).length;
  const attachment=state.preferences?.hometownAttachment??50;
  const settleBias=(recentMove?.16:0)+(children>0?.10:0)+(attachment>=70?.08:0);
  if(rng.chance(Math.min(.84,.58+settleBias)))return current;
@@ -34,8 +35,8 @@ export function chooseJobOfferCity(state,rng){
 export function relocationHouseholdSize(state){
  let size=1;
  const partner=state.social?.romance;
- if(partner&&['cohabiting','married'].includes(partner.status))size+=1;
- size+=(state.children??[]).filter(child=>child.age<18).length;
+ if(partner&&partner.alive!==false&&['cohabiting','married'].includes(partner.status))size+=1;
+ size+=(state.children??[]).filter(child=>child.alive!==false&&child.age<18).length;
  return size;
 }
 
@@ -75,16 +76,32 @@ export function moveToCity(state,toCityId,reason='personal',options={}){
  if(!from)throw new Error('Mevcut konum bilgisi yok.');
  if(from.cityId===to.id)return {moved:false,cost:0,from,to:cloneLocation(from)};
 
- const cost=Math.round(movingCost(from.cityId,to.id,relocationHouseholdSize(state))*(options.costMultiplier??1));
+ // Validate all user/legacy move options before debt reconciliation or cash.
+ const stressIncrease=options.stress??3;
+ const currentStress=state.healthProfile?.stress??20;
+ if(typeof stressIncrease!=='number'||!Number.isFinite(stressIncrease)||stressIncrease<0||stressIncrease>100||
+    typeof currentStress!=='number'||!Number.isFinite(currentStress)||currentStress<0||currentStress>100)
+  throw new RangeError('Invalid migration stress');
+ if(options.housing!==undefined&&!Object.hasOwn(LIFESTYLE_COSTS.housing,options.housing))
+  throw new RangeError('Invalid migration housing choice');
+ const multiplier=options.costMultiplier??1;
+ if(typeof multiplier!=='number'||!Number.isFinite(multiplier)||multiplier<0)
+  throw new RangeError('Invalid moving cost multiplier');
+ const cost=Math.round(movingCost(from.cityId,to.id,relocationHouseholdSize(state))*multiplier);
+ if(!Number.isSafeInteger(cost)||cost<0)throw new RangeError('Invalid moving cost');
+ // Preflight legacy debt reconciliation and new credit on a detached copy.
+ // A rejected loan must not consume cash or relocate the household.
+ const preview={...state,finance:state.finance?structuredClone(state.finance):undefined,
+  assets:state.assets?structuredClone(state.assets):undefined};
+ const previewFinance=ensurePersonalFinance(preview);
+ const cash=previewFinance.cash;
+ if(typeof cash!=='number'||!Number.isSafeInteger(cash))
+  throw new RangeError('Invalid migration cash balance');
+ const paid=Math.min(Math.max(0,cash),cost);
+ if(cost>paid)addDebt(preview,'emergency',cost-paid);
  ensurePersonalFinance(state);
-
- const paid=Math.min(state.finance.cash??0,cost);
- state.finance.cash=Math.max(0,(state.finance.cash??0)-paid);
- if(cost-paid>0){
-  state.finance.debts??={consumer:0,medical:0,housing:0,car:0,emergency:0};
-  state.finance.debts.emergency=(state.finance.debts.emergency??0)+Math.max(0,cost-paid);
-  state.finance.debt=Object.values(state.finance.debts).reduce((s,v)=>s+v,0);
- }
+ if(cost>paid)addDebt(state,'emergency',cost-paid);
+ state.finance.cash=cash-paid;
 
  if(state.assets?.home?.cityId&&state.assets.home.cityId!==to.id){
   state.assets.home.isPrimaryResidence=false;
@@ -103,9 +120,12 @@ export function moveToCity(state,toCityId,reason='personal',options={}){
   sinceYear:state.year,
   reason
  };
+ // A pending partner job offer is tied to the city where it was issued.
+ // Any other move makes that offer stale, including an accepted job relocation.
+ state.pendingPartnerMove=null;
 
  const partner=state.social?.romance;
- if(partner&&['cohabiting','married'].includes(partner.status)){
+ if(partner&&partner.alive!==false&&['cohabiting','married'].includes(partner.status)){
   partner.cityId=to.id;
   partner.cityName=to.name;
  }
@@ -123,7 +143,7 @@ export function moveToCity(state,toCityId,reason='personal',options={}){
  });
 
  if(state.healthProfile){
-  state.healthProfile.stress=Math.min(100,(state.healthProfile.stress??20)+(options.stress??3));
+  state.healthProfile.stress=Math.min(100,currentStress+stressIncrease);
  }
 
  return {moved:true,cost,from,to};
@@ -136,6 +156,9 @@ export function returnHome(state){
   years:state.career.years??0
  }:null;
 
+ // Moving can fail when the debt ceiling is reached. Complete it before
+ // terminating employment or archiving the old-city career.
+ const result=moveToCity(state,state.origin.cityId,'return-home',{housing:useOwned?'owned':'family',stress:1});
  if(state.career?.employed){
   archiveCareer(state,'return-home');
   state.career.exitReason='return-home';
@@ -149,17 +172,35 @@ export function returnHome(state){
   state.unemployedSinceAge=state.player.age;
   state.pendingJobOffers=null;
  }
-
- const result=moveToCity(state,state.origin.cityId,'return-home',{housing:useOwned?'owned':'family',stress:1});
  state.hasReturnedHome=true;
  if(state.finance?.lifestyle)state.finance.lifestyle.housing=useOwned?'owned':'family';
  return {...result,leftJob:Boolean(previousJob),previousJob};
 }
 
 
+export function isCurrentPartnerMoveOpportunity(state){
+ const opportunity=state.pendingPartnerMove;
+ const partner=state.social?.romance;
+ if(!opportunity||!partner||partner.alive===false||!['cohabiting','married'].includes(partner.status))return false;
+ if(opportunity.partnerId!=null&&opportunity.partnerId!==partner.id)return false;
+ // Legacy saves may contain an obsolete city or corrupt salary; neither may
+ // grant a free salary increase or move the household to a fallback city.
+ if(!TURKEY_CITIES.some(city=>city.id===opportunity.cityId)||
+    typeof opportunity.newIncome!=='number'||!Number.isSafeInteger(opportunity.newIncome)||opportunity.newIncome<0)
+  return false;
+ const relationship=partner.relationship??60;
+ if(typeof relationship!=='number'||!Number.isFinite(relationship)||relationship<0||relationship>100)
+  return false;
+ const currentCityId=state.location?.cityId??state.origin?.cityId;
+ if(opportunity.cityId===currentCityId)return false;
+ // Preserve legacy opportunities that do not record their departure city.
+ return opportunity.previousCityId==null||opportunity.previousCityId===currentCityId;
+}
+
 export function generatePartnerMoveOpportunity(state,rng){
  const partner=state.social?.romance;
- if(!partner||!['cohabiting','married'].includes(partner.status))return null;
+ if(!partner||partner.alive===false||!['cohabiting','married'].includes(partner.status))return null;
+ if(state.pendingPartnerMove&&!isCurrentPartnerMoveOpportunity(state))state.pendingPartnerMove=null;
  if(state.pendingPartnerMove)return state.pendingPartnerMove;
  if(state.player.age<23||state.player.age>58)return null;
  if(state.player.age<(state.nextPartnerMoveAge??23))return null;
@@ -173,14 +214,18 @@ export function generatePartnerMoveOpportunity(state,rng){
  })));
 
  const currentIncome=partner.monthlyIncome??30000;
+ if(typeof currentIncome!=='number'||!Number.isSafeInteger(currentIncome)||currentIncome<0)
+  return null;
  const targetIncome=Math.max(
   currentIncome,
   Math.round(currentIncome*(city.wage/current.wage)*(rng.int(102,126)/100))
  );
+ if(!Number.isSafeInteger(targetIncome)||targetIncome<0)return null;
  const score=migrationScore(state,city.id,{newMonthlyIncome:targetIncome,reason:'partner-job'});
- if(score<48)return null;
+ if(!Number.isFinite(score)||score<48)return null;
 
  state.pendingPartnerMove={
+  partnerId:partner.id??null,
   cityId:city.id,
   cityName:city.name,
   previousCityId:current.id,
@@ -196,7 +241,7 @@ export function generatePartnerMoveOpportunity(state,rng){
 export function resolvePartnerMove(state,accept){
  const opportunity=state.pendingPartnerMove;
  const partner=state.social?.romance;
- if(!opportunity||!partner)throw new Error('Aktif eş taşınma fırsatı yok.');
+ if(!isCurrentPartnerMoveOpportunity(state))throw new Error('Aktif eş taşınma fırsatı yok.');
 
  if(!accept){
   partner.relationship=Math.max(0,(partner.relationship??60)-2);

@@ -6,7 +6,7 @@ function netWorth(state){
 }
 
 function hasSupportiveAdultChild(state){
- return (state.children??[]).some(c=>c.age>=22&&(c.relationship??50)>=60);
+ return (state.children??[]).some(c=>c.alive!==false&&c.age>=22&&(c.relationship??50)>=60);
 }
 
 export const lateAgeEvents=[
@@ -28,8 +28,8 @@ export const lateAgeEvents=[
   condition:s=>netWorth(s)>=250000,
   choices:[
    {id:'balanced-estate',label:'Eş ve çocuklar arasında dengeli paylaştır',result:'Tereken için dengeli bir aile paylaşımı planladın.',effect:s=>setEstatePlan(s,'balanced')},
-   {id:'children-estate',label:'Çocukları önceliklendir',condition:s=>(s.children?.length??0)>0,result:'Terekenin büyük bölümünü çocuklarına bırakmaya karar verdin.',effect:s=>setEstatePlan(s,'children-first')},
-   {id:'spouse-estate',label:'Eşi önceliklendir',condition:s=>s.social?.romance?.status==='married',result:'Terekenin büyük bölümünde eşini önceliklendirdin.',effect:s=>setEstatePlan(s,'spouse-first')},
+   {id:'children-estate',label:'Çocukları önceliklendir',condition:s=>(s.children??[]).some(c=>c.alive!==false),result:'Terekenin büyük bölümünü çocuklarına bırakmaya karar verdin.',effect:s=>setEstatePlan(s,'children-first')},
+   {id:'spouse-estate',label:'Eşi önceliklendir',condition:s=>s.social?.romance?.status==='married'&&s.social.romance.alive!==false,result:'Terekenin büyük bölümünde eşini önceliklendirdin.',effect:s=>setEstatePlan(s,'spouse-first')},
    {id:'charity-estate',label:'Bir bölümünü hayır işlerine ayır',result:'Terekenin bir bölümünü hayır amaçlı ayırdın.',effect:s=>setEstatePlan(s,'charity')}
   ]
  },

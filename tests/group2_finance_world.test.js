@@ -44,6 +44,7 @@ test('high income produces consumption leakage instead of unlimited savings',()=
  g.state.finance.lifestyle={housing:'family',food:'standard',clothing:'basic',transport:'public'};
  for(let i=0;i<12;i++){
   g.state.player.age+=1;
+  g.state.year+=1;
   processPersonalFinanceYear(g.state);
  }
  assert.ok(g.state.finance.savings>0);

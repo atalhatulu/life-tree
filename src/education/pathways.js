@@ -35,6 +35,10 @@ export function enterMiddleSchool(state,rng){
 }
 
 export function selectHighSchoolPath(state,rng,pathId){
+ // Admission is a transition out of middle school, not a repeatable reroll.
+ // Validate before consuming RNG or modifying any education fields.
+ if(!state.education?.enrolled||state.education.stage!=='middle')
+  throw new Error('Lise yolu yalnızca ortaokuldan geçişte seçilebilir.');
  const option=highSchoolOptions(state).find(o=>o.id===pathId&&o.available);
  if(!option) throw new Error('Bu lise yolu şu anda kullanılamıyor.');
  const admitted=rng.int(1,100)<=option.successChance;

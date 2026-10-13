@@ -1,3 +1,4 @@
+import {annualYearStatus} from '../core/annual_clock.js';
 import { generateNewbornSibling } from './family_generator.js';
 
 const clamp = (v, min=0, max=100) => Math.max(min,Math.min(max,v));
@@ -47,6 +48,8 @@ function canHaveNewSibling(state) {
 
 export function processFamilyYear(state, rng) {
   const entries = [];
+ const {calendarYear,replayed}=annualYearStatus(state.year,state.lastFamilyProcessedYear,'a family year');
+ if(replayed)return [];
   // Parents and grandparents are handled by elder_system so their health
   // is not processed twice in the same year. family_simulation owns sibling health.
   for (const sibling of state.siblings) {
@@ -73,5 +76,6 @@ export function processFamilyYear(state, rng) {
     }
   }
 
+  if(calendarYear!==null)state.lastFamilyProcessedYear=calendarYear;
   return entries;
 }

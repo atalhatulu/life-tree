@@ -22,11 +22,13 @@ test('older spouse can die and leave widowhood state',()=>{
  marryPartner(g.state);
 
  for(let i=0;i<60&&g.state.social.romance;i++){
+  // Each mortality roll represents a different calendar year.
+  g.state.year+=1;g.state.player.age+=1;
   processPartnershipYear(g.state,new RNG('partner-mortality-'+i));
  }
  assert.equal(g.state.social.romance,null);
  assert.ok((g.state.social.deceasedPartners??[]).length>=1);
- assert.equal(g.state.widowedAtAge,70);
+ assert.equal(g.state.widowedAtAge,g.state.player.age);
 });
 
 test('elder death can create inheritance that reaches personal finance',()=>{
@@ -39,6 +41,7 @@ test('elder death can create inheritance that reaches personal finance',()=>{
  const before=g.state.finance.cash;
 
  for(let i=0;i<80&&g.state.parents.mother.alive;i++){
+  g.state.year+=1;g.state.player.age+=1;
   processElderFamilyYear(g.state,new RNG('elder-death-'+i));
  }
  assert.equal(g.state.parents.mother.alive,false);
@@ -126,11 +129,13 @@ test('elderly sibling loss is recorded and dead sibling stops aging',async()=>{
  const {processFamilyYear}=await import('../src/family/family_simulation.js');
  let entries=[];
  for(let i=0;i<100&&sibling.alive;i++){
+  g.state.year=2104+i;
   entries=processFamilyYear(g.state,new RNG('sibling-loss-'+i));
  }
  assert.equal(sibling.alive,false);
  assert.ok(entries.some(e=>e.text.includes('hayatını kaybetti')));
  const deathAge=sibling.age;
+ g.state.year+=1;
  processFamilyYear(g.state,new RNG('sibling-after-death'));
  assert.equal(sibling.age,deathAge);
 });
@@ -152,6 +157,7 @@ test('elderly friend loss removes friend from active circle',async()=>{
  const {processSocialYear}=await import('../src/social/social_simulation.js');
  let lost=false;
  for(let i=0;i<100&&!lost;i++){
+  g.state.year+=1;g.state.player.age+=1;
   const entries=processSocialYear(g.state,new RNG('friend-loss-'+i));
   lost=entries.some(e=>e.text.includes('hayatını kaybetti'));
  }

@@ -1,3 +1,4 @@
+import {annualYearStatus} from '../core/annual_clock.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 function partnerMortalityChance(partner){
@@ -21,7 +22,7 @@ function relationshipStress(state,r){
  if(state.player.age>=23&&!state.career?.employed&&!state.retirement?.retired&&!state.higherEducation?.enrolled)stress+=2;
  if((state.healthProfile?.stress??0)>=70)stress+=2;
  else if((state.healthProfile?.stress??0)>=50)stress+=1;
- stress+=Math.min(2,(state.children?.filter(c=>c.age<18).length??0)*.55);
+ stress+=Math.min(2,(state.children?.filter(c=>c.alive!==false&&c.age<18).length??0)*.55);
  const latestMove=state.migrationHistory?.at(-1);
  if(latestMove?.age===state.player.age)stress+=1.5;
  if(preferenceGap(state,r,'parenthoodDesire')>=30)stress+=1.5;
@@ -50,12 +51,31 @@ function endRelationship(state,r,{divorce=false}={}){
   if(state.healthProfile)state.healthProfile.stress=clamp(state.healthProfile.stress+6);
  }
  state.social.romance=null;
+ state.pendingPartnerMove=null;
  state.nextDatingAge=state.player.age+2;
  state.datingAttempts=Math.max(0,(state.datingAttempts??0)-2);
 }
 
+// Reconcile stale active-partner records from older saves without generating
+// a second death event or replaying mortality/relationship changes.
+export function reconcileDeceasedPartner(state){
+ const partner=state.social?.romance;
+ if(!partner||partner.alive!==false)return false;
+ state.social.deceasedPartners??=[];
+ if(!state.social.deceasedPartners.some(p=>p===partner||(partner.id!=null&&p.id===partner.id)))
+  state.social.deceasedPartners.push({...partner});
+ const yearsSinceDeath=Number.isFinite(partner.deathYear)&&Number.isFinite(state.year)
+  ?Math.max(0,state.year-partner.deathYear):0;
+ const ageAtLoss=Math.max(0,state.player.age-yearsSinceDeath);
+ if(partner.status==='married')state.widowedAtAge??=ageAtLoss;
+ state.nextDatingAge=Math.max(state.nextDatingAge??0,ageAtLoss+2);
+ state.social.romance=null;
+ state.pendingPartnerMove=null;
+ return true;
+}
+
 export function ensurePartnershipState(state){
- if(state.social?.romance){
+ if(state.social?.romance?.alive!==false&&state.social?.romance){
   const r=state.social.romance;
   r.status??='dating';
   r.yearsTogether??=0;
@@ -77,7 +97,11 @@ export function ensurePartnershipState(state){
 export function processPartnershipYear(state,rng){
  const r=state.social?.romance;
  const entries=[];
- if(!r) return entries;
+ if(!r)return entries;
+ // Reject corrupt saved markers before reconciling deceased partners or consuming RNG.
+ const year=state.year==null?2000+(state.player?.age??0):state.year;
+ const {calendarYear,replayed}=annualYearStatus(year,r.lastPartnershipProcessedYear,'partnership');
+ if(reconcileDeceasedPartner(state)||replayed)return entries;
  ensurePartnershipState(state);
  r.yearsTogether+=1;
 
@@ -93,6 +117,7 @@ export function processPartnershipYear(state,rng){
   state.social.deceasedPartners??=[];
   state.social.deceasedPartners.push({...r});
   state.social.romance=null;
+  state.pendingPartnerMove=null;
   state.widowedAtAge=wasMarried?state.player.age:null;
   state.nextDatingAge=state.player.age+2;
   state.datingAttempts=Math.max(0,(state.datingAttempts??0)-2);
@@ -153,12 +178,17 @@ export function processPartnershipYear(state,rng){
    }
   }
  }
+ r.lastPartnershipProcessedYear=calendarYear;
  return entries;
 }
 
 export function marryPartner(state){
  const r=state.social?.romance;
  if(!r) throw new Error('Aktif ilişkin yok.');
+ if(r.alive===false)throw new Error('Partnerin hayatta değil.');
+ // The commitment is a one-time status transition, not a repeatable reward.
+ // Treat already-married legacy saves as committed without resetting anniversaries.
+ if(r.status==='married')return r;
  r.status='married';
  r.marriedAtAge=state.player.age;
  r.marriageYears=0;
@@ -170,7 +200,10 @@ export function marryPartner(state){
 export function moveInTogether(state){
  const r=state.social?.romance;
  if(!r) throw new Error('Aktif ilişkin yok.');
- r.status=r.status==='married'?'married':'cohabiting';
+ if(r.alive===false)throw new Error('Partnerin hayatta değil.');
+ // A cohabitation choice cannot award points twice or alter an existing marriage.
+ if(r.status==='cohabiting'||r.status==='married')return;
+ r.status='cohabiting';
  if(state.finance?.lifestyle?.housing==='family') state.finance.lifestyle.housing='shared';
  r.relationship=clamp(r.relationship+2);
  r.relationshipTension=clamp((r.relationshipTension??10)-2);

@@ -1,3 +1,5 @@
+import {annualYearStatus} from '../core/annual_clock.js';
+import {captureRngCheckpoint,restoreRngOrThrow,snapshotObjectGraph} from '../core/transaction_snapshot.js';
 import {ensureNpcGoal,updateNpcGoal} from '../life/npc_goal_system.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
@@ -9,29 +11,43 @@ function stage(age){
 }
 
 export function ensureChildDevelopment(child){
- child.development??={
-  confidence:50,
-  independence:35,
-  academicDrive:50,
-  socialSecurity:50,
-  parentAttachment:70,
-  identityStress:0,
-  milestones:[],
-  lastStage:null
- };
+ child.development??={};
+ const defaults={confidence:50,independence:35,academicDrive:50,
+  socialSecurity:50,parentAttachment:70,identityStress:0,milestones:[],lastStage:null};
+ for(const [key,value] of Object.entries(defaults))child.development[key]??=value;
  return child.development;
 }
 
 export function processChildDevelopmentYear(state,rng){
  const entries=[];
- for(const child of state.children??[]){
+ const {calendarYear}=annualYearStatus(state.year,null,'child development');
+ const living=(state.children??[]).filter(child=>child.alive!==false);
+ // Validate every living child before updating even the first sibling.
+ for(const child of living)
+  annualYearStatus(calendarYear,child.development?.lastProcessedYear,'child development');
+ const pending=living.filter(child=>calendarYear===null||child.development?.lastProcessedYear!==calendarYear);
+ if(!pending.length)return entries;
+ // A later malformed ledger must not strand an earlier sibling mid-year.
+ for(const child of pending){
+  const d=child.development;
+  if(d!=null&&(typeof d!=='object'||Array.isArray(d)||
+      (d.milestones!=null&&!Array.isArray(d.milestones))))
+   throw new TypeError('Invalid child development milestones');
+ }
+ const restore=snapshotObjectGraph([state.children]);
+ const restoreRng=captureRngCheckpoint(rng);
+ try {
+ for(const child of pending){
+  // Per-child markers let a newly added child be processed later in this year.
+  if(calendarYear!==null&&child.development?.lastProcessedYear===calendarYear)continue;
+  if(child.alive===false)continue;
   const d=ensureChildDevelopment(child);
   const childGoal=ensureNpcGoal(child,'child');
   const p=child.parenting??{};
   const currentStage=stage(child.age);
   const support=(p.involvement??55)*.35+(p.emotionalSecurity??70)*.35+(p.stability??65)*.2-(p.conflict??10)*.25;
   d.confidence=clamp(d.confidence+Math.round((support-50)*.025)+rng.fork(child.id+'-conf').int(-2,2));
-  d.parentAttachment=clamp(d.parentAttachment+Math.round(((child.relationship??70)-60)*.025)+Math.round((p.involvement??55-50)*.02)-Math.round((p.conflict??10)*.015));
+  d.parentAttachment=clamp(d.parentAttachment+Math.round(((child.relationship??70)-60)*.025)+Math.round(((p.involvement??55)-50)*.02)-Math.round((p.conflict??10)*.015));
   d.academicDrive=clamp(d.academicDrive+Math.round(((child.personality?.discipline??50)-50)*.02)+Math.round((p.accumulatedSupport??0)*.01)+rng.fork(child.id+'-acad').int(-2,2));
   d.socialSecurity=clamp(d.socialSecurity+Math.round(((child.personality?.sociability??50)-50)*.025)+Math.round((d.confidence-50)*.015)+rng.fork(child.id+'-social').int(-2,2));
   d.independence=clamp(d.independence+(child.age>=12?2:1)+Math.round(((child.personality?.ambition??50)-50)*.015));
@@ -67,9 +83,17 @@ export function processChildDevelopmentYear(state,rng){
   }
   if(child.age===18){
     const score=d.academicDrive*.45+d.confidence*.2+d.independence*.2+d.socialSecurity*.15;
-    child.educationPlan=score>=68?'university':score>=50?'vocational':'work';
+    // Respect a family's explicit education decision; only undecided or
+    // independent children choose a path from their development score.
+    if(!child.educationPlan||child.educationPlan==='independent')
+      child.educationPlan=score>=68?'university':score>=50?'vocational':'work';
     entries.push({age:state.player.age,kind:'child-development',paceBlock:true,text:child.name+' için yetişkinlik yönü '+(child.educationPlan==='university'?'üniversite':child.educationPlan==='vocational'?'mesleki eğitim':'doğrudan çalışma')+' tarafına şekillendi.'});
   }
+  if(calendarYear!==null)d.lastProcessedYear=calendarYear;
  }
  return entries;
+ }catch(error){
+  restore();
+  restoreRngOrThrow(restoreRng,error);
+ }
 }

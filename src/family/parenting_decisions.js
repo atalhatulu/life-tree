@@ -1,12 +1,58 @@
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
+const UPBRINGING_STYLES=new Set(['supportive','strict','free']);
+const EDUCATION_PLANS=new Set(['university','vocational','independent']);
+
+// Keep the event menu and direct decision API in sync. Reject coerced strings.
+export function canFundChildUniversity(state){
+ const atLeast=(value,threshold)=>typeof value==='number'&&Number.isFinite(value)&&value>=threshold;
+ return atLeast(state.finance?.cash,150000)||atLeast(state.career?.monthlyIncome,60000)||
+  atLeast(state.retirement?.pensionMonthly,45000);
+}
+
+// Reject malformed nested values before committing a one-time decision.
+// Legacy missing parenting ledgers are still initialized on valid choices.
+function assertChildDecisionFields(child,personalityFields,parentingFields=[]){
+ const personality=child.personality;
+ if(!personality||typeof personality!=='object'||Array.isArray(personality))
+  throw new TypeError('Geçersiz çocuk kişilik kaydı.');
+ for(const field of personalityFields){
+  if(typeof personality[field]!=='number'||!Number.isFinite(personality[field]))
+   throw new TypeError('Geçersiz çocuk kişilik değeri: '+field);
+ }
+ const parenting=child.parenting;
+ if(parenting!=null){
+  if(typeof parenting!=='object'||Array.isArray(parenting))
+   throw new TypeError('Geçersiz ebeveynlik kaydı.');
+  for(const field of parentingFields){
+   // Accumulated support is optional in older saves, unlike style counters.
+   if(field==='accumulatedSupport'&&parenting[field]==null)continue;
+   if(typeof parenting[field]!=='number'||!Number.isFinite(parenting[field]))
+    throw new TypeError('Geçersiz ebeveynlik değeri: '+field);
+  }
+ }
+ if(child.relationship!=null&&(typeof child.relationship!=='number'||!Number.isFinite(child.relationship)))
+  throw new TypeError('Geçersiz çocuk ilişki değeri.');
+}
 
 export function pendingYoungChild(state){
- return (state.children??[]).find(c=>c.age>=3&&c.age<=7&&!c.upbringingStyle)??null;
+ return (state.children??[]).find(c=>c.alive!==false&&c.age>=3&&c.age<=7&&!c.upbringingStyle)??null;
 }
 
 export function setUpbringingStyle(state,childId,style){
  const child=(state.children??[]).find(c=>c.id===childId);
- if(!child)throw new Error('Çocuk bulunamadı.');
+ if(!child||child.alive===false)throw new Error('Çocuk bulunamadı.');
+ if(!UPBRINGING_STYLES.has(style))throw new RangeError('Geçersiz ebeveynlik yaklaşımı.');
+ // A one-time parenting decision must not grant the initial bonus again.
+ if(child.upbringingStyle===style)return child;
+ if(child.upbringingStyle)throw new Error('Ebeveynlik yaklaşımı zaten seçildi.');
+ // The event offers this one-time decision only for children aged 3–7.
+ if(!Number.isSafeInteger(child.age)||child.age<3||child.age>7)
+  throw new Error('Bu yaşta ebeveynlik yaklaşımı seçimi kullanılamıyor.');
+ const requiredPersonality=style==='supportive'?['curiosity','sociability']
+  :style==='strict'?['discipline','patience']:['curiosity','discipline'];
+ const requiredParenting=style==='supportive'?['involvement','emotionalSecurity']
+  :style==='strict'?['involvement','conflict']:['conflict'];
+ assertChildDecisionFields(child,requiredPersonality,requiredParenting);
  child.upbringingStyle=style;
  child.parenting??={involvement:55,stability:68,emotionalSecurity:72,conflict:8,accumulatedSupport:0};
  if(style==='supportive'){
@@ -33,12 +79,24 @@ export function setUpbringingStyle(state,childId,style){
 }
 
 export function pendingTeenEducation(state){
- return (state.children??[]).find(c=>c.age>=16&&c.age<=18&&!c.educationPlan)??null;
+ return (state.children??[]).find(c=>c.alive!==false&&c.age>=16&&c.age<=18&&!c.educationPlan)??null;
 }
 
 export function setChildEducationPlan(state,childId,plan){
  const child=(state.children??[]).find(c=>c.id===childId);
- if(!child)throw new Error('Çocuk bulunamadı.');
+ if(!child||child.alive===false)throw new Error('Çocuk bulunamadı.');
+ if(!EDUCATION_PLANS.has(plan))throw new RangeError('Geçersiz eğitim planı.');
+ // Preserve the first choice, including choices loaded from older saves.
+ if(child.educationPlan===plan)return child;
+ if(child.educationPlan)throw new Error('Eğitim planı zaten seçildi.');
+ // Direct API calls must respect the same 16–18 age window as the event.
+ if(!Number.isSafeInteger(child.age)||child.age<16||child.age>18)
+  throw new Error('Bu yaşta eğitim planı seçimi kullanılamıyor.');
+ const requiredPersonality=plan==='university'?['ambition']
+  :plan==='vocational'?['discipline']:['sociability'];
+ assertChildDecisionFields(child,requiredPersonality,['accumulatedSupport']);
+ if(plan==='university'&&!canFundChildUniversity(state))
+  throw new Error('Üniversite desteği için yeterli maddi kaynak bulunmuyor.');
  child.educationPlan=plan;
  child.parenting??={involvement:55,stability:68,emotionalSecurity:72,conflict:8,accumulatedSupport:0};
  if(plan==='university'){

@@ -21,16 +21,19 @@ function applyCareer(state,node,years){
 
 function applyRelationship(state,node,years){
  const r=state.social?.romance;
- if(!r)return null;
+ if(!r||r.alive===false)return null;
  if(years===5){r.trust=clamp((r.trust??60)+2);return 'Beş yıl önceki ilişki kararının etkisi güven ve ortak geçmişinizde birikti.';}
  if(years===10){r.sharedGoals=clamp((r.sharedGoals??60)+4);return 'On yıl önceki ilişki kararın ortak yaşamınızın yönünü hâlâ belirliyor.';}
  if(years===20){r.intimacy=clamp((r.intimacy??60)+3);return 'Yirmi yıl önceki ilişki kararın artık birlikte kurduğunuz hayatın temel parçalarından biri.';}
 }
 
 function applyFamily(state,node,years){
- if(!state.children?.length)return null;
+ if(!state.children?.some(child=>child.alive!==false))return null;
  const delta=years===5?1:years===10?2:3;
- for(const child of state.children)child.relationship=clamp((child.relationship??60)+delta);
+ for(const child of state.children){
+  if(child.alive===false)continue;
+  child.relationship=clamp((child.relationship??60)+delta);
+ }
  return years+' yıl önceki aile kararının etkisi çocuklarınla kurduğun bağda yaşamaya devam ediyor.';
 }
 

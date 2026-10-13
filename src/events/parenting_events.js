@@ -1,4 +1,4 @@
-import {pendingYoungChild,setUpbringingStyle,pendingTeenEducation,setChildEducationPlan} from '../family/parenting_decisions.js';
+import {pendingYoungChild,setUpbringingStyle,pendingTeenEducation,setChildEducationPlan,canFundChildUniversity} from '../family/parenting_decisions.js';
 
 export const parentingEvents=[
  {
@@ -22,7 +22,7 @@ export const parentingEvents=[
   condition:s=>Boolean(pendingTeenEducation(s)),
   choices:s=>{
    const child=pendingTeenEducation(s);
-   const canFund=(s.finance?.cash??0)>=150000||(s.career?.monthlyIncome??0)>=60000||(s.retirement?.pensionMonthly??0)>=45000;
+   const canFund=canFundChildUniversity(s);
    return [
     ...(canFund?[{id:'university:'+child.id,label:child.name+' için üniversiteyi destekle',majorDecision:true,result:child.name+' için üniversite yoluna maddi ve manevi destek vermeye karar verdin.',effect:next=>setChildEducationPlan(next,child.id,'university')}]:[]),
     {id:'vocational:'+child.id,label:child.name+' için mesleki yolu destekle',majorDecision:true,result:child.name+' için daha doğrudan mesleki bir yol seçtiniz.',effect:next=>setChildEducationPlan(next,child.id,'vocational')},

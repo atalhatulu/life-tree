@@ -1,3 +1,5 @@
+import {annualYearStatus} from '../core/annual_clock.js';
+import {captureRngCheckpoint,restoreRngOrThrow,snapshotObjectGraph} from '../core/transaction_snapshot.js';
 import {JOBS} from '../data/countries/turkey/jobs.js';
 import {ensureNpcGoal,updateNpcGoal} from '../life/npc_goal_system.js';
 import {simulateNpcRoutineWeek} from './npc_daily_routine.js';
@@ -14,6 +16,11 @@ export function ensureFriendLife(friend){
   movedAway:false,
   majorEvents:0
  };
+ // Older saves can contain a partially populated life ledger. Fill only
+ // missing values so annual arithmetic never starts from undefined/NaN.
+ const defaults={workStability:55,relationshipStatus:'single',personalStress:25,
+  lifeSatisfaction:55,movedAway:false,majorEvents:0};
+ for(const [key,value] of Object.entries(defaults))friend.life[key]??=value;
  return friend.life;
 }
 
@@ -29,17 +36,64 @@ export function npcMonthlyIncome(friend){
  return job?Math.round((job.income[0]+job.income[1])/2):Math.max(0,friend.monthlyIncome??0);
 }
 
+const isRecord=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+const validScore=value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=100;
+const validCounter=value=>Number.isSafeInteger(value)&&value>=0&&value<Number.MAX_SAFE_INTEGER;
+const goalIds=new Set(['career','security','family','freedom','wellbeing']);
+
+// Validate every unprocessed living NPC before changing the first friend.
+// Missing legacy fields are allowed, but present values must not produce NaN,
+// overflow counters, or corrupt NPC goal progress.
+function assertFriendYearInputs(friend){
+ if(!isRecord(friend)||typeof friend.id!=='string'||!friend.id)
+  throw new TypeError('Invalid NPC friend record or ID');
+ if(!validCounter(friend.age))throw new RangeError('Invalid or overflowing NPC age');
+ if(friend.relationship!=null&&!validScore(friend.relationship))
+  throw new RangeError('Invalid NPC relationship');
+ if(friend.personality!=null&&!isRecord(friend.personality))
+  throw new TypeError('Invalid NPC personality');
+ if(friend.personality?.sociability!=null&&!validScore(friend.personality.sociability))
+  throw new RangeError('Invalid NPC sociability');
+ const life=friend.life;
+ if(life!=null&&!isRecord(life))throw new TypeError('Invalid NPC life');
+ for(const field of ['personalStress','workStability','lifeSatisfaction','academicProgress','socialCapital']){
+  if(life?.[field]!=null&&!validScore(life[field]))throw new RangeError('Invalid NPC '+field);
+ }
+ if(life?.majorEvents!=null&&(!validCounter(life.majorEvents)||
+    life.majorEvents>Number.MAX_SAFE_INTEGER-3))
+  throw new RangeError('Invalid or overflowing NPC majorEvents');
+ if(life?.careerYears!=null&&!validCounter(life.careerYears))
+  throw new RangeError('Invalid NPC careerYears');
+ const goals=friend.lifeGoals;
+ if(goals!=null&&(!isRecord(goals)||
+  (goals.history!=null&&(!Array.isArray(goals.history)||goals.history.some(x=>!isRecord(x))))||
+  (goals.active!=null&&(!isRecord(goals.active)||!goalIds.has(goals.active.id)||
+   (goals.active.progress!=null&&!validScore(goals.active.progress))))))
+  throw new TypeError('Invalid NPC goal progress or history');
+}
+
 export function processFriendLivesYear(state,rng){
  const entries=[];
+ const calendarYear=state.year==null?2000+(state.player?.age??0):state.year;
+ // Preflight the entire living cohort before initializing a life or consuming RNG.
+ // A malformed marker on a later friend must not partially update earlier friends.
+ const friends=state.social?.friends??[];
+ if(!Array.isArray(friends))throw new TypeError('Invalid NPC friends collection');
+ const living=friends.filter(friend=>friend?.alive!==false);
+ annualYearStatus(calendarYear,null,'NPC life');
+ for(const friend of living){
+  const {replayed}=annualYearStatus(calendarYear,friend.life?.lastProcessedYear,'NPC life');
+  if(!replayed)assertFriendYearInputs(friend);
+ }
+ const restore=snapshotObjectGraph(living);
+ const restoreRng=captureRngCheckpoint(rng);
+ try {
  for(const friend of state.social?.friends??[]){
   if(friend.alive===false)continue;
   const life=ensureFriendLife(friend);
-  const calendarYear=Number.isInteger(state.year)?state.year:2000+(state.player?.age??0);
   // Annual NPC transitions are transactional: a repeated simulation of the same
   // year must not re-roll relationships, employment or stress.
   if(life.lastProcessedYear===calendarYear)continue;
-  if(Number.isInteger(life.lastProcessedYear)&&calendarYear<life.lastProcessedYear)
-   throw new RangeError('Cannot process an NPC life in an earlier year');
   ensureNpcGoal(friend);
   life.personalStress=clamp(life.personalStress+rng.fork(friend.id+'-stress').int(-3,4));
   life.workStability=clamp(life.workStability+rng.fork(friend.id+'-work').int(-4,4));
@@ -133,4 +187,8 @@ export function processFriendLivesYear(state,rng){
   life.lastProcessedYear=calendarYear;
  }
  return entries;
+ }catch(error){
+  restore();
+  restoreRngOrThrow(restoreRng,error);
+ }
 }

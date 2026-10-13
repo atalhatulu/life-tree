@@ -1,4 +1,5 @@
 import {createChild} from './descendant_generator.js';
+import {annualYearStatus,assertIncrementableCounter} from '../core/annual_clock.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export function ensureChildren(state){
@@ -8,7 +9,7 @@ export function ensureChildren(state){
 
 export function mutuallyWantChildren(state){
  const r=state.social?.romance;
- return Boolean(r && (state.preferences?.parenthoodDesire??50)>=35 && (r.preferences?.parenthoodDesire??50)>=35);
+ return Boolean(r && r.alive!==false && (state.preferences?.parenthoodDesire??50)>=35 && (r.preferences?.parenthoodDesire??50)>=35);
 }
 
 export function parenthoodReadiness(state){
@@ -30,7 +31,7 @@ export function parenthoodReadiness(state){
  else if(income>=40000)score+=4;
  if(liquid>=250000)score+=5;
  if(state.assets?.home||['owned','apartment','studio'].includes(state.finance?.lifestyle?.housing))score+=4;
- score-=(state.children?.length??0)*8;
+ score-=(state.children??[]).filter(child=>child.alive!==false).length*8;
  if(age>=40)score-=4;
  if(age>=44)score-=8;
  return clamp(Math.round(score));
@@ -47,8 +48,17 @@ function fertilityChance(state){
 }
 
 export function addChild(state,rng){
- const children=ensureChildren(state);
- const child=createChild(state,rng,'child-'+state.year+'-'+children.length);
+ // Construct and validate the child before initializing legacy collections.
+ // Length-based IDs alone can collide with imported/removed-child histories.
+ const children=state.children??[];
+ if(!Array.isArray(children))throw new TypeError('Invalid children ledger');
+ const occupied=new Set(children.map(child=>child?.id));
+ let suffix=children.length;
+ while(occupied.has('child-'+state.year+'-'+suffix)){
+  if(!Number.isSafeInteger(suffix+1))throw new RangeError('Child ID counter overflow');
+  suffix++;
+ }
+ const child=createChild(state,rng,'child-'+state.year+'-'+suffix);
  child.parenting={
   involvement:55,
   stability:68,
@@ -56,7 +66,7 @@ export function addChild(state,rng){
   conflict:8,
   accumulatedSupport:0
  };
- children.push(child);
+ ensureChildren(state).push(child);
  state.finance??={};
  state.finance.childMonthlyCost=(state.finance.childMonthlyCost??0)+6500;
  return child;
@@ -64,7 +74,7 @@ export function addChild(state,rng){
 
 export function attemptChild(state,rng){
  if(!mutuallyWantChildren(state)||!['married','cohabiting'].includes(state.social?.romance?.status)||
-    (state.children?.length??0)>=3||state.player.age<21||state.player.age>47){
+    (state.children??[]).filter(child=>child.alive!==false).length>=3||state.player.age<21||state.player.age>47){
   state.lastParenthoodAttempt={age:state.player.age,success:false,reason:'not-eligible'};
   return null;
  }
@@ -83,7 +93,17 @@ export function attemptChild(state,rng){
 
 export function processChildrenYear(state,rng){
  const entries=[];
+ // Child aging and expenses must be applied at most once per calendar year,
+ // including when this subsystem is invoked outside the adult orchestrator.
+ const {calendarYear,replayed}=annualYearStatus(state.year,state.lastChildrenProcessedYear,'children');
+ if(replayed)return entries;
+ // Validate the whole living cohort before incrementing even the first child.
+ // Deceased legacy records are never aged and need not block processing.
+ for(const child of state.children??[]){
+  if(child.alive!==false)assertIncrementableCounter(child.age,'child age');
+ }
  for(const child of ensureChildren(state)){
+  if(child.alive===false)continue;
   child.age+=1;
   child.parenting??={involvement:55,stability:68,emotionalSecurity:72,conflict:8,accumulatedSupport:0};
   const p=child.parenting;
@@ -127,11 +147,12 @@ export function processChildrenYear(state,rng){
  }
  if(state.finance){
   state.finance.childMonthlyCost=ensureChildren(state).reduce((sum,child)=>{
-   if(child.age>=22)return sum;
+   if(child.alive===false||child.age>=22)return sum;
    if(child.age>=18)return sum+(child.educationPlan==='university'?8500:child.educationPlan==='vocational'?4000:2500);
    if(child.age>=13)return sum+7500;
    return sum+6500;
   },0);
  }
+ if(calendarYear!==null)state.lastChildrenProcessedYear=calendarYear;
  return entries;
 }

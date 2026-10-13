@@ -1,4 +1,4 @@
-import {ensurePersonalFinance} from '../finance/personal_finance.js';
+import {annualYearStatus} from '../core/annual_clock.js';
 const BASE_PAID_FEE_2026=472653.60;
 
 export function ensureMilitaryState(state){
@@ -49,16 +49,27 @@ function interruptCareer(state,months,mode){
 }
 
 export function completeMilitaryService(state,mode){
+ if(mode!=='paid'&&mode!=='standard')throw new RangeError('Unknown military service mode');
+ // Paid service must not refresh eligibility or normalize finance until its
+ // charge can succeed. Both actions may otherwise alter a rejected save.
+ let fee=0,cashUsed=0,savingsUsed=0;
+ if(mode==='paid'){
+  fee=paidMilitaryFee(state);
+  if(!Number.isSafeInteger(fee)||fee<=0)throw new RangeError('Invalid paid military fee');
+  const f=state.finance;
+  if(!f)throw new Error('Bedelli askerlik için yeterli likit varlık yok.');
+  const cash=f.cash??0,savings=f.savings??0;
+  if(!Number.isSafeInteger(cash)||cash<0||!Number.isSafeInteger(savings)||savings<0)
+   throw new RangeError('Invalid liquid military funds');
+  cashUsed=Math.min(cash,fee);
+  savingsUsed=fee-cashUsed;
+  if(savingsUsed>savings)throw new Error('Bedelli askerlik için yeterli likit varlık yok.');
+ }
  const m=refreshMilitaryEligibility(state);
  if(!m.eligible||m.status==='completed')throw new Error('Askerlik hizmeti uygulanamaz.');
  if(mode==='paid'){
-  ensurePersonalFinance(state);
-  const fee=paidMilitaryFee(state);
-  if((state.finance.cash??0)+(state.finance.savings??0)<fee)throw new Error('Bedelli askerlik için yeterli likit varlık yok.');
-  let remaining=fee;
-  const cashUsed=Math.min(state.finance.cash??0,remaining);
-  state.finance.cash-=cashUsed;remaining-=cashUsed;
-  if(remaining>0){state.finance.savings=Math.max(0,(state.finance.savings??0)-remaining);}
+  state.finance.cash-=cashUsed;
+  state.finance.savings=(state.finance.savings??0)-savingsUsed;
   m.paidFee=fee;
   m.serviceMonths=1;
   interruptCareer(state,1,'paid');
@@ -87,6 +98,9 @@ export function deferMilitaryService(state,years=1){
 }
 
 export function processMilitaryYear(state){
+ // Guard before eligibility refresh, which can change deferral status.
+ const {calendarYear,replayed}=annualYearStatus(state.year,state.militaryService?.lastProcessedYear,'military service');
+ if(replayed)return [];
  const m=refreshMilitaryEligibility(state);
  const entries=[];
  const leave=state.career?.serviceLeave;
@@ -96,5 +110,6 @@ export function processMilitaryYear(state){
   delete state.career.serviceLeave;
   entries.push({age:state.player.age,kind:'career',text:'Askerlik sonrası iş hayatına geri döndün.'});
  }
+ if(calendarYear!==null)m.lastProcessedYear=calendarYear;
  return entries;
 }

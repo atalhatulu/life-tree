@@ -1,8 +1,10 @@
+import {annualYearStatus} from '../core/annual_clock.js';
+import {captureRngCheckpoint,restoreRngOrThrow,snapshotObjectGraph} from '../core/transaction_snapshot.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export function ensureRelationshipDepth(state){
  const r=state.social?.romance;
- if(r){
+ if(r&&r.alive!==false){
   r.trust??=clamp(Math.round((r.relationship??60)*.85+10));
   r.intimacy??=clamp(Math.round((r.relationship??60)*.8+12));
   r.resentment??=clamp(Math.round((r.relationshipTension??10)*.7));
@@ -12,6 +14,7 @@ export function ensureRelationshipDepth(state){
   r.supportMemory??=0;
  }
  for(const friend of state.social?.friends??[]){
+  if(friend.alive===false)continue;
   friend.trust??=clamp(Math.round((friend.relationship??55)*.8+12));
   friend.reciprocity??=50;
   friend.sharedHistory??=friend.yearsKnown??0;
@@ -20,14 +23,33 @@ export function ensureRelationshipDepth(state){
 
 export function processRelationshipDepthYear(state,rng){
  const entries=[];
+ const calendarYear=state.year??null;
+ const r=state.social?.romance?.alive===false?null:state.social?.romance;
+ const friends=(state.social?.friends??[]).filter(friend=>friend.alive!==false);
+ // Preflight every living participant before initializing depth or consuming RNG.
+ annualYearStatus(calendarYear,null,'relationship depth');
+ for(const person of [r,...friends])if(person)
+  annualYearStatus(calendarYear,person.lastDepthProcessedYear,'relationship depth');
+ const processPartner=Boolean(r&&(calendarYear===null||r.lastDepthProcessedYear!==calendarYear));
+ const pendingFriends=friends.filter(friend=>calendarYear===null||friend.lastDepthProcessedYear!==calendarYear);
+ if(!processPartner&&!pendingFriends.length)return entries;
+ // History is incremented once per year. Reject an unsafe value before any
+ // partner or earlier friend is changed, including legacy yearsKnown fallback.
+ for(const friend of pendingFriends){
+  const history=friend.sharedHistory??friend.yearsKnown??0;
+  if(!Number.isSafeInteger(history)||history<0||history===Number.MAX_SAFE_INTEGER)
+   throw new RangeError('Invalid or overflowing friend sharedHistory');
+ }
+ const restore=snapshotObjectGraph([state.social,state.healthProfile]);
+ const restoreRng=captureRngCheckpoint(rng);
+ try {
  ensureRelationshipDepth(state);
- const r=state.social?.romance;
- if(r){
+ if(processPartner){
   const financeStress=(state.finance?.financialDistressYears??0)>0?1:0;
   const workStress=(state.career?.workplace?.burnout??0)>=65?1:0;
   const moveStress=state.migrationHistory?.at(-1)?.age===state.player.age?1:0;
   const quality=r.lastQualityTimeAge===state.player.age-1?1:0;
-  const parentingPressure=(state.children?.filter(c=>c.age<18).length??0)>0?1:0;
+  const parentingPressure=(state.children?.filter(c=>c.alive!==false&&c.age<18).length??0)>0?1:0;
   const friction=financeStress*3+workStress*3+moveStress*2+parentingPressure;
   r.trust=clamp(r.trust+rng.int(-2,2)+(quality?2:0)-financeStress);
   r.intimacy=clamp(r.intimacy+rng.int(-2,2)+(quality?4:0)-workStress-parentingPressure);
@@ -41,8 +63,9 @@ export function processRelationshipDepthYear(state,rng){
   r.relationshipTension=clamp((r.relationshipTension??10)+Math.round((r.resentment-45)*.05-(r.trust-55)*.025));
   if(r.resentment>=72&&rng.chance(.3))entries.push({age:state.player.age,kind:'relationship-depth',text:r.name+' ile biriken kırgınlıklar ilişkinizi zorlamaya başladı.'});
   else if(r.trust>=78&&r.intimacy>=72&&quality)entries.push({age:state.player.age,kind:'relationship-depth',text:r.name+' ile ilişkinizde güven ve yakınlık belirgin biçimde güçlendi.'});
+  if(calendarYear!==null)r.lastDepthProcessedYear=calendarYear;
  }
- for(const friend of state.social?.friends??[]){
+ for(const friend of pendingFriends){
   const contacted=friend.lastContactAge===state.player.age-1||friend.lastContactAge===state.player.age;
   friend.trust=clamp((friend.trust??55)+(contacted?2:-1)+rng.fork('friend-trust-'+friend.id).int(-1,1));
   friend.reciprocity=clamp((friend.reciprocity??50)+rng.fork('friend-rec-'+friend.id).int(-2,2)+(contacted?1:0));
@@ -51,6 +74,11 @@ export function processRelationshipDepthYear(state,rng){
     state.healthProfile.stress=clamp(state.healthProfile.stress-4);
     entries.push({age:state.player.age,kind:'social',text:friend.name+' zor bir döneminde sana destek oldu.'});
   }
+  if(calendarYear!==null)friend.lastDepthProcessedYear=calendarYear;
  }
  return entries;
+ }catch(error){
+  restore();
+  restoreRngOrThrow(restoreRng,error);
+ }
 }

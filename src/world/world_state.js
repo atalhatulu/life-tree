@@ -1,3 +1,4 @@
+import {annualYearStatus} from '../core/annual_clock.js';
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 
 export function createWorldState(startYear=2026){
@@ -39,6 +40,8 @@ function applyPersistentShock(e,shock){
 }
 
 export function processWorldYear(state,rng){
+ const {calendarYear,replayed}=annualYearStatus(state.year,state.world?.lastProcessedYear,'world');
+ if(replayed)return [];
  state.world??=createWorldState(state.year);
  const w=state.world;
  const e=w.economy;
@@ -89,6 +92,7 @@ export function processWorldYear(state,rng){
  e.creditConditions=clamp(e.creditConditions,.78,1.35);
  e.entrepreneurship=clamp(e.entrepreneurship,.72,1.32);
 
+ if(calendarYear!==null)w.lastProcessedYear=calendarYear;
  return entries;
 }
 

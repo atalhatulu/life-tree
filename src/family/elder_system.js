@@ -1,3 +1,5 @@
+import {annualYearStatus} from '../core/annual_clock.js';
+import {captureRngCheckpoint,restoreRngOrThrow,snapshotObjectGraph,snapshotOwnFields} from '../core/transaction_snapshot.js';
 import {addToTrustFund} from '../finance/trust_fund.js';
 import {ensureGuardianship} from './guardianship_system.js';
 
@@ -26,11 +28,17 @@ function estateValue(person,rng){
  return Math.round(income*rng.int(5,14));
 }
 
+// Only living siblings share the estate with the player. Legacy sibling
+// records without an `alive` flag are treated as living for compatibility.
+function livingSiblingCount(state){
+ return (state.siblings??[]).filter(sibling=>sibling.alive!==false).length;
+}
+
 function parentInheritanceShare(state,person,amount){
  const survivingSpouse=person.id==='mother'?state.parents.father:state.parents.mother;
  const spouseShare=survivingSpouse?.alive?Math.round(amount*.40):0;
  const childPool=amount-spouseShare;
- const heirs=1+(state.siblings?.length??0);
+ const heirs=1+livingSiblingCount(state);
  return Math.round(childPool/Math.max(1,heirs));
 }
 
@@ -38,7 +46,7 @@ function grandparentInheritanceShare(state,person,amount){
  const maternal=person.id.startsWith('maternal');
  const parent=maternal?state.parents.mother:state.parents.father;
  if(parent?.alive)return 0;
- const heirs=1+(state.siblings?.length??0);
+ const heirs=1+livingSiblingCount(state);
  return Math.round((amount*.45)/Math.max(1,heirs));
 }
 
@@ -83,37 +91,123 @@ function markDeath(state,person,relation,rng){
  return entry;
 }
 
+const validScore=value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=100;
+const validMoney=value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=Number.MAX_SAFE_INTEGER;
+
+function assertCareInput(state){
+ if(!Number.isSafeInteger(state.player?.age)||state.player.age<0)
+  throw new RangeError('Invalid care player age');
+ if(state.siblings!=null){
+  if(!Array.isArray(state.siblings)||state.siblings.some(s=>!s||typeof s!=='object'||Array.isArray(s)))
+   throw new TypeError('Invalid care siblings');
+ }
+ const care=state.parentCare;
+ if(care!=null){
+  if(typeof care!=='object'||Array.isArray(care)||
+     (care.monthlyCost!=null&&!validMoney(care.monthlyCost))||
+     (care.siblingShare!=null&&(!Number.isFinite(care.siblingShare)||care.siblingShare<0||care.siblingShare>1)))
+   throw new RangeError('Invalid parent care ledger');
+ }
+ const profile=state.healthProfile;
+ if(profile!=null&&
+    (typeof profile!=='object'||Array.isArray(profile)||
+     (profile.stress!=null&&!validScore(profile.stress))))
+  throw new RangeError('Invalid care health stress');
+ const relationships=state.player.relationships;
+ if(relationships!=null&&
+    (typeof relationships!=='object'||Array.isArray(relationships)||
+     Object.values(relationships).some(value=>!validScore(value))))
+  throw new RangeError('Invalid care relationships');
+}
+
+function assertElderYearInput(state){
+ assertCareInput(state);
+ const parents=state.parents,grandparents=state.grandparents;
+ if(!parents||!grandparents?.maternal||!grandparents?.paternal)
+  throw new TypeError('Invalid elder family structure');
+ const members=[parents.mother,parents.father,
+  grandparents.maternal.grandmother,grandparents.maternal.grandfather,
+  grandparents.paternal.grandmother,grandparents.paternal.grandfather];
+ for(const person of members){
+  if(!person||typeof person!=='object'||Array.isArray(person))
+   throw new TypeError('Invalid elder family member');
+  if(person.alive===false)continue;
+  if(typeof person.id!=='string'||!Number.isSafeInteger(person.age)||person.age<0)
+   throw new RangeError('Invalid elder family age or ID');
+  if(!person.health||typeof person.health!=='object'||Array.isArray(person.health)||
+     (person.health.current!=null&&!validScore(person.health.current)))
+   throw new RangeError('Invalid elder family health');
+  // Estate value multiplies income by at most 14. Reject unsafe sums before death.
+  if(person.monthlyIncome!=null&&
+     (!validMoney(person.monthlyIncome)||person.monthlyIncome>Math.floor(Number.MAX_SAFE_INTEGER/14)))
+   throw new RangeError('Invalid elder family income');
+ }
+ const household=state.household;
+ if(!household||typeof household!=='object'||Array.isArray(household)||
+    !validMoney(household.monthlyIncome)||
+    !Number.isSafeInteger(household.people)||household.people<1)
+  throw new RangeError('Invalid elder household');
+ for(const key of ['educationSupport','hobbySupport'])
+  if(household[key]!=null&&!validScore(household[key]))
+   throw new RangeError('Invalid elder household '+key);
+ if(state.pendingInheritance!=null&&!Array.isArray(state.pendingInheritance))
+  throw new TypeError('Invalid elder pending inheritance');
+}
+
 export function ensureParentCareState(state){
  state.parentCare??={active:false,parentId:null,mode:null,monthlyCost:0,startedAtAge:null,siblingShare:0};
  return state.parentCare;
 }
 
 function parentCareCandidate(state){
+ // Apply the care-need threshold before ranking: a healthier but older
+ // eligible parent must not be hidden by an ineligible younger parent.
  return [state.parents?.mother,state.parents?.father]
-  .filter(p=>p?.alive&&p.age>=68)
+  .filter(p=>p?.alive&&p.age>=68&&(p.age>=76||(p.health?.current??70)<48))
   .sort((a,b)=>(a.health?.current??70)-(b.health?.current??70))[0]??null;
+}
+
+// The referral can become invalid after the elder pass (for example, a
+// treatment improves a parent's health above the eligibility threshold).
+// Keep this predicate pure so event eligibility and execution agree.
+export function hasCurrentParentCareReferral(state){
+ const care=state.parentCare;
+ if(!care?.pendingParentId||care.active||state.player?.age<28)return false;
+ return parentCareCandidate(state)?.id===care.pendingParentId;
 }
 
 export function evaluateParentCareNeed(state){
  const care=ensureParentCareState(state);
+ // An old referral must not survive the parent's death, age threshold,
+ // or a change in eligibility.
+ care.pendingParentId=null;
+ care.pendingParentName=null;
  if(state.player.age<28||care.active)return null;
  const parent=parentCareCandidate(state);
  if(!parent)return null;
- const health=parent.health?.current??70;
- if(parent.age<76&&health>=48)return null;
  care.pendingParentId=parent.id;
  care.pendingParentName=parent.name;
  return parent;
 }
 
 export function setParentCareMode(state,mode){
+ // Preserve the legacy empty care ledger for callers with no referral.
  const care=ensureParentCareState(state);
- const parent=[state.parents?.mother,state.parents?.father].find(p=>p?.id===(care.pendingParentId??care.parentId));
- if(!parent)throw new Error('Bakım gerektiren ebeveyn bulunamadı.');
+ assertCareInput(state);
+ if(care.active||!care.pendingParentId)throw new Error('Bekleyen ebeveyn bakım kararı bulunamadı.');
+ const parent=[state.parents?.mother,state.parents?.father].find(p=>p?.id===care.pendingParentId);
+ if(!parent?.alive)throw new Error('Bakım gerektiren yaşayan ebeveyn bulunamadı.');
+ // The referral can become stale between presentation and execution.
+ if(!hasCurrentParentCareReferral(state))
+  throw new Error('Ebeveyn bakım kararı artık güncel değil.');
+ const costs={family:4500,'home-care':18000,facility:30000,'sibling-share':15000};
+ if(!Object.hasOwn(costs,mode))throw new Error('Geçersiz ebeveyn bakım modu.');
+ const base=costs[mode];
  const adultSiblings=(state.siblings??[]).filter(s=>s.alive&&s.age>=22);
  const siblingShare=mode==='sibling-share'?Math.min(.65,adultSiblings.length*.18):0;
- const base={family:4500,'home-care':18000,facility:30000,'sibling-share':15000}[mode];
- if(base==null)throw new Error('Geçersiz ebeveyn bakım modu.');
+ const restoreGraph=snapshotObjectGraph([care,parent,state.player,state.healthProfile]);
+ const restoreFields=snapshotOwnFields(state.player,['relationships']);
+ try {
  care.active=true;
  care.parentId=parent.id;
  care.parentName=parent.name;
@@ -132,11 +226,17 @@ export function setParentCareMode(state,mode){
  state.player.relationships??={};
  state.player.relationships[parent.id]=clamp((state.player.relationships[parent.id]??60)+(mode==='family'?7:mode==='sibling-share'?4:2));
  return care;
+ }catch(error){restoreGraph();restoreFields();throw error;}
 }
 
 function processParentCareYear(state){
  const care=state.parentCare;
- if(!care?.active)return [];
+ if(!care)return [];
+ if(care.pendingParentId){
+  const pending=[state.parents?.mother,state.parents?.father].find(p=>p?.id===care.pendingParentId);
+  if(!pending?.alive){care.pendingParentId=null;care.pendingParentName=null;}
+ }
+ if(!care.active)return [];
  const parent=[state.parents?.mother,state.parents?.father].find(p=>p?.id===care.parentId);
  if(!parent?.alive){
   care.active=false;
@@ -152,6 +252,16 @@ function processParentCareYear(state){
 }
 
 export function processElderFamilyYear(state,rng){
+ const {calendarYear,replayed}=annualYearStatus(state.year,state.lastElderFamilyProcessedYear,'elder family');
+ if(replayed)return [];
+ assertElderYearInput(state);
+ const restoreGraph=snapshotObjectGraph([state.parents,state.grandparents,state.household,
+  state.player,state.parentCare,state.healthProfile,state.pendingInheritance,
+  state.trustFund,state.guardianship,state.guardianshipHistory]);
+ const restoreFields=snapshotOwnFields(state,['parentCare','pendingInheritance','trustFund',
+  'guardianship','guardianshipHistory','lastElderFamilyProcessedYear']);
+ const restoreRng=captureRngCheckpoint(rng);
+ try {
  const entries=[];
  evaluateParentCareNeed(state);
  const members=[
@@ -171,6 +281,9 @@ export function processElderFamilyYear(state,rng){
   }
  }
 
+ // Death and health changes during this pass can invalidate the referral
+ // created before mortality rolls. Never expose a deceased/ineligible parent.
+ evaluateParentCareNeed(state);
  entries.push(...processParentCareYear(state));
 
  if(state.player.age<18&&!state.parents.mother.alive&&!state.parents.father.alive){
@@ -187,5 +300,9 @@ export function processElderFamilyYear(state,rng){
   }
  }
 
+ if(calendarYear!==null)state.lastElderFamilyProcessedYear=calendarYear;
  return entries;
+ }catch(error){
+  restoreGraph();restoreFields();restoreRngOrThrow(restoreRng,error);
+ }
 }

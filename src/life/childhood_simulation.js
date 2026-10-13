@@ -1,13 +1,17 @@
 import {changeTrait,growTrait} from '../character/personality_dynamics.js';
+import {creditChildAllowance} from '../finance/child_money.js';
+import {annualYearStatus} from '../core/annual_clock.js';
 const clamp = (v, min=0, max=100) => Math.max(min, Math.min(max, v));
 
 export function processChildhoodYear(state, rng) {
   const entries = [];
   const player = state.player;
   if (player.age > 18) return entries;
+  // Standalone annual calls must not apply education and personality changes twice.
+  const {calendarYear,replayed}=annualYearStatus(state.year,state.lastChildhoodProcessedYear,'childhood');
+  if(replayed)return entries;
 
   const homeSupport = (state.household.educationSupport + state.household.hobbySupport) / 2;
-  state.childMoney??={wallet:0,saved:0,totalAllowance:0,totalSpent:0,lastAllowanceAge:null};
   const familyBond = ((player.relationships.mother ?? 60) + (player.relationships.father ?? 60)) / 2;
 
   if (player.age <= 5) {
@@ -27,11 +31,12 @@ export function processChildhoodYear(state, rng) {
     const relationship=((player.relationships.mother??60)+(player.relationships.father??60))/2;
     const relationFactor=relationship>=70?1.12:relationship<45?.72:1;
     const allowance=Math.max(100,Math.round(classBase*ageFactor*relationFactor));
-    state.childMoney.wallet+=allowance;
-    state.childMoney.totalAllowance+=allowance;
+    creditChildAllowance(state,allowance);
     state.childMoney.lastAllowanceAge=player.age;
     entries.push({age:player.age,kind:'child-money',text:'Bu yıl harçlık olarak ₺'+allowance.toLocaleString('tr-TR')+' aldın.'});
   }
+
+  state.childMoney??={wallet:0,saved:0,totalAllowance:0,totalSpent:0,lastAllowanceAge:null};
 
   if (state.education?.enrolled) {
     const e=state.education;
@@ -50,5 +55,6 @@ export function processChildhoodYear(state, rng) {
     e.studyEffort=0;
   }
 
+  if(calendarYear!==null)state.lastChildhoodProcessedYear=calendarYear;
   return entries;
 }

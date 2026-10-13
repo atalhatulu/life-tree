@@ -1,3 +1,4 @@
+import {annualYearStatus} from '../core/annual_clock.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export function ensureLifeMemory(state){
@@ -16,6 +17,8 @@ function addMemory(state,id,label,valence,intensity,tags=[]){
 }
 
 export function processMemoryConsequencesYear(state){
+ const {calendarYear,replayed}=annualYearStatus(state.year,state.lastMemoryConsequencesProcessedYear,'memory consequences');
+ if(replayed)return [];
  const m=ensureLifeMemory(state);
  const entries=[];
  if(state.lastDivorceAge===state.player.age&&addMemory(state,'divorce-'+state.player.age,'Boşanma',-1,8,['loss','relationship'])){
@@ -40,8 +43,9 @@ export function processMemoryConsequencesYear(state){
  const negative=(m.tags.scar??0)+(m.tags.loss??0)+(m.tags.grief??0);
  m.scarLoad=clamp(Math.round(negative*.8));
  m.resilience=clamp(50+Math.round(positive*.7)-Math.round(negative*.25)+((state.player.personality?.patience??50)-50)*.1);
- if(m.scarLoad>=35)state.healthProfile.stress=clamp((state.healthProfile?.stress??20)+2);
- if(m.resilience>=65)state.healthProfile.stress=clamp((state.healthProfile?.stress??20)-2);
+ if(m.scarLoad>=35&&state.healthProfile)state.healthProfile.stress=clamp((state.healthProfile?.stress??20)+2);
+ if(m.resilience>=65&&state.healthProfile)state.healthProfile.stress=clamp((state.healthProfile?.stress??20)-2);
  m.memories=m.memories.slice(-40);
+ if(calendarYear!==null)state.lastMemoryConsequencesProcessedYear=calendarYear;
  return entries;
 }

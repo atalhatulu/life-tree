@@ -181,13 +181,23 @@ function friendInitiative(state,rng){
 
 export function generateNpcInitiatives(state,rng){
  if(!state.player?.alive)return [];
+ const calendarYear=Number.isInteger(state.year)?state.year:null;
+ if(calendarYear!==null){
+  if(state.npcInitiatives?.lastGeneratedYear===calendarYear)return [];
+  if(Number.isInteger(state.npcInitiatives?.lastGeneratedYear)&&calendarYear<state.npcInitiatives.lastGeneratedYear)
+   throw new RangeError('Cannot generate NPC initiatives in an earlier year');
+ }
  const store=prunePending(state);
- if(store.pending.length)return [];
+ if(store.pending.length){
+  if(calendarYear!==null)store.lastGeneratedYear=calendarYear;
+  return [];
+ }
  const created=[
   partnerInitiative(state,rng.fork('partner')),
   childInitiative(state,rng.fork('child')),
   friendInitiative(state,rng.fork('friend'))
  ].filter(Boolean);
+ if(calendarYear!==null)store.lastGeneratedYear=calendarYear;
  return created.map(x=>({age:state.player.age,kind:'npc-initiative',paceBlock:true,text:x.actorName+' senden önemli bir konuda konuşmak istiyor.'}));
 }
 

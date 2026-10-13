@@ -1,3 +1,5 @@
+import {annualYearStatus} from '../core/annual_clock.js';
+import {captureRngCheckpoint,restoreRngOrThrow,snapshotObjectGraph} from '../core/transaction_snapshot.js';
 import {JOBS} from '../data/catalog.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
@@ -22,8 +24,27 @@ function assignAdultPath(child,rng){
 
 export function processDescendantLives(state,rng){
  const entries=[];
- for(const child of state.children??[]){
-  if(child.age<18)continue;
+ const {calendarYear}=annualYearStatus(state.year,null,'descendant life');
+ const adults=(state.children??[]).filter(child=>child.alive!==false&&child.age>=18);
+ // Check the entire living adult cohort before any NPC or family state changes.
+ for(const child of adults)
+  annualYearStatus(calendarYear,child.adultLife?.lastProcessedYear,'descendant life');
+ const pending=adults.filter(child=>child.adultLife?.lastProcessedYear!==calendarYear||calendarYear===null);
+ if(!pending.length)return entries;
+ // A grandchild birth increments the global counter; never silently lose precision.
+ const originalGrandchildren=state.grandchildren;
+ const grandchildCount=originalGrandchildren??0;
+ if(!Number.isSafeInteger(grandchildCount)||grandchildCount<0||
+    grandchildCount===Number.MAX_SAFE_INTEGER)
+  throw new RangeError('Invalid or overflowing grandchildren counter');
+ const hadGrandchildren=Object.hasOwn(state,'grandchildren');
+ const restoreChildren=snapshotObjectGraph([state.children]);
+ const restoreRng=captureRngCheckpoint(rng);
+ try {
+ for(const child of pending){
+  // Per-child markers allow a newly introduced adult descendant to be
+  // initialized later in the same year without replaying existing NPC lives.
+  if(child.adultLife?.lastProcessedYear===calendarYear)continue;
   assignAdultPath(child,rng.fork(child.id+'-adult'));
   const life=child.adultLife;
   if(child.age>=22&&!life.partnered&&rng.fork(child.id+'-partner-'+child.age).chance(.12+(child.personality.sociability??50)*.0015)){
@@ -37,6 +58,13 @@ export function processDescendantLives(state,rng){
    entries.push({age:state.player.age,kind:'family',text:child.name+' çocuk sahibi oldu. Artık torunun var.'});
   }
   child.health.current=clamp(child.health.current+rng.int(-2,2));
+  if(calendarYear!==null)life.lastProcessedYear=calendarYear;
  }
  return entries;
+ }catch(error){
+  restoreChildren();
+  if(hadGrandchildren)state.grandchildren=originalGrandchildren;
+  else delete state.grandchildren;
+  restoreRngOrThrow(restoreRng,error);
+ }
 }

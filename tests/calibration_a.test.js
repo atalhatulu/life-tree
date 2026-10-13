@@ -28,6 +28,7 @@ test('hypertension exposure becomes meaningful before old age',()=>{
  const rng={int:()=>0,chance:()=>false,fork:()=>rng};
  for(let i=0;i<12;i++){
   g.state.player.age=45+i;
+  g.state.year=2071+i;
   processHealthYear(g.state,rng);
  }
  assert.ok((g.state.healthProfile.riskExposure.hypertension??0)>=20);

@@ -16,7 +16,13 @@ function employed(game,{jobId,title,income=90000,years=8,satisfaction=55}){
  game.state.player.jobId=jobId;
  game.state.player.monthlyIncome=income;
  const profile=ensureCareerProfile(game.state);
- for(let i=0;i<years;i++)recordCareerYear(game.state);
+ // Credit prior experience across distinct calendar years, not repeated calls in one year.
+ const currentYear=game.state.year;
+ for(let i=0;i<years;i++){
+  game.state.year=currentYear-years+1+i;
+  recordCareerYear(game.state);
+ }
+ game.state.year=currentYear;
  return profile;
 }
 

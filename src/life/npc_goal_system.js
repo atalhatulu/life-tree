@@ -60,7 +60,14 @@ export function goalAlignment(playerGoalId,npcGoalId){
 
 export function applyPartnerGoalAlignment(state){
  const partner=state.social?.romance;
- if(!partner||partner.alive===false)return null;
+ if(!partner||partner.alive===false||state.player?.alive===false)return null;
+ const calendarYear=Number.isInteger(state.year)?state.year:null;
+ if(calendarYear!==null){
+  if(partner.lastGoalAlignmentProcessedYear===calendarYear)
+   return {alignment:partner.goalAlignment??0,playerGoal:state.lifeGoals?.active?.id,npcGoal:partner.lifeGoals?.active?.id};
+  if(Number.isInteger(partner.lastGoalAlignmentProcessedYear)&&calendarYear<partner.lastGoalAlignmentProcessedYear)
+   throw new RangeError('Cannot process partner goal alignment in an earlier year');
+ }
  const playerGoal=state.lifeGoals?.active?.id;
  const npcGoal=ensureNpcGoal(partner).id;
  const alignment=goalAlignment(playerGoal,npcGoal);
@@ -72,5 +79,6 @@ export function applyPartnerGoalAlignment(state){
   partner.resentment=clamp((partner.resentment??20)+2);
   partner.sharedGoals=clamp((partner.sharedGoals??60)-2);
  }
+ if(calendarYear!==null)partner.lastGoalAlignmentProcessedYear=calendarYear;
  return {alignment,playerGoal,npcGoal};
 }

@@ -1,3 +1,4 @@
+import {annualYearStatus} from '../core/annual_clock.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export function ensureWorkplaceState(state,rng){
@@ -21,6 +22,8 @@ export function processWorkplaceYear(state,rng){
  const c=state.career;
  const entries=[];
  if(!c?.employed)return entries;
+ const {calendarYear,replayed}=annualYearStatus(state.year,c.lastWorkplaceProcessedYear,'workplace');
+ if(replayed)return entries;
  const w=ensureWorkplaceState(state,rng.fork('init'));
  const pressure=Math.max(0,w.workload-55)+Math.max(0,w.officePolitics-60)*.5+Math.max(0,50-w.bossQuality)*.4;
  const buffers=Math.max(0,w.teamCohesion-55)*.25+Math.max(0,w.autonomy-50)*.18+Math.max(0,w.cultureFit-50)*.18;
@@ -38,5 +41,6 @@ export function processWorkplaceYear(state,rng){
  }
  if(w.bossQuality<=32&&rng.chance(.22))entries.push({age:state.player.age,kind:'workplace',text:'Yöneticinle yaşadığın sürtüşme iş memnuniyetini düşürdü.'});
  if(w.recognition>=76&&rng.chance(.2))entries.push({age:state.player.age,kind:'workplace',text:'İş yerinde yaptığın iş daha görünür hale geldi; itibarın arttı.'});
+ if(calendarYear!==null)c.lastWorkplaceProcessedYear=calendarYear;
  return entries;
 }

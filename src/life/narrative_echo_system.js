@@ -1,3 +1,4 @@
+import {annualYearStatus,assertIncrementableCounter} from '../core/annual_clock.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 function eligibleMemories(state){
@@ -35,27 +36,57 @@ function applyDecisionEcho(state,node){
  node.echoCount=(node.echoCount??0)+1;
  const category=node.pacingCategory??'life';
  if(category==='career'&&state.career?.employed)state.career.satisfaction=clamp((state.career.satisfaction??50)+1);
- if(category==='relationship'&&state.social?.romance)state.social.romance.trust=clamp((state.social.romance.trust??60)+1);
- if(category==='family'&&state.children?.length)for(const child of state.children)child.relationship=clamp((child.relationship??60)+1);
+ if(category==='relationship'&&state.social?.romance&&state.social.romance.alive!==false)state.social.romance.trust=clamp((state.social.romance.trust??60)+1);
+ if(category==='family'&&state.children?.length)for(const child of state.children){
+  if(child.alive===false)continue;
+  child.relationship=clamp((child.relationship??60)+1);
+ }
  return node.age+' yaşında verdiğin “'+node.label+'” kararı bugün hayatının yönünü hâlâ etkiliyor.';
 }
 
 export function processNarrativeEchoesYear(state,rng){
- if(state.player.age<22)return [];
+ if(state.player.age<22||state.player.alive===false)return [];
+ const {calendarYear,replayed}=annualYearStatus(state.year,state.lastNarrativeEchoProcessedYear,'narrative echoes');
+ if(replayed)return [];
+ // Validate all potentially eligible records before RNG or the first echo mutates state.
+ // Completed and too-old records are deliberately excluded from legacy validation.
+ const age=state.player.age;
+ const echo=state.narrativeEcho;
+ if(echo){
+  if(echo.lastAge!=null&&(!Number.isSafeInteger(echo.lastAge)||echo.lastAge<0||echo.lastAge>age))
+   throw new RangeError('Invalid narrative echo last age');
+  assertIncrementableCounter(echo.total??0,'narrative echo total');
+ }
+ for(const [records,minAge,maxAge] of [
+  [state.lifeMemory?.memories??[],3,25],
+  [state.lifeTree?.nodes??[],4,30]
+ ]){
+  for(const record of records){
+   const elapsed=age-record.age;
+   if(elapsed<minAge||elapsed>maxAge)continue;
+   if(record.lastEchoAge!=null&&(!Number.isSafeInteger(record.lastEchoAge)||record.lastEchoAge<0||record.lastEchoAge>age))
+    throw new RangeError('Invalid narrative echo record age');
+   if(record.lastEchoAge!==age)assertIncrementableCounter(record.echoCount??0,'narrative echo count');
+  }
+ }
+ const finish=entries=>{
+  if(calendarYear!==null)state.lastNarrativeEchoProcessedYear=calendarYear;
+  return entries;
+ };
  const entries=[];
  const memories=eligibleMemories(state);
  const decisions=eligibleDecisions(state);
  const yearsSince=state.narrativeEcho?.lastAge==null?99:state.player.age-state.narrativeEcho.lastAge;
- if(yearsSince<2)return entries;
+ if(yearsSince<2)return finish(entries);
  const pool=[];
  for(const m of memories)pool.push({type:'memory',value:m,weight:Math.max(1,m.intensity??3)});
  for(const n of decisions)pool.push({type:'decision',value:n,weight:4});
- if(!pool.length||!rng.chance(Math.min(.55,.18+yearsSince*.06)))return entries;
+ if(!pool.length||!rng.chance(Math.min(.55,.18+yearsSince*.06)))return finish(entries);
  const picked=rng.weighted(pool.map(x=>({value:x,weight:x.weight})));
  const text=picked.type==='memory'?applyMemoryEcho(state,picked.value):applyDecisionEcho(state,picked.value);
  state.narrativeEcho??={lastAge:null,total:0};
  state.narrativeEcho.lastAge=state.player.age;
  state.narrativeEcho.total=(state.narrativeEcho.total??0)+1;
  entries.push({age:state.player.age,kind:'narrative-echo',text});
- return entries;
+ return finish(entries);
 }

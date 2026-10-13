@@ -42,6 +42,11 @@ export class EventEngine{
  }
 
  resolve(state,event,choiceId,rng){
+  // A cached reference must not replay a once-only decision after completion.
+  if(event.once&&state.flags?.completedEvents?.includes(event.id))
+   throw new Error('Event already completed: '+event.id);
+  // Events can go stale between presentation and selection (death, job loss, etc.).
+  if(event.condition&&!event.condition(structuredClone(state)))throw new Error('Event is no longer available: '+event.id);
   const choice=this.choicesFor(state,event).find(c=>c.id===choiceId);
   if(!choice)throw new Error('Unknown or unavailable choice: '+choiceId);
 

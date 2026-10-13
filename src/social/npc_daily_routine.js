@@ -1,6 +1,32 @@
 import {schoolSeason} from '../life/school_calendar.js';
 // Representative schedules only: the annual engine does not advance each day.
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
+const isRecord=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+const validScore=value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=100;
+// A weekly schedule is an annual side effect. Validate its inputs before
+// creating the routine object or replacing an existing saved week.
+export function assertNpcRoutineInputs(person,{checkRoutine=true}={}){
+ if(!isRecord(person))throw new TypeError('Invalid NPC record');
+ if(person.age!=null&&(!Number.isSafeInteger(person.age)||person.age<0))
+  throw new RangeError('Invalid NPC age');
+ if(person.life!=null&&!isRecord(person.life))throw new TypeError('Invalid NPC life');
+ for(const key of ['personalStress','workStress','workStability']){
+  const value=person.life?.[key];
+  if(value!=null&&!validScore(value))throw new RangeError('Invalid NPC '+key);
+ }
+ if(person.personality!=null&&!isRecord(person.personality))
+  throw new TypeError('Invalid NPC personality');
+ if(person.personality?.sociability!=null&&!validScore(person.personality.sociability))
+  throw new RangeError('Invalid NPC sociability');
+ if(person.life?.movedAway!=null&&typeof person.life.movedAway!=='boolean')
+  throw new TypeError('Invalid NPC movedAway');
+ if(checkRoutine&&person.routine!=null){
+  if(!isRecord(person.routine)||
+     (person.routine.week!=null&&(!Array.isArray(person.routine.week)||
+      person.routine.week.some(day=>!isRecord(day)))))
+   throw new TypeError('Invalid NPC routine');
+ }
+}
 const DAYS=['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'];
 export function ensureNpcRoutine(person){
  person.routine??={week:[],lastYear:null,workload:0,freeEvenings:0,availability:50,pattern:'unassigned'};
@@ -23,7 +49,9 @@ function daySlot(ctx,index){
 }
 export function simulateNpcRoutineWeek(person,{year,kind='friend',dayOfYear}={}){
  if(person.alive===false)return null;
- const routine=ensureNpcRoutine(person),ctx=scheduleContext(person,dayOfYear),life=person.life??{};
+ assertNpcRoutineInputs(person);
+ const ctx=scheduleContext(person,dayOfYear),life=person.life??{};
+ const routine=ensureNpcRoutine(person);
  const week=DAYS.map((_,i)=>daySlot(ctx,i));
  const workload=week.filter(d=>d.duty==='work'||d.duty==='school').length;
  const freeEvenings=week.filter(d=>d.available).length;
@@ -39,6 +67,7 @@ export function npcCanMeet(person,day){
 }
 export function npcDaySchedule(person,{dayOfYear,weekday=1}={}){
  if(!Number.isInteger(weekday)||weekday<1||weekday>7)throw new RangeError('Invalid weekday');
+ if(person.alive!==false)assertNpcRoutineInputs(person,{checkRoutine:false});
  const ctx=scheduleContext(person,dayOfYear);
  if(person.alive===false)return {duty:'unavailable',season:ctx.season,available:false};
  const slot=daySlot(ctx,weekday-1);

@@ -100,6 +100,8 @@ test('affected monogenic genotype can manifest as a real health condition',()=>{
 
  let manifested=false;
  for(let i=0;i<8&&!manifested;i++){
+  game.state.year+=1;
+  game.state.player.age=1+i;
   const entries=processGeneticHealthYear(game.state,new RNG('manifest-'+i));
   manifested=entries.some(e=>e.text.includes('Beta talasemi'));
  }

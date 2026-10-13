@@ -16,6 +16,7 @@ test('independent housing costs more than living with family',()=>{
  autoplay(g,{toAge:22,policy:'vocational'});
  ensurePersonalFinance(g.state);
  const familyCost=lifestyleMonthlyCost(g.state);
+ g.state.finance.cash=Math.max(24000,g.state.finance.cash??0);
  setLifestyle(g.state,{housing:'studio'});
  const studioCost=lifestyleMonthlyCost(g.state);
  assert.ok(studioCost>familyCost);

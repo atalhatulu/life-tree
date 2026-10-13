@@ -15,6 +15,7 @@ test('a genuinely strong social circle can complete the social-circle life goal'
  setLifeGoal(g.state,'social-circle');
  for(let i=0;i<12&&!g.state.lifeGoals.completed.includes('social-circle');i++){
   g.state.player.age++;
+  g.state.year++;
   processLifeGoalsYear(g.state);
  }
  assert.ok(g.state.lifeGoals.completed.includes('social-circle'));

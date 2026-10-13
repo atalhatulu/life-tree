@@ -1,3 +1,5 @@
+import {reconcileDeceasedPartner} from './partnership_system.js';
+import {annualYearStatus} from '../core/annual_clock.js';
 import {FIRST_NAMES,SURNAMES,JOBS} from '../data/catalog.js';
 import {createPersonBase} from '../character/person.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
@@ -37,25 +39,32 @@ export function createRomanticInterest(state,rng,id){
 }
 
 export function processRomanceYear(state,rng){
- state.social??={friends:[],romance:null};
- if(state.social.romance===undefined) state.social.romance=null;
  const age=state.player.age;
  const entries=[];
- if(age<14||!state.social.romance) return entries;
+ const partner=state.social?.romance;
+ // Validate the active record before legacy reconciliation or any state writes.
+ if(partner){
+  const year=state.year==null?2000+age:state.year;
+  const {calendarYear,replayed}=annualYearStatus(year,partner.lastRomanceProcessedYear,'romance');
+  if(reconcileDeceasedPartner(state)||replayed)return entries;
+  if(age<14)return entries;
+  partner.age+=1;
 
- const partner=state.social.romance;
- partner.age+=1;
-
- // Ergenlik ilişkileri yetişkin partner sisteminden daha hafif tutulur.
- if(age<=18){
-  partner.relationship=clamp(partner.relationship+rng.int(-5,4)-1);
-  if(partner.relationship<25&&rng.chance(.32)){
-   entries.push({age,kind:'relationship',text:partner.name+' ile ilişkin sona erdi.'});
-   state.social.exPartners??=[];
-   state.social.exPartners.push({...partner,status:'ended'});
-   state.social.romance=null;
-   state.nextDatingAge=19;
+  // Ergenlik ilişkileri yetişkin partner sisteminden daha hafif tutulur.
+  if(age<=18){
+   partner.relationship=clamp(partner.relationship+rng.int(-5,4)-1);
+   if(partner.relationship<25&&rng.chance(.32)){
+    entries.push({age,kind:'relationship',text:partner.name+' ile ilişkin sona erdi.'});
+    state.social.exPartners??=[];
+    state.social.exPartners.push({...partner,status:'ended'});
+    state.social.romance=null;
+    state.nextDatingAge=19;
+   }
   }
+  partner.lastRomanceProcessedYear=calendarYear;
+  return entries;
  }
+ state.social??={friends:[],romance:null};
+ if(state.social.romance===undefined)state.social.romance=null;
  return entries;
 }

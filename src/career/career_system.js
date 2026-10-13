@@ -3,6 +3,7 @@ import {economy} from '../world/world_state.js';
 import {moveToCity} from '../world/migration_system.js';
 import {archiveCareer,yearsInFamily} from './career_profile.js';
 import {metaFor,retrainingYears} from './career_taxonomy.js';
+import {annualYearStatus} from '../core/annual_clock.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 const LEVELS=[
@@ -33,6 +34,12 @@ export function processCareerDynamics(state,rng){
  const c=state.career;
  const entries=[];
  if(!c?.employed) return entries;
+ const {calendarYear,replayed}=annualYearStatus(state.year,state.lastCareerDynamicsProcessedYear,'career dynamics');
+ if(replayed)return entries;
+ const finish=()=>{
+  if(calendarYear!==null)state.lastCareerDynamicsProcessedYear=calendarYear;
+  return entries;
+ };
  deepenCareerState(state);
 
  c.companyFit=clamp(c.companyFit+rng.int(-3,3)+(c.degreeRelated?1:0));
@@ -84,21 +91,22 @@ export function processCareerDynamics(state,rng){
    state.nextPath='business';
    state.pendingJobOffers=null;
    entries.push({age:state.player.age,kind:'career',text:'Yan işletmeni artık tam zamanlı yürütmeye başladın.'});
-   return entries;
+   return finish();
   }
   state.nextPath='work';
   state.unemployedSinceAge=state.player.age;
   state.pendingJobOffers=null;
-  return entries;
+  return finish();
  }
 
  if(c.years>=3&&c.years%3===0&&(c.satisfaction<55||state.player.personality.ambition>70)){
   state.pendingCareerOffers=generateJobOffers(state,rng.fork('career-switch-'+state.player.age),3,{mode:'career-switch'});
  }
- return entries;
+ return finish();
 }
 
 export function switchJob(state,job){
+ if(state.retirement?.retired)throw new Error('Emeklilik sonrası kariyer değiştirilemez.');
  const old=state.career;
  archiveCareer(state,'career-switch');
  let moveResult=null;
@@ -151,7 +159,10 @@ export function beginRetraining(state,targetJobId){
 export function processRetrainingYear(state){
  const r=state.retraining;
  if(!r||r.completed)return [];
+ const {calendarYear,replayed}=annualYearStatus(state.year,r.lastProcessedYear,'retraining');
+ if(replayed)return [];
  r.yearsCompleted+=1;
+ if(calendarYear!==null)r.lastProcessedYear=calendarYear;
  if(r.yearsCompleted>=r.requiredYears){
   r.completed=true;
   r.completedAtAge=state.player.age;

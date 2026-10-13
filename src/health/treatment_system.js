@@ -1,7 +1,8 @@
 import {ensureConditionProgression} from './disease_progression.js';
 import {treatmentResilience} from './physical_capacity.js';
 import {economy} from '../world/world_state.js';
-import {ensurePersonalFinance} from '../finance/personal_finance.js';
+import {ensurePersonalFinance,addDebt} from '../finance/personal_finance.js';
+import {safeCashAmount} from '../finance/safe_cash.js';
 const COSTS={1:18000,2:45000,3:110000};
 
 export function untreatedConditions(state){
@@ -25,12 +26,25 @@ export function treatCondition(state,id,rng){
  if(!condition)throw new Error('Tedavi edilebilir aktif durum bulunamadı.');
 
  const familyCovered=state.player.age<19;
- const cost=familyCovered?0:Math.round((COSTS[condition.severity]??30000)*economy(state).healthcareCost);
+ const cost=familyCovered?0:safeCashAmount(
+  (COSTS[condition.severity]??30000)*economy(state).healthcareCost,'Treatment cost');
  if(!familyCovered){
+  // Preflight the complete charge on a copy: a rejected medical loan must
+  // not spend cash, reconcile legacy debt, or mark the condition treated.
+  const preview={...state,
+   finance:state.finance?structuredClone(state.finance):undefined,
+   assets:state.assets?structuredClone(state.assets):undefined};
+  const ledger=ensurePersonalFinance(preview);
+  const cash=ledger.cash;
+  if(!Number.isSafeInteger(cash)||cash<0)
+   throw new RangeError('Invalid treatment cash balance');
+  const used=Math.min(cash,cost);
+  const shortfall=cost-used;
+  if(shortfall>0)addDebt(preview,'medical',shortfall);
+  // All failure-prone monetary validations have passed.
   ensurePersonalFinance(state);
-  const used=Math.min(state.finance.cash,cost);
-  state.finance.cash-=used;
-  state.finance.debt+=(cost-used);
+  if(shortfall>0)addDebt(state,'medical',shortfall);
+  state.finance.cash=cash-used;
  }
 
  const resilience=treatmentResilience(state);

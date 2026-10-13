@@ -8,6 +8,7 @@ import {lifestyleEffects} from '../lifestyle/lifestyle_system.js';
 import {processPartnershipYear} from '../social/partnership_system.js';
 import {processChildrenYear,ensureChildren} from '../family/parenting_system.js';
 import {processHealthYear,ensureHealthProfile} from '../health/health_system.js';
+import {annualYearStatus} from '../core/annual_clock.js';
 import {ensureAdultPreferences} from './adult_preferences.js';
 import {processDescendantLives} from '../family/descendant_life_system.js';
 import {processInheritance} from '../finance/inheritance_system.js';
@@ -38,6 +39,9 @@ export function processAdultYear(state,rng){
  const entries=[];
  const age=state.player.age;
  if(age<19||!state.player.alive) return entries;
+ // A replayed annual orchestration must not charge finances, age NPCs or roll health twice.
+ const {calendarYear,replayed}=annualYearStatus(state.year,state.lastAdultProcessedYear,'an adult year');
+ if(replayed)return entries;
 
  ensurePersonalFinance(state);
  ensureAssets(state);
@@ -105,5 +109,6 @@ export function processAdultYear(state,rng){
  entries.push(...processMentalHealthYear(state,rng.fork('mental-health')));
  entries.push(...processHealthYear(state,rng.fork('health'),{healthBeforeYear:healthBeforeLifestyle}));
  if(!state.player.alive)finalizeDeath(state);
+ if(calendarYear!==null)state.lastAdultProcessedYear=calendarYear;
  return entries;
 }

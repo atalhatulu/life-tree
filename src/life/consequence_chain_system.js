@@ -1,3 +1,4 @@
+import {annualYearStatus,assertIncrementableCounter} from '../core/annual_clock.js';
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,v));
 
 export function ensureConsequenceChains(state){
@@ -14,6 +15,12 @@ function startChain(state,type,data={}){
 }
 
 export function processConsequenceChainsYear(state,rng){
+ const {calendarYear,replayed}=annualYearStatus(state.year,state.lastConsequenceChainsProcessedYear,'consequence chains');
+ if(replayed)return [];
+ // Prevent a corrupt later chain from leaving earlier chains partially advanced.
+ for(const chain of state.consequenceChains??[]){
+  if(!chain.resolved)assertIncrementableCounter(chain.step,'consequence chain step');
+ }
  const entries=[];
  const chains=ensureConsequenceChains(state);
 
@@ -23,7 +30,7 @@ export function processConsequenceChainsYear(state,rng){
  if((state.householdDynamics?.financialPressure??0)>=70){
   startChain(state,'financial-strain');
  }
- if((state.social?.romance?.resentment??0)>=70){
+ if(state.social?.romance?.alive!==false&&(state.social?.romance?.resentment??0)>=70){
   startChain(state,'relationship-erosion');
  }
 
@@ -78,7 +85,7 @@ export function processConsequenceChainsYear(state,rng){
 
   if(chain.type==='relationship-erosion'){
     const r=state.social?.romance;
-    if(!r){chain.resolved=true;continue;}
+    if(!r||r.alive===false){chain.resolved=true;continue;}
     if(chain.step===1){
       r.trust=clamp((r.trust??60)-4);
       entries.push({age:state.player.age,kind:'consequence-chain',text:'Biriken kırgınlık güveni aşındırmaya başladı.'});
@@ -98,5 +105,6 @@ export function processConsequenceChainsYear(state,rng){
   }
  }
  state.consequenceChains=chains.filter(c=>!c.resolved||state.player.age-c.startedAtAge<=8).slice(-12);
+ if(calendarYear!==null)state.lastConsequenceChainsProcessedYear=calendarYear;
  return entries;
 }

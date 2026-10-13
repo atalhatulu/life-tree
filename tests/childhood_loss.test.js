@@ -26,6 +26,8 @@ test('parent death reduces household income and size',()=>{
  const people=g.state.household.people;
 
  for(let i=0;i<80&&mother.alive;i++){
+  // Independent mortality trials must not replay one calendar year.
+  g.state.year+=1;
   processElderFamilyYear(g.state,new RNG('single-parent-loss-'+i));
  }
  assert.equal(mother.alive,false);
@@ -37,6 +39,8 @@ test('orphaned minor receives a guardian',()=>{
  const g=new Game('orphan-guardian');
  forceOldParents(g);
  for(let i=0;i<120&&(g.state.parents.mother.alive||g.state.parents.father.alive);i++){
+  // Independent mortality trials must not replay one calendar year.
+  g.state.year+=1;
   processElderFamilyYear(g.state,new RNG('orphan-guardian-'+i));
  }
  assert.equal(g.state.parents.mother.alive,false);
@@ -49,6 +53,8 @@ test('minor inheritance stays locked until adulthood',()=>{
  const g=new Game('minor-trust');
  forceOldParents(g);
  for(let i=0;i<120&&(g.state.parents.mother.alive||g.state.parents.father.alive);i++){
+  // Independent mortality trials must not replay one calendar year.
+  g.state.year+=1;
   processElderFamilyYear(g.state,new RNG('minor-trust-'+i));
  }
  assert.ok(g.state.trustFund);
@@ -70,6 +76,8 @@ test('guardianship closes when minor reaches adulthood',()=>{
  const g=new Game('guardian-adulthood');
  forceOldParents(g);
  for(let i=0;i<120&&(g.state.parents.mother.alive||g.state.parents.father.alive);i++){
+  // Independent mortality trials must not replay one calendar year.
+  g.state.year+=1;
   processElderFamilyYear(g.state,new RNG('guardian-adult-'+i));
  }
  assert.ok(g.state.guardianship);

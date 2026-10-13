@@ -1,4 +1,5 @@
 import {metaFor} from './career_taxonomy.js';
+import {annualYearStatus} from '../core/annual_clock.js';
 
 export function ensureCareerProfile(state){
  state.careerProfile??={
@@ -14,6 +15,8 @@ export function ensureCareerProfile(state){
 export function recordCareerYear(state){
  const c=state.career;
  if(!c?.employed)return;
+ const {calendarYear,replayed}=annualYearStatus(state.year,state.careerProfile?.lastRecordedYear,'career experience');
+ if(replayed)return;
  const profile=ensureCareerProfile(state);
  const meta=metaFor(c.jobId);
  profile.experienceByJob[c.jobId]=(profile.experienceByJob[c.jobId]??0)+1;
@@ -22,6 +25,7 @@ export function recordCareerYear(state){
 
  const best=Object.entries(profile.experienceByFamily).sort((a,b)=>b[1]-a[1])[0];
  profile.coreFamily=best?.[0]??meta.family;
+ if(calendarYear!==null)profile.lastRecordedYear=calendarYear;
 }
 
 export function archiveCareer(state,reason='change'){
